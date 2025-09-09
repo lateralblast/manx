@@ -1,0 +1,18 @@
+# 0.0.1: Tue 09 Sep 2025 20:10:40 AEST
+# Initial structure
+# 0.0.2: Tue 09 Sep 2025 22:31:34 AEST
+# Added options code
+# 0.0.3: Tue 09 Sep 2025 22:36:22 AEST
+# Added actions code
+# 0.0.4: Tue 09 Sep 2025 22:37:21 AEST
+# Added install script generation code
+# 0.0.5: Tue 09 Sep 2025 22:46:12 AEST
+# Added nix ISO configuration generation code
+# 0.0.6: Tue 09 Sep 2025 22:58:33 AEST
+# Initial documentation
+# 0.0.7: Tue 09 Sep 2025 23:14:33 AEST
+# Added shellcheck switch
+# 0.0.8: Wed 10 Sep 2025 00:01:04 AEST
+# Improved usage output 
+# 0.0.9: Wed 10 Sep 2025 00:40:22 AEST
+# Added mask switch
