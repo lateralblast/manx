@@ -9,7 +9,7 @@ Manage/Automate NiXOS
 Version
 -------
 
-Current version: 0.0.8
+Current version: 0.2.1
 
 License
 -------

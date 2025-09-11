@@ -16,3 +16,25 @@
 # Improved usage output 
 # 0.0.9: Wed 10 Sep 2025 00:40:22 AEST
 # Added mask switch
+# 0.1.0: Wed 10 Sep 2025 12:10:13 AEST
+# Updated EOF tokens
+# 0.1.1: Wed 10 Sep 2025 12:31:13 AEST
+# Fixed switches
+# 0.1.2: Wed 10 Sep 2025 13:25:06 AEST
+# Added switches for ZFS script
+# 0.1.4: Wed 10 Sep 2025 14:38:14 AEST
+# Updated options
+# 0.1.5: Wed 10 Sep 2025 17:51:39 AEST
+# Added ZFS install script creation framework
+# 0.1.6: Wed 10 Sep 2025 18:22:36 AEST
+# Added GECOS switch
+# 0.1.7: Wed 10 Sep 2025 19:20:23 AEST
+# Added more to ZFS install script
+# 0.1.8: Thu 11 Sep 2025 13:20:33 AEST
+# Added attended option to disable unattended install for testing
+# 0.1.9: Thu 11 Sep 2025 14:04:22 AEST
+# Fixed ISO contents source setting
+# 0.2.0: Thu 11 Sep 2025 15:25:58 AEST
+# Added reboot option
+# 0.2.1: Thu 11 Sep 2025 17:52:18 AEST
+# Improvements to zfs install script
