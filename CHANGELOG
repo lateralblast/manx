@@ -68,3 +68,5 @@
 # Added switches for volume names
 # 0.3.6: Wed 17 Sep 2025 23:28:54 AEST
 # Added more ext4 support
+# 0.3.7: Thu 18 Sep 2025 00:39:12 AEST
+# Bug fixes

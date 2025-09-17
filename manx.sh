@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Manage/Automate NiXOS)
-# Version:      0.3.6
+# Version:      0.3.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -811,11 +811,11 @@ EXTINSTALL
   if [ "${options['disk']}" = "first" ]; then
     tee -a "${options['extinstall']}" << EXTINSTALL
 FIRST_DISK=\$( lsblk -x TYPE | grep disk | sort | head -1 | awk '{print \$1}' )
-DISK=( /dev/\${FIRST_DISK} )
+DISK="/dev/\${FIRST_DISK}"
 EXTINSTALL
   else
     tee -a "${options['extinstall']}" << EXTINSTALL
-DISK=( ${options['disk']} )
+DISK="${options['disk']}"
 EXTINSTALL
   fi
 
@@ -825,11 +825,11 @@ NIC=\$( ip link | grep "state UP" | awk '{ print \$2}' | head -1 | grep ^e | cut
 EXTINSTALL
   else
     tee -a "${options['extinstall']}" << EXTINSTALL
-NIC=( ${options['nic']} )
+NIC="${options['nic']}"
 EXTINSTALL
   fi
-  tee -a "${options['extinstall']}" << EXTINSTALL
 
+  tee -a "${options['extinstall']}" << EXTINSTALL
 # Setup environment
 SWAP_SIZE="${options['swapsize']}"
 ROOT_SIZE="${options['rootsize']}"
@@ -847,7 +847,7 @@ BOOT_PART="\${DISK}3"
 ROOT_DEV="/dev/disk/by-label/\${ROOT_VOL}"
 BOOT_DEV="/dev/disk/by-label/\${BOOT_VOL}"
 SWAP_DEV="/dev/disk/by-label/\${SWAP_VOL}"
-TARGET_DIR="${options]'installdir'}"
+TARGET_DIR="${options['installdir']}"
 UNAME=\$(uname -m)
 DHCP="${options['dhcp']}"
 BRIDGE="${options['bridge']}"
@@ -881,7 +881,6 @@ SSH_KEY="${options['sshkey']}"
 HASHED_PASSWORD="${options['usercrypt']}"
 ZSH_ENABLE="${options['zsh']}"
 HOST_ID=\$( head -c 8 /etc/machine-id )
-
 # Check if BIOS or UEFI boot
 if [ -d "/sys/firmware/efi" ]; then
   BIOS="false"
@@ -1015,7 +1014,7 @@ EOF
 
 if [ "\${DHCP}" = "false" ]; then
   if [ "\${BRIDGE}" = "false" ]; then
-    tee -a \${ZFS_CFG} << EOF
+    tee -a \${MAIN_CFG} << EOF
   networking = {
     interfaces."\${NIC}".useDHCP = false;
     interfaces."\${NIC}".ipv4.addresses = [{
@@ -1027,7 +1026,7 @@ if [ "\${DHCP}" = "false" ]; then
   };
 EOF
   else
-    tee -a \${ZFS_CFG} << EOF
+    tee -a \${MAIN_CFG} << EOF
   networking = {
     bridges."\${BRIDGE}".interfaces = [ "\${NIC}" ];
     interfaces."\${BRIDGE}".useDHCP = false;
@@ -1043,12 +1042,11 @@ EOF
   fi
 fi
 
-tee -a \${ZFS_CFG} << EOF
+tee -a \${MAIN_CFG} << EOF
   users.users.root.initialHashedPassword = "\${ROOT_CRYPT}";
   system.stateVersion = "\${STATE_VERSION}";
 }
 EOF
-
 
 # Generate hardware-configuration.nix
 ROOT_UUID=\$(ls -l /dev/disk/by-uuid/ |grep \${DISK}1 |awk '{print \$9}' )
@@ -1082,9 +1080,8 @@ tee -a \${HW_CFG} << EOF
   nixpkgs.hostPlatform = lib.mkDefault "\${UNAME_M}-linux";
 }
 EOF
-
-EXTINSTALL
 nixos-install --no-root-passwd
+EXTINSTALL
 }
 
 # Function: create_zfs_install_script
@@ -1628,6 +1625,10 @@ while test $# -gt 0; do
       options['cidr']="$2"
       shift 2
       ;;
+    --createext*)           # switch : Create EXT4 install script
+      actions_list+=("createextinstall")
+      shift
+      ;;
     --createinstall*)       # switch : Create install script
       actions_list+=("createinstall")
       shift
@@ -1636,7 +1637,7 @@ while test $# -gt 0; do
       actions_list+=("createiso")
       shift
       ;;
-    --createnix*)           # switch : Create ISO
+    --createnix*)           # switch : Create NIX ISO config
       actions_list+=("createnix")
       shift
       ;;
