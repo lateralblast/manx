@@ -38,3 +38,33 @@
 # Added reboot option
 # 0.2.1: Thu 11 Sep 2025 17:52:18 AEST
 # Improvements to zfs install script
+# 0.2.2: Fri 12 Sep 2025 11:34:14 AEST
+# Updated ZFS install script
+# 0.2.3: Sat 13 Sep 2025 14:34:30 AEST
+# Added additional switches for config
+# 0.2.4: Sat 13 Sep 2025 15:22:09 AEST
+# Added static network option
+# 0.2.5: Sat 13 Sep 2025 15:50:54 AEST
+# Updates to ZFS file
+# 0.2.6: Sat 13 Sep 2025 17:40:49 AEST
+# Fixed determination of output file
+# 0.2.7: Sat 13 Sep 2025 19:40:11 AEST
+# Updated ISO imports
+# 0.2.8: Sun 14 Sep 2025 11:22:05 AEST
+# Added start of standalone support
+# 0.2.9: Sun 14 Sep 2025 15:32:01 AEST
+# Set user shell to zsh
+# 0.3.0: Mon 15 Sep 2025 13:31:21 AEST
+# Added code to get password crypts
+# 0.3.1: Tue 16 Sep 2025 10:59:33 AEST
+# Updated and fixed install script
+# 0.3.2: Wed 17 Sep 2025 14:15:18 AEST
+# Added filesystem switch
+# 0.3.3: Wed 17 Sep 2025 15:21:14 AEST
+# Added firmware switch
+# 0.3.4: Wed 17 Sep 2025 21:34:34 AEST
+# Added initial ext4 support
+# 0.3.5: Wed 17 Sep 2025 22:42:31 AEST
+# Added switches for volume names
+# 0.3.6: Wed 17 Sep 2025 23:28:54 AEST
+# Added more ext4 support
