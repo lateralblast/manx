@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Manage/Automate NiXOS)
-# Version:      0.3.7
+# Version:      0.4.5
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -33,7 +33,7 @@ declare -a actions_list
 
 script['args']="$*"
 script['file']="$0"
-script['name']="just"
+script['name']="manx"
 script['file']=$( realpath "${script['file']}" )
 script['path']=$( dirname "${script['file']}" )
 script['modulepath']="${script['path']}/modules"
@@ -46,88 +46,7 @@ script['user']=$( id -u -n )
 
 set_defaults () {
   # Packages
-  packages=" 
-            autoconf
-            automake
-            bison
-            bzip2
-            btop
-            clang
-            clang-tools
-            cloud-utils
-            cmake
-            cppcheck
-            curl
-            dmidecode
-            doxygen
-            efibootmgr
-            file
-            flex
-            fzf
-            gdb
-            gcc
-            git
-            glibc
-            gnumake
-            go
-            gtest
-            ipcalc
-            ipfetch
-            lcov
-            libdeflate
-            libffi
-            libgcc
-            libguestfs
-            libosinfo
-            libvirt
-            libxcrypt
-            libxml2
-            libxslt
-            libz
-            libzip
-            lsb-release
-            lshw
-            lzip
-            lzlib
-            ncurses
-            nfs-utils
-            ninja
-            nixos-generators
-            openssl
-            p7zip
-            pciutils
-            pcre
-            pkg-config
-            python313Full
-            qemu
-            rclone
-            readline
-            ruby
-            rustc
-            shellcheck
-            smbclient-ng
-            spice
-            spice-gtk
-            spice-protocol
-            sqlite
-            swig
-            tk
-            unzip
-            vcpkg
-            vcpkg-tool
-            vim
-            virt-manager
-            virt-viewer
-            wget
-            whois
-            win-spice
-            win-virtio
-            xz
-            yq
-            zip
-            zlib
-            zlib-ng
-          "
+  packages="curl dmidecode efibootmgr file lsb-release lshw pciutils vim wget"
   # Imports
   imports['hardware']="<nixpkgs/nixos/modules/profiles/all-hardware.nix>"                                         # import : Nix hardware profile
   imports['base']="<nixpkgs/nixos/modules/profiles/base.nix>"                                                     # import : Nix base profile
@@ -144,7 +63,7 @@ set_defaults () {
   options['mask']="false"                                                   # option : Mask identifiers
   options['yes']="false"                                                    # option : Answer yes to questions
   options['dhcp']="true"                                                    # option : DHCP network
-  options['workdir']="${HOME}/nix"                                          # option : Nix work directory
+  options['workdir']="${HOME}/${script['name']}"                            # option : Nix work directory
   options['sshkey']=""                                                      # option : SSH key
   options['disk']="first"                                                   # option : Disk
   options['nic']="first"                                                    # option : NIC
@@ -153,8 +72,8 @@ set_defaults () {
   options['language']="en_AU.UTF-8"                                         # option : Language
   options['timezone']="Australia/Melbourne"                                 # option : Timezone
   options['username']=""                                                    # option : Username
-  options['password']="nixos"                                               # option : User Password
-  options['crypt']=""                                                       # option : User Password Crypt
+  options['userpassword']="nixos"                                           # option : User Password
+  options['usercrypt']=""                                                   # option : User Password Crypt
   options['hostname']="nixos"                                               # option : Hostname 
   options['sshkeyfile']=""                                                  # option : SSH key file
   options['filesystem']="ext4"                                              # option : Root filesystem
@@ -192,7 +111,7 @@ set_defaults () {
   options['sudooptions']="NOPASSWD"                                         # option : Sudo Options
   options['systempackages']="${packages}"                                   # option : System Packages
   options['experimental-features']="nix-command flakes"                     # option : Experimental Features
-  options['unfree']="true"                                                  # option : Allow Non Free Packages
+  options['unfree']="false"                                                 # option : Allow Non Free Packages
   options['stateversion']="25.05"                                           # option : State version
   options['unattended']="true"                                              # option : Execute install script
   options['attended']="false"                                               # option : Don't execute install script
@@ -616,9 +535,9 @@ check_nix_config () {
 # Get Password Crypt
 
 get_password_crypt () {
-  if [ ! "${options['password']}" = "" ]; then
-    if [ "${options['crypt']}" = "" ]; then
-      options['crypt']=$( mkpasswd --method=sha-512 "${options['password']}" )
+  if [ ! "${options['userpassword']}" = "" ]; then
+    if [ "${options['usercrypt']}" = "" ]; then
+      options['usercrypt']=$( mkpasswd --method=sha-512 "${options['userpassword']}" )
     fi
   fi
   if [ ! "${options['rootpassword']}" = "" ]; then
@@ -698,11 +617,11 @@ NIXCONFIG
   # Set boot params
   boot.runSize = "${options['runsize']}";
 
-  # Bootloader.
-  boot.loader.systemd-boot.enable = ${options['systemd-boot']};
-  boot.loader.efi.canTouchEfiVariables = ${options['touchefi']};
+  # Bootloader
+  # boot.loader.systemd-boot.enable = ${options['systemd-boot']};
+  # boot.loader.efi.canTouchEfiVariables = ${options['touchefi']};
 
-  # Set your time zone.
+  # Set your time zone
   time.timeZone = "${options['timezone']}";
 
   # Select internationalisation properties.
@@ -782,10 +701,10 @@ create_install_script () {
 #!/run/current-system/sw/bin/bash
 set -x
 export PATH="/run/wrappers/bin:/root/.nix-profile/bin:/nix/profile/bin:/root/.local/state/nix/profile/bin:/etc/profiles/per-user/root/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin"
-mkdir -p /mnt/${options['prefix']}
-cp /iso/${options['prefix']}/*.sh /mnt/${options['prefix']}
-chmod +x /mnt/${options['prefix']}/*.sh
-bash /mnt/${options['prefix']}/${options['filesystem']}.sh
+mkdir -p /tmp/${options['prefix']}
+cp /iso/${options['prefix']}/*.sh /tmp/${options['prefix']}
+chmod +x /tmp/${options['prefix']}/*.sh
+bash /tmp/${options['prefix']}/${options['filesystem']}.sh
 INSTALL
 chmod +x "${options['install']}"
 }
@@ -830,7 +749,9 @@ EXTINSTALL
   fi
 
   tee -a "${options['extinstall']}" << EXTINSTALL
+
 # Setup environment
+DISK_SUFFIX=\$( echo "\${DISK}" | cut -f3 -d/ )
 SWAP_SIZE="${options['swapsize']}"
 ROOT_SIZE="${options['rootsize']}"
 MAIN_CFG="${options['nixconfig']}"
@@ -848,7 +769,8 @@ ROOT_DEV="/dev/disk/by-label/\${ROOT_VOL}"
 BOOT_DEV="/dev/disk/by-label/\${BOOT_VOL}"
 SWAP_DEV="/dev/disk/by-label/\${SWAP_VOL}"
 TARGET_DIR="${options['installdir']}"
-UNAME=\$(uname -m)
+ROOT_CRYPT="${options['rootcrypt']}"
+UNAME_M=\$(uname -m)
 DHCP="${options['dhcp']}"
 BRIDGE="${options['bridge']}"
 IP="${options['ip']}"
@@ -878,9 +800,12 @@ NORMAL_USER="${options['normaluser']}"
 GECOS="${options['gecos']}"
 EXTRA_GROUPS="${options['extragroups']}"
 SSH_KEY="${options['sshkey']}"
-HASHED_PASSWORD="${options['usercrypt']}"
+USER_PASSWORD="${options['userpassword']}"
+USER_CRYPT=\$( mkpasswd --method=sha-512 "\${USER_PASSWORD}" )
 ZSH_ENABLE="${options['zsh']}"
 HOST_ID=\$( head -c 8 /etc/machine-id )
+FS_TYPE="${options['filesystem']}"
+
 # Check if BIOS or UEFI boot
 if [ -d "/sys/firmware/efi" ]; then
   BIOS="false"
@@ -891,7 +816,11 @@ else
 fi
 
 # Wipe disk
-wipefs -a \${DISK}
+swapoff -L \${SWAP_PART}
+umount -l \${TARGET_DIR}/\${BOOT_VOL}
+umount -l \${TARGET_DIR}
+wipefs \${DISK}
+sgdisk --zap-all \${DISK}
 zpool labelclear -f \${DISK}
 
 # Setup disk
@@ -899,32 +828,34 @@ if [ "\${BIOS}" = "true" ]; then
   parted \${DISK} -- mklabel msdos
   parted \${DISK} -- mkpart primary \${SWAP_SIZE}iB \${ROOT_SIZE}
   parted \${DISK} -- mkpart primary linux-swap 1GiB \${SWAP_SIZE}iB
-  mkfs.ext4 -F -L \${ROOT_VOL} \${DISK}1
-  mkswap -L swap \${DISK}2
+  partprobe \${DISK}
+  sleep 5s
+  mkfs.ext4 -F -L \${ROOT_VOL} \${ROOT_PART}
+  mkswap -L swap \${SWAP_PART}
   mount \${ROOT_DEV} \${TARGET_DIR}
   swapon \${SWAP_DEV}
-#  mkdir -p \${NIX_DIR}
-#  nixos-generate-config --root \${TARGET_DIR}
-#  sed -i 's/# boot\.loader\.grub\.device.*/boot\.loader\.grub\.device="\${DISK}"/g'
 else
   parted \${DISK} -- mklabel gpt
-  parted \${DISK} -- mkpart primary \${SWAP_SIZE} \${ROOT_SIZE}
+  parted \${DISK} -- mkpart primary \${SWAP_SIZE}iB \${ROOT_SIZE}
   parted \${DISK} -- mkpart primary linux-swap 512MiB \${SWAP_SIZE}iB
   parted \${DISK} -- mkpart ESP fat32 1MiB 512MiB 
   parted \${DISK} -- set 3 esp on
+  partprobe \${DISK}
+  sleep 5s
   mkfs.ext4 -F -L \${ROOT_VOL} \${ROOT_PART}
   mkswap -L \${SWAP_VOL} \${SWAP_PART}
   mkfs.fat -F 32 -n \${BOOT_VOL} \${BOOT_PART}
   mount \${ROOT_DEV} \${TARGET_DIR}
   mkdir -p \${TARGET_DIR}/\${BOOT_VOL}
   mount \${BOOT_DEV} \${TARGET_DIR}/\${BOOT_VOL}
+  chmod 700 \${TARGET_DIR}/\${BOOT_VOL}
   swapon \${SWAP_DEV}
-#  mkdir -p \${NIX_DIR}
-#  nixos-generate-config --root \${TARGET_DIR}
 fi
 
+
 # Generate configuration.nix
-mkdir -p \${NIXDIR}
+mkdir -p \${NIX_DIR}
+rm \${NIX_DIR}/*
 tee \${MAIN_CFG} << EOF
 { config, lib, pkgs, ... }:
 {
@@ -932,11 +863,11 @@ tee \${MAIN_CFG} << EOF
     ./hardware-configuration.nix
   ];
   boot.loader.grub.enable = \${BIOS};
-  boot.loader.systemd-boot.enable = \${UEFI}
+  boot.loader.systemd-boot.enable = \${UEFI};
 EOF
   if [ "\${BIOS}" = "true" ]; then
     tee -a \${MAIN_CFG} << EOF
-    boot.loader.grub.device = "\${DISK}"
+    boot.loader.grub.device = "\${DISK}";
 EOF
   fi 
 tee -a \${MAIN_CFG} << EOF
@@ -977,7 +908,7 @@ tee -a \${MAIN_CFG} << EOF
     LC_MONETARY = "\${LANGUAGE}";
     LC_NAME = "\${LANGUAGE}";
     LC_NUMERIC = "\${LANGUAGE}";
-    LC_PAPER = "\${LANGUAGE}"u
+    LC_PAPER = "\${LANGUAGE}";
     LC_TELEPHONE = "\${LANGUAGE}";
     LC_TIME = "\${LANGUAGE}";
   };
@@ -989,7 +920,7 @@ tee -a \${MAIN_CFG} << EOF
     description = "\${GECOS}";
     extraGroups = [ "\${EXTRA_GROUPS}" ];
     openssh.authorizedKeys.keys = [ "\${SSH_KEY}" ];
-    hashedPassword = "\${HASHED_PASSWORD}";
+    hashedPassword = "\${USER_CRYPT}";
   };
   programs.zsh.enable = \${ZSH_ENABLE};
 
@@ -1049,9 +980,6 @@ tee -a \${MAIN_CFG} << EOF
 EOF
 
 # Generate hardware-configuration.nix
-ROOT_UUID=\$(ls -l /dev/disk/by-uuid/ |grep \${DISK}1 |awk '{print \$9}' )
-SWAP_UUID=\$(ls -l /dev/disk/by-uuid/ |grep \${DISK}2 |awk '{print \$9}' )
-BOOT_UUID=\$(ls -l /dev/disk/by-uuid/ |grep \${DISK}3 |awk '{print \$9}' )
 tee \${HW_CFG} << EOF
 { config, lib, pkgs, modulesPath, ... }:
 {
@@ -1069,19 +997,20 @@ fi
 
 if [ "\${UEFI}" = "true" ]; then
   tee -a \${HW_CFG} << EOF
-  fileSystems."/boot" = { device = "/dev/disk/by-uuid/\${ROOT_UUID}"; fsType = "vfat"; };
+  fileSystems."/boot" = { device = "\${BOOT_PART}"; fsType = "vfat"; options = [ "fmask=0022" "dmask=0022" ]; };
 EOF
 fi
 
 tee -a \${HW_CFG} << EOF
-  fileSystems."/" = { device = "/dev/disk/by-uuid/\${ROOT_UUID}"; fsType = "\${FS_TYPE}"; };
-  swapDevices = [ { device = "/dev/disk/by-uuid/\${SWAP_UUID}"; } ];
+  fileSystems."/" = { device = "\${ROOT_PART}"; fsType = "\${FS_TYPE}"; };
+  swapDevices = [ { device = "\${SWAP_PART}"; } ];
 
   nixpkgs.hostPlatform = lib.mkDefault "\${UNAME_M}-linux";
 }
 EOF
 nixos-install --no-root-passwd
 EXTINSTALL
+chmod +x "${options['extinstall']}"
 }
 
 # Function: create_zfs_install_script
@@ -1124,6 +1053,7 @@ fi
 
 tee -a "${options['zfsinstall']}" << ZFSINSTALL
 # Declare partitions/pools
+DISK_SUFFIX=\$( echo "\${DISK}" | cut -f3 -d/ )
 PART_MBR="bootcode"
 PART_EFI="efiboot"
 PART_BOOT="${options['bootpool']}"
@@ -1134,6 +1064,7 @@ ZFS_BOOT="${options['bootpool']}"
 ZFS_ROOT="${options['rootpool']}"
 ZFS_ROOT_VOL="${options['rootvolname']}"
 ROOT_CRYPT="${options['rootcrypt']}"
+TARGET_DIR="${options['installdir']}"
 
 # Declare config files etc
 REBOOT="${options['reboot']}"
@@ -1170,7 +1101,7 @@ NORMAL_USER="${options['normaluser']}"
 GECOS="${options['gecos']}"
 EXTRA_GROUPS="${options['extragroups']}"
 SSH_KEY="${options['sshkey']}"
-HASHED_PASSWORD="${options['usercrypt']}"
+USER_CRYPT="${options['usercrypt']}"
 ZSH_ENABLE="${options['zsh']}"
 HOST_ID=\$( head -c 8 /etc/machine-id )
 
@@ -1326,7 +1257,7 @@ tee \${ZFS_CFG} << EOF
     LC_MONETARY = "\${LANGUAGE}";
     LC_NAME = "\${LANGUAGE}";
     LC_NUMERIC = "\${LANGUAGE}";
-    LC_PAPER = "\${LANGUAGE}"u
+    LC_PAPER = "\${LANGUAGE}";
     LC_TELEPHONE = "\${LANGUAGE}";
     LC_TIME = "\${LANGUAGE}";
   };
@@ -1338,7 +1269,7 @@ tee \${ZFS_CFG} << EOF
     description = "\${GECOS}";
     extraGroups = [ "\${EXTRA_GROUPS}" ];
     openssh.authorizedKeys.keys = [ "\${SSH_KEY}" ];
-    hashedPassword = "\${HASHED_PASSWORD}";
+    hashedPassword = "\${USER_CRYPT}";
   };
   programs.zsh.enable = \${ZSH_ENABLE};
 
@@ -1430,8 +1361,8 @@ tee -a \${ZFS_CFG} << EOF
 EOF
 
 # Create hardware-configuration.nix
-SWAP_UUID=\$(ls -l /dev/disk/by-uuid/ |grep \${DISK}4 |awk '{print \$9}' )
-BOOT_UUID=\$(ls -l /dev/disk/by-uuid/ |grep \${DISK}2 |awk '{print \$9}' )
+SWAP_UUID=\$(ls -l /dev/disk/by-uuid/ |grep \${DISK_SUFFIX}4 |awk '{print \$9}' )
+BOOT_UUID=\$(ls -l /dev/disk/by-uuid/ |grep \${DISK_SUFFIX}2 |awk '{print \$9}' )
 QEMU_CHECK=\$( cat /proc/ioports |grep QEMU )
 
 tee \${HW_CFG} << EOF
@@ -1504,7 +1435,7 @@ tee -a \${HW_CFG} << EOF
 }
 EOF
 
-nixos-install -v --show-trace --no-root-passwd --substituters "" --root /mnt 2>&1 |tee /var/log/install.log
+nixos-install -v --show-trace --no-root-passwd --substituters "" --root \${TARGET_DIR} 2>&1 |tee \${TARGET_DIR}var/log/install.log
 umount -Rl /mnt
 zpool export -a
 swapoff -a
@@ -1525,7 +1456,7 @@ create_iso () {
   create_install_script
   create_zfs_install_script
   create_ext_install_script
-  execute_command "cd ${options['workdir']} ; nix-build --no-out-link '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=${options['nixisoconfig']} --builders ''"
+  execute_command "cd ${options['workdir']} ; nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=${options['nixisoconfig']} --builders ''"
 #  execute_command "nixos-generate -f iso -c ${options['nixisoconfig']}"
   iso_dir="${options['workdir']}/result/iso"
   iso_file=$( find "${iso_dir}" -name "*.iso" )
@@ -1645,9 +1576,9 @@ while test $# -gt 0; do
       actions_list+=("createzfs")
       shift
       ;;
-    --crypt)                # switch : User Password Crypt 
+    --usercrypt|--crypt)    # switch : User Password Crypt 
       check_value "$1" "$2"
-      options['crypt']="$2"
+      options['usercrypt']="$2"
       shift 2
       ;;
     --debug)                # switch : Enable debug mode
@@ -1762,9 +1693,9 @@ while test $# -gt 0; do
       options_list+=("$2")
       shift 2
       ;;
-    --password)             # switch : User password
+    --password|--userpassword)  # switch : User password
       check_value "$1" "$2"
-      options['password']="$2"
+      options['userpassword']="$2"
       shift 2
       ;;
     --prefix)               # switch : Install prefix

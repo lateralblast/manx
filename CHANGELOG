@@ -70,3 +70,19 @@
 # Added more ext4 support
 # 0.3.7: Thu 18 Sep 2025 00:39:12 AEST
 # Bug fixes
+# 0.3.8: Thu 18 Sep 2025 08:53:51 AEST
+# More ext4 script updates
+# 0.3.9: Thu 18 Sep 2025 10:39:37 AEST
+# Fixed ISO output
+# 0.4.0: Thu 18 Sep 2025 12:03:55 AEST
+# Updated install script
+# 0.4.1: Thu 18 Sep 2025 12:11:52 AEST
+# Fixed disk partitioning for ext4 install in UEFI mode
+# 0.4.2: Thu 18 Sep 2025 12:35:06 AEST
+# Fixed disk UUID determination
+# 0.4.3: Thu 18 Sep 2025 14:40:40 AEST
+# Fixed user password crypt
+# 0.4.4: Thu 18 Sep 2025 15:30:14 AEST
+# More fixes
+# 0.4.5: Thu 18 Sep 2025 16:36:04 AEST
+# Added partprobe and sleep to ext4 install script
