@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Manage/Automate NiXOS)
-# Version:      0.4.5
+# Version:      0.4.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -137,6 +137,11 @@ set_defaults () {
   options['rootvolname']="nixos"                                            # option : Root volume name
   options['bootvolname']="boot"                                             # option : Boot volume name
   options['swapvolname']="swap"                                             # option : Swap volume name
+  options['uefivolname']="uefi"                                             # option : UEFI volume name
+  options['homevolname']="home"                                             # option : Home volume name
+  options['nixvolname']="nix"                                               # option : Nix volume name
+  options['usrvolname']="usr"                                               # option : Usr volume name
+  options['varvolname']="var"                                               # option : Var volume name
   os['name']=$( uname -s )
   if [ "${os['name']}" = "Linux" ]; then
     lsb_check=$( command -v lsb_release )
@@ -762,6 +767,11 @@ QEMU_CHECK=\$( cat /proc/ioports |grep QEMU )
 ROOT_VOL="${options['rootvolname']}"
 BOOT_VOL="${options['bootvolname']}"
 SWAP_VOL="${options['swapvolname']}"
+UEFI_VOL="${options['uefivolname']}"
+HOME_VOL="${options['homevolname']}"
+NIX_VOL="${options['nixvolname']}"
+USR_VOL="${options['usrvolname']}"
+VAR_VOL="${options['varvolname']}"
 ROOT_PART="\${DISK}1"
 SWAP_PART="\${DISK}2"
 BOOT_PART="\${DISK}3"
@@ -817,7 +827,12 @@ fi
 
 # Wipe disk
 swapoff -L \${SWAP_PART}
+umount -l \${TARGET_DIR}/\${BOOT_VOL}/\${UEFI_VOL}
 umount -l \${TARGET_DIR}/\${BOOT_VOL}
+umount -l \${TARGET_DIR}/\${HOME_VOL}
+umount -l \${TARGET_DIR}/\${NIX_VOL}
+umount -l \${TARGET_DIR}/\${USR_VOL}
+umount -l \${TARGET_DIR}/\${VAR_VOL}
 umount -l \${TARGET_DIR}
 wipefs \${DISK}
 sgdisk --zap-all \${DISK}
@@ -1065,6 +1080,9 @@ ZFS_ROOT="${options['rootpool']}"
 ZFS_ROOT_VOL="${options['rootvolname']}"
 ROOT_CRYPT="${options['rootcrypt']}"
 TARGET_DIR="${options['installdir']}"
+SWAP_PART="\${DISK}4"
+BOOT_VOL="boot"
+UEFI_VOL="efi"
 
 # Declare config files etc
 REBOOT="${options['reboot']}"
@@ -1105,22 +1123,30 @@ USER_CRYPT="${options['usercrypt']}"
 ZSH_ENABLE="${options['zsh']}"
 HOST_ID=\$( head -c 8 /etc/machine-id )
 
-# Create NixOS etc directory
-mkdir -p /mnt/etc/nixos
+swapoff -L \${SWAP_PART}
+umount -l \${TARGET_DIR}/\${BOOT_VOL}/\${UEFI_VOL}
+umount -l \${TARGET_DIR}/\${BOOT_VOL}
+umount -l \${TARGET_DIR}/\${HOME_VOL}
+umount -l \${TARGET_DIR}/\${NIX_VOL}
+umount -l \${TARGET_DIR}/\${USR_VOL}
+umount -l \${TARGET_DIR}/\${VAR_VOL}
+umount -l \${TARGET_DIR}
+zpool destroy -f \${ZFS_BOOT}
+zpool destroy -f \${ZFS_ROOT}
 
 # Setup disk(s)
 i=0 SWAP_DEVS=()
 for d in \${DISK[*]}
 do
   wipefs \${d}
+  zpool labelclear -f \${d}
   sgdisk --zap-all \${d}
   sgdisk -a1 -n1:0:+100K -t1:EF02 -c 1:\${PART_MBR}\${i} \${d}
   sgdisk -n2:1M:+1G -t2:EF00 -c 2:\${PART_EFI}\${i} \${d}
   sgdisk -n3:0:+4G -t3:BE00 -c 3:\${PART_BOOT}\${i} \${d}
-  sgdisk -n4:0:+\${SWAPSIZE} -t4:8200 -c 4:\${PART_SWAP}\${i} \${d}
+  sgdisk -n4:0:+\${SWAP_SIZE} -t4:8200 -c 4:\${PART_SWAP}\${i} \${d}
   SWAP_DEVS+=(\${d}4)
   sgdisk -n5:0:0 -t5:BF00 -c 5:\${PART_ROOT}\${i} \${d}
-
   partprobe \${d}
   sleep 5s
   mkswap -L \${PART_SWAP}fs\${i} /dev/disk/by-partlabel/\${PART_SWAP}\${i}
@@ -1199,7 +1225,7 @@ chmod a-w /mnt/etc/zfs/zpool.cache
 chattr +i /mnt/etc/zfs/zpool.cache
 
 # Generate and edit configs
-mkdir -p \${NIXDIR}
+mkdir -p \${NIX_DIR}
 tee \${MAIN_CFG} << EOF
 { config, lib, pkgs, ... }:
 {
@@ -1290,14 +1316,14 @@ tee \${ZFS_CFG} << EOF
   # Allow unfree packages
   nixpkgs.config.allowUnfree = \${UNFREE};
 
-  boot.loader.efi.efiSysMountPoint = "/boot/efi";
-  boot.loader.efi.canTouchEfiVariables = false;
-  boot.loader.generationsDir.copyKernels = true;
-  boot.loader.grub.efiInstallAsRemovable = true;
-  boot.loader.grub.enable = true;
-  boot.loader.grub.copyKernels = true;
-  boot.loader.grub.efiSupport = true;
-  boot.loader.grub.zfsSupport = true;
+#  boot.loader.efi.efiSysMountPoint = "/boot/efi";
+#  boot.loader.efi.canTouchEfiVariables = false;
+#  boot.loader.generationsDir.copyKernels = true;
+#  boot.loader.grub.efiInstallAsRemovable = true;
+#  boot.loader.grub.enable = true;
+#  boot.loader.grub.copyKernels = true;
+#  boot.loader.grub.efiSupport = true;
+#  boot.loader.grub.zfsSupport = true;
 
   boot.loader.grub.extraPrepareConfig = ''
     mkdir -p /boot/efis

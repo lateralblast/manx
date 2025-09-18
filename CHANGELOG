@@ -86,3 +86,7 @@
 # More fixes
 # 0.4.5: Thu 18 Sep 2025 16:36:04 AEST
 # Added partprobe and sleep to ext4 install script
+# 0.4.6: Thu 18 Sep 2025 20:18:13 AEST
+# Fixed swap size bug in ZFS install script
+# 0.4.7: Fri 19 Sep 2025 00:01:08 AEST
+# Fixed ZFS install sxcript
