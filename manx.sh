@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Manage/Automate NixOS)
-# Version:      0.6.1
+# Version:      0.6.5
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -66,7 +66,7 @@ set_defaults () {
   options['yes']="false"                                                      # option : Answer yes to questions
   options['dhcp']="true"                                                      # option : DHCP network
   options['swap']="true"                                                      # option : Use swap
-  options['lvm']="true"                                                       # option : Use LVM
+  options['lvm']="false"                                                      # option : Use LVM
   options['zsh']="true"                                                       # option : Enable zsh
   options['workdir']="${HOME}/${script['name']}"                              # option : Script work directory
   options['sshkey']=""                                                        # option : SSH key
@@ -155,7 +155,9 @@ set_defaults () {
   options['efipart']="3"                                                      # option : UEFI/Boot partition
   options['swappart']="4"                                                     # option : Swap partition
   options['devnodes']="/dev/disk/by-uuid"                                     # option : Device nodesDevice nodes
-  options['logfile']="/var/log/install.log"                                   # option : Install log file
+  options['logdir']="/var/log"                                                # option : Install log dir
+  options['logfile']="${options['logdir']}/install.log"                       # option : Install log file
+  options['bootsize']="512M"                                                  # option : Boot partition size
   os['name']=$( uname -s )
   if [ "${os['name']}" = "Linux" ]; then
     lsb_check=$( command -v lsb_release )
@@ -292,6 +294,13 @@ reset_defaults () {
   fi
   if [ ! "${options['usershell']}" = "zsh" ]; then
     options['zsh']="false"
+  fi
+  if [ "${options['lvm']}" = "true" ]; then
+    options['zfs']="false"
+    if [ "${options["rootfs"]}" = "zfs" ]; then
+      warning_message "LVM selected, root filestem cannot be ZFS, setting to EXT4"
+      options['rootfs']="ext4"
+    fi
   fi
   if [ "${options['zfs']}" = "true" ] || [ "${options['rootfs']}" = "zfs" ]; then
     options['zfs']='true'
@@ -656,7 +665,7 @@ NIXISOCONFIG
     LC_IDENTIFICATION = "${options['locale']}";
     LC_MEASUREMENT = "${options['locale']}";
     LC_MONETARY = "${options['locale']}";
-    LC_NAME = "${options['local']}";
+    LC_NAME = "${options['locale']}";
     LC_NUMERIC = "${options['locale']}";
     LC_PAPER = "${options['locale']}";
     LC_TELEPHONE = "${options['locale']}";
@@ -772,10 +781,11 @@ ROOT_SIZE="${options['rootsize']}"
 BOOT_SIZE="${options['bootsize']}"
 ROOT_POOL="${options['rootpool']}"
 SWAP_NAME="${options['swapvolname']}"
-TARGET_DIR="${options['isomount']}"
+TARGET_DIR="${options['installdir']}"
 MBR_NAME="${options['mbrpartname']}"
 LOCALE="${options['locale']}"
 DEV_NODES="${options['devnodes']}"
+LOG_DIR="${options['logdir']}"
 LOG_FILE="${options['logfile']}"
 TIME_ZONE="${options['timezone']}"
 USER_SHELL="${options['usershell']}"
@@ -810,6 +820,12 @@ if [ "\${USE_DHCP}" = "false" ]; then
   if [ "\${NIC_DEV}" = "first" ]; then
     NIC_DEV=\$( ip link | grep "state UP" | awk '{ print \$2}' | head -1 | grep ^e | cut -f1 -d: )
   fi
+fi
+
+# Discover first disk
+if [ "\${ROOT_DISK}" = "first" ]; then
+  ROOT_DISK=\$( lsblk -x TYPE|grep disk |sort |head -1 |awk '{print \$1}' )
+  ROOT_DISK="/dev/\${ROOT_DISK}"
 fi
 
 # Check we are using only one volume manager
@@ -1092,6 +1108,8 @@ HW_CFG
 if [ "\${DO_INSTALL}" = "false" ]; then
   exit
 fi
+
+mkdir -p ${TARGET_DIR}/${LOG_DIR}
 
 nixos-install -v --show-trace --no-root-passwd 2>&1 |tee \${TARGET_DIR}\${LOG_FILE}
 

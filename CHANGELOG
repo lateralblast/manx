@@ -122,3 +122,11 @@
 # Bug fixes
 # 0.6.1: Sun 21 Sep 2025 02:59:28 AEST
 # Reintegrated standalone script findings into main code
+# 0.6.2: Sun 21 Sep 2025 03:35:23 AEST
+# Bug fixes
+# 0.6.3: Sun 21 Sep 2025 03:48:19 AEST
+# Fixed first disk determination
+# 0.6.4: Sun 21 Sep 2025 04:12:36 AEST
+# Fixed boot partition size
+# 0.6.5: Sun 21 Sep 2025 04:13:18 AEST
+# Fixed log directory/file creation

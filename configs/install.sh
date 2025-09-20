@@ -31,7 +31,8 @@ TARGET_DIR="/mnt"
 MBR_NAME="bootcode"
 LOCALE="en_AU.UTF-8"
 DEV_NODES="/dev/disk/by-uuid"
-LOG_FILE="/var/log/install.log"
+LOG_DIR="/var/log"
+LOG_FILE="${LOG_DIR}/install.log"
 TIME_ZONE="Australia/Melbourne"
 USER_SHELL="zsh"
 USER_NAME="nixos"
@@ -66,6 +67,12 @@ if [ "${USE_DHCP}" = "false" ]; then
   if [ "${NIC_DEV}" = "first" ]; then
     NIC_DEV=$( ip link | grep "state UP" | awk '{ print $2}' | head -1 | grep ^e | cut -f1 -d: )
   fi
+fi
+
+# Discover first disk
+if [ "${ROOT_DISK}" = "first" ]; then
+  ROOT_DISK=$( lsblk -x TYPE|grep disk |sort |head -1 |awk '{print $1}' )
+  ROOT_DISK="/dev/${ROOT_DISK}"
 fi
 
 # Check we are using only one volume manager
@@ -350,6 +357,8 @@ HW_CFG
 if [ "${DO_INSTALL}" = "false" ]; then
   exit
 fi
+
+mkdir -p ${TARGET_DIR}/${LOG_DIR}
 
 nixos-install -v --show-trace --no-root-passwd 2>&1 |tee ${TARGET_DIR}${LOG_FILE}
 
