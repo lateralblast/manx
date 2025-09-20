@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Manage/Automate NiXOS)
-# Version:      0.4.7
+# Version:      0.5.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -52,7 +52,6 @@ set_defaults () {
   imports['base']="<nixpkgs/nixos/modules/profiles/base.nix>"                                                     # import : Nix base profile
   imports['minimal']="<nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal-combined.nix>"              # -l import : Nix CD minimal profile
   imports['channel']="<nixpkgs/nixos/modules/installer/cd-dvd/channel.nix>"                                       # import : Nix CD channel profile
-#  options['isoimports']="${imports['hardware']} ${imports['base']} ${imports['minimal']} ${imports['channel']}"   # option: - ISO imports
   options['isoimports']="${imports['minimal']} ${imports['channel']}"                                             # option: - ISO imports
   # Options
   options['verbose']="false"                                                # option : Verbose mode
@@ -67,8 +66,8 @@ set_defaults () {
   options['sshkey']=""                                                      # option : SSH key
   options['disk']="first"                                                   # option : Disk
   options['nic']="first"                                                    # option : NIC
-  options['zfs']="false"                                                    # option : ZFS filesystem
-  options['ext4']="true"                                                    # option : EXT4 filesystem
+  options['zfs']="true"                                                     # option : ZFS filesystem
+  options['ext4']="false"                                                   # option : EXT4 filesystem
   options['language']="en_AU.UTF-8"                                         # option : Language
   options['timezone']="Australia/Melbourne"                                 # option : Timezone
   options['username']=""                                                    # option : Username
@@ -735,11 +734,11 @@ EXTINSTALL
   if [ "${options['disk']}" = "first" ]; then
     tee -a "${options['extinstall']}" << EXTINSTALL
 FIRST_DISK=\$( lsblk -x TYPE | grep disk | sort | head -1 | awk '{print \$1}' )
-DISK="/dev/\${FIRST_DISK}"
+ROOT_DISK="/dev/\${FIRST_DISK}"
 EXTINSTALL
   else
     tee -a "${options['extinstall']}" << EXTINSTALL
-DISK="${options['disk']}"
+ROOT_DISK="${options['disk']}"
 EXTINSTALL
   fi
 
@@ -756,7 +755,8 @@ EXTINSTALL
   tee -a "${options['extinstall']}" << EXTINSTALL
 
 # Setup environment
-DISK_SUFFIX=\$( echo "\${DISK}" | cut -f3 -d/ )
+USE_SAWP="${options['swap']}"
+DISK_SUFFIX=\$( echo "\${ROOT_DISK}" | cut -f3 -d/ )
 SWAP_SIZE="${options['swapsize']}"
 ROOT_SIZE="${options['rootsize']}"
 MAIN_CFG="${options['nixconfig']}"
@@ -772,14 +772,15 @@ HOME_VOL="${options['homevolname']}"
 NIX_VOL="${options['nixvolname']}"
 USR_VOL="${options['usrvolname']}"
 VAR_VOL="${options['varvolname']}"
-ROOT_PART="\${DISK}1"
-SWAP_PART="\${DISK}2"
-BOOT_PART="\${DISK}3"
+ROOT_PART="\${ROOT_DISK}1"
+SWAP_PART="\${ROOT_DISK}2"
+BOOT_PART="\${ROOT_DISK}3"
 ROOT_DEV="/dev/disk/by-label/\${ROOT_VOL}"
 BOOT_DEV="/dev/disk/by-label/\${BOOT_VOL}"
 SWAP_DEV="/dev/disk/by-label/\${SWAP_VOL}"
 TARGET_DIR="${options['installdir']}"
-ROOT_CRYPT="${options['rootcrypt']}"
+ROOT_PASSWORD="${options['rootpassword']}"
+ROOT_CRYPT=\$( mkpasswd --method=sha-512 "\${ROOT_PASSWORD}" )
 UNAME_M=\$(uname -m)
 DHCP="${options['dhcp']}"
 BRIDGE="${options['bridge']}"
@@ -834,28 +835,32 @@ umount -l \${TARGET_DIR}/\${NIX_VOL}
 umount -l \${TARGET_DIR}/\${USR_VOL}
 umount -l \${TARGET_DIR}/\${VAR_VOL}
 umount -l \${TARGET_DIR}
-wipefs \${DISK}
-sgdisk --zap-all \${DISK}
-zpool labelclear -f \${DISK}
+wipefs \${ROOT_DISK}
+sgdisk --zap-all \${ROOT_DISK}
+zpool labelclear -f \${ROOT_DISK}
 
 # Setup disk
 if [ "\${BIOS}" = "true" ]; then
-  parted \${DISK} -- mklabel msdos
-  parted \${DISK} -- mkpart primary \${SWAP_SIZE}iB \${ROOT_SIZE}
-  parted \${DISK} -- mkpart primary linux-swap 1GiB \${SWAP_SIZE}iB
-  partprobe \${DISK}
+  parted \${ROOT_DISK} -- mklabel msdos
+  parted \${ROOT_DISK} -- mkpart primary \${SWAP_SIZE}iB \${ROOT_SIZE}
+  if [ "\${USE_SWAP}" = "true" ]; then
+    parted \${ROOT_DISK} -- mkpart primary linux-swap 1GiB \${SWAP_SIZE}iB
+  fi
+  partprobe \${ROOT_DISK}
   sleep 5s
   mkfs.ext4 -F -L \${ROOT_VOL} \${ROOT_PART}
-  mkswap -L swap \${SWAP_PART}
   mount \${ROOT_DEV} \${TARGET_DIR}
-  swapon \${SWAP_DEV}
+  if [ "\${USE_SWAP}" = "true" ]; then
+    mkswap -L swap \${SWAP_PART}
+    swapon \${SWAP_DEV}
+  fi
 else
-  parted \${DISK} -- mklabel gpt
-  parted \${DISK} -- mkpart primary \${SWAP_SIZE}iB \${ROOT_SIZE}
-  parted \${DISK} -- mkpart primary linux-swap 512MiB \${SWAP_SIZE}iB
-  parted \${DISK} -- mkpart ESP fat32 1MiB 512MiB 
-  parted \${DISK} -- set 3 esp on
-  partprobe \${DISK}
+  parted \${ROOT_DISK} -- mklabel gpt
+  parted \${ROOT_DISK} -- mkpart primary \${SWAP_SIZE}iB \${ROOT_SIZE}
+  parted \${ROOT_DISK} -- mkpart primary linux-swap 512MiB \${SWAP_SIZE}iB
+  parted \${ROOT_DISK} -- mkpart ESP fat32 1MiB 512MiB 
+  parted \${ROOT_DISK} -- set 3 esp on
+  partprobe \${ROOT_DISK}
   sleep 5s
   mkfs.ext4 -F -L \${ROOT_VOL} \${ROOT_PART}
   mkswap -L \${SWAP_VOL} \${SWAP_PART}
@@ -875,6 +880,7 @@ tee \${MAIN_CFG} << EOF
 { config, lib, pkgs, ... }:
 {
   imports = [
+    \${IMPORTS}
     ./hardware-configuration.nix
   ];
   boot.loader.grub.enable = \${BIOS};
@@ -882,7 +888,7 @@ tee \${MAIN_CFG} << EOF
 EOF
   if [ "\${BIOS}" = "true" ]; then
     tee -a \${MAIN_CFG} << EOF
-    boot.loader.grub.device = "\${DISK}";
+    boot.loader.grub.device = "\${ROOT_DISK}";
 EOF
   fi 
 tee -a \${MAIN_CFG} << EOF
@@ -1024,6 +1030,7 @@ tee -a \${HW_CFG} << EOF
 }
 EOF
 nixos-install --no-root-passwd
+nixos-install -v --show-trace --no-root-passwd 2>&1 |tee \${TARGET_DIR}/var/log/install.log
 EXTINSTALL
 chmod +x "${options['extinstall']}"
 }
@@ -1048,11 +1055,11 @@ ZFSINSTALL
 if [ "${options['disk']}" = "first" ]; then
   tee -a "${options['zfsinstall']}" << ZFSINSTALL
 FIRST_DISK=\$( lsblk -x TYPE | grep disk | sort | head -1 | awk '{print \$1}' )
-DISK=( /dev/\${FIRST_DISK} )
+ROOT_DISK=( /dev/\${FIRST_DISK} )
 ZFSINSTALL
 else
   tee -a "${options['zfsinstall']}" << ZFSINSTALL
-DISK=( ${options['disk']} )
+ROOT_DISK=( ${options['disk']} )
 ZFSINSTALL
 fi
 
@@ -1068,7 +1075,7 @@ fi
 
 tee -a "${options['zfsinstall']}" << ZFSINSTALL
 # Declare partitions/pools
-DISK_SUFFIX=\$( echo "\${DISK}" | cut -f3 -d/ )
+DISK_SUFFIX=\$( echo "\${ROOT_DISK}" | cut -f3 -d/ )
 PART_MBR="bootcode"
 PART_EFI="efiboot"
 PART_BOOT="${options['bootpool']}"
@@ -1078,9 +1085,10 @@ SWAP_SIZE="${options['swapsize']}"
 ZFS_BOOT="${options['bootpool']}"
 ZFS_ROOT="${options['rootpool']}"
 ZFS_ROOT_VOL="${options['rootvolname']}"
-ROOT_CRYPT="${options['rootcrypt']}"
+ROOT_PASSWORD="${options['rootpassword']}"
+ROOT_CRYPT=\$( mkpasswd --method=sha-512 "\${ROOT_PASSWORD}" )
 TARGET_DIR="${options['installdir']}"
-SWAP_PART="\${DISK}4"
+SWAP_PART="\${ROOT_DISK}4"
 BOOT_VOL="boot"
 UEFI_VOL="efi"
 
@@ -1119,7 +1127,8 @@ NORMAL_USER="${options['normaluser']}"
 GECOS="${options['gecos']}"
 EXTRA_GROUPS="${options['extragroups']}"
 SSH_KEY="${options['sshkey']}"
-USER_CRYPT="${options['usercrypt']}"
+USER_PASSWORD="${options['userpassword']}"
+USER_CRYPT=\$( mkpasswd --method=sha-512 "\${USER_PASSWORD}" )
 ZSH_ENABLE="${options['zsh']}"
 HOST_ID=\$( head -c 8 /etc/machine-id )
 
@@ -1136,7 +1145,7 @@ zpool destroy -f \${ZFS_ROOT}
 
 # Setup disk(s)
 i=0 SWAP_DEVS=()
-for d in \${DISK[*]}
+for d in \${ROOT_DISK[*]}
 do
   wipefs \${d}
   zpool labelclear -f \${d}
@@ -1204,7 +1213,7 @@ zfs create -o mountpoint=/boot \${ZFS_BOOT}/\${ZFS_ROOT_VOL}/boot
 
 # Create, mount and populate the efi partitions
 i=0
-for d in \${DISK[*]}
+for d in \${ROOT_DISK[*]}
 do
   mkfs.vfat -n EFI /dev/disk/by-partlabel/\${PART_EFI}\${i}
   mkdir -p /mnt/boot/efis/\${PART_EFI}\${i}
@@ -1345,7 +1354,7 @@ tee \${ZFS_CFG} << EOF
   boot.loader.grub.devices = [
 EOF
 
-for d in \${DISK[*]}; do
+for d in \${ROOT_DISK[*]}; do
   printf "    \"\${d}\"\n" >> \${ZFS_CFG}
 done
 
@@ -1461,7 +1470,7 @@ tee -a \${HW_CFG} << EOF
 }
 EOF
 
-nixos-install -v --show-trace --no-root-passwd --substituters "" --root \${TARGET_DIR} 2>&1 |tee \${TARGET_DIR}var/log/install.log
+nixos-install -v --show-trace --no-root-passwd 2>&1 |tee \${TARGET_DIR}/var/log/install.log
 umount -Rl /mnt
 zpool export -a
 swapoff -a
@@ -1782,6 +1791,10 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       options['sshkeyfile']="$2"
       shift 2
+      ;;
+    --standalone)           # switch : Create a standalone ISO
+      options['standalone']="true"
+      shift
       ;;
     --stateversion)         # switch : NixOS state version
       check_value "$1" "$2"

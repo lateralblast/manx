@@ -89,4 +89,18 @@
 # 0.4.6: Thu 18 Sep 2025 20:18:13 AEST
 # Fixed swap size bug in ZFS install script
 # 0.4.7: Fri 19 Sep 2025 00:01:08 AEST
-# Fixed ZFS install sxcript
+# Fixed ZFS install script
+# 0.4.8: Fri 19 Sep 2025 01:10:50 AEST
+# Set ZFS to default filesystem
+# 0.4.9: Fri 19 Sep 2025 01:18:03 AEST
+# Fixed user/root hashed password creation
+# 0.5.0: Fri 19 Sep 2025 01:37:38 AEST
+# Documentation updates
+# 0.5.1: Fri 19 Sep 2025 01:54:30 AEST
+# Fixed install command
+# 0.5.2: Fri 19 Sep 2025 02:00:44 AEST
+# Fixed imports
+# 0.5.1: Fri 19 Sep 2025 02:11:07 AEST
+# Added standalone switch
+# 0.5.2: Sat 20 Sep 2025 21:40:28 AEST
+# Added standalone script to aid in testing
