@@ -104,3 +104,21 @@
 # Added standalone switch
 # 0.5.2: Sat 20 Sep 2025 21:40:28 AEST
 # Added standalone script to aid in testing
+# 0.5.3: Sat 20 Sep 2025 22:29:08 AEST
+# Switch cleanup
+# 0.5.4: Sat 20 Sep 2025 22:30:52 AEST
+# Consolidated and renamed install scripts
+# 0.5.5: Sat 20 Sep 2025 23:18:23 AEST
+# Updated options
+# 0.5.6: Sun 21 Sep 2025 00:49:30 AEST
+# Cleaned up optioons and switches
+# 0.5.7: Sun 21 Sep 2025 01:08:10 AEST
+# Updated documentation
+# 0.5.8: Sun 21 Sep 2025 02:17:01 AEST
+# More documentation updates
+# 0.5.9: Sun 21 Sep 2025 02:33:03 AEST
+# Ran shellcheck
+# 0.6.0: Sun 21 Sep 2025 02:57:01 AEST
+# Bug fixes
+# 0.6.1: Sun 21 Sep 2025 02:59:28 AEST
+# Reintegrated standalone script findings into main code

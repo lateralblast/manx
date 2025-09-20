@@ -3,13 +3,13 @@
 MANX
 ----
 
-Manage/Automate NiXOS
+Manage/Automate NixOS
 
 
 Version
 -------
 
-Current version: 0.5.3
+Current version: 0.6.1
 
 License
 -------
@@ -22,7 +22,7 @@ Fund me here: https://ko-fi.com/richardatlateralblast
 Introduction
 ------------
 
-A script to an make an automated NiXOS installation.
+A script to an make an automated NixOS installation.
 
 By default this script creates an unattended install ISO
 with a ZFS root filesystem.
@@ -69,10 +69,53 @@ To-do:
 
 - Add install options to grub menu rather than having to create a specific ISO
   - ZFS install
-  - EXT4 install
+  - EXT4/XFS/BTRFS install or raw/LVM partitions
   - Attended/Unattended (e.g. manual run of install script and/or reboot)
 - Add other filesystem options
 - Add support for pass-thru PCIe devices
+- Add otion to create and run KVM/QEMU VM to test ISO
+- Add ability to create image in a NixOS docker container
+- Add ability to run this script via nix-shell on non NixOS Linux distros
+
+Methodology
+-----------
+
+The script follows this process:
+
+- Creates:
+  - NixOS ISO configuration with:
+    - SSH enabled with key
+    - Directory that contains script
+    - Includes additional packages for troubleshooting/automation:
+      - ansible
+      - curl 
+      - dmidecode 
+      - efibootmgr 
+      - file 
+      - lsb-release 
+      - lshw 
+      - pciutils 
+      - vim 
+      - wget
+  - A directory containing:
+    - Oneshot install script
+    - Install script
+- Builds ISO that depending on options:
+  - Runs a fully automated unattended install, or
+  - Runs in attended mode where the install script needs to be run manually
+
+In automated/unattended mode the install runs from a systemd oneshot service.
+This service copies the install scipt into /tmp and runs it.
+
+A standalone version of the script that was created for testing purposed,
+and then folded back into the script is located here:
+
+[Standalone Install Script](configs/install.sh)
+
+By setting the options in the script it can be used to install one of:
+
+- ZFS root with or without swap
+- EXT4/XFS/BTRFS root with or without swap on raw or LVM partitions 
 
 Examples
 --------
@@ -107,136 +150,164 @@ Usage: manx.sh --action(s) [action(,action)] --option(s) [option(,option)]
 
 switch(es):
 ---------
---action*)              
+--action*)                  
     Action(s) to perform
---bootpool)             
-    Boot pool name
---bridge)               
+--bootsize)                 
+    Boot partition size
+--bridge)                   
     Enable bridge
---bridgenic)            
+--bridgenic)                
     Bridge NIC
---bootvol*)             
+--bootf*)                   
+    Boot Filesystem
+--bootvol*)                 
     Boot volume name
---cidr)                 
+--cidr)                     
     CIDR
---createext*)           
-    Create EXT4 install script
---createinstall*)       
+--createinstall*)           
     Create install script
---createiso)            
+--createiso)                
     Create ISO
---createnix*)           
-    Create NIX ISO config
---createzfsinstall*)    
-    Create ZFS install script
---usercrypt|--crypt)    
+--createnix*)               
+    Create NixOS ISO config
+--createoneshot*)           
+    Create oneshot script
+--usercrypt|--crypt)        
     User Password Crypt
---debug)                
+--debug)                    
     Enable debug mode
---dryrun)               
-    Enable debug mode
---disk)                 
+--dhcp)                     
+    Enable DHCP
+--disk)                     
     SSH key
---dns|--nameserver)     
+--dns|--nameserver)         
     DNS/Nameserver address
---experimental*)        
+--dryrun)                   
+    Enable debug mode
+--experimental*)            
     SSH key
---extragroup*)          
+--extragroup*)              
     Extra groups
---filesystem*)          
-    Root Filesystem
---firmware)             
+--firmware)                 
     Boot firmware type
---force)                
+--force)                    
     Enable force mode
---gecos)                
+--gateway)                  
+    Gateway address
+--gecos|--usergecos)        
     GECOS field
---help|-h)              
+--help|-h)                  
     Print help information
---hostname)             
+--hostname)                 
     Hostname
---install)              
+--imports)                  
+    Imports for system
+--install)                  
     Install script
---ip)                   
+--installdir)               
+    Install directory where destination disk is mounted
+--ip)                       
     IP address
---isoimports)           
-    Nixos imports for ISO build
---keymap)               
+--isoimports)               
+    NixOS imports for ISO build
+--isomount)                 
+    Install ISO mount directory
+--keymap)                   
     Keymap
---nic)                  
+--locale)                   
+    Locale
+--logfile)                  
+    Locale
+--lvm)                      
+    Enable LVM
+--mbrpartname)              
+    MBR partition name
+--nic)                      
     NIC
---nixconfig)            
-    Nix configuration file
---nixhwconfig)          
-    Nix hardware configuration file
---nixisoconfig)         
-    Nix ISO configuration file
---nixzfsconfig)         
-    Nix ZFS configuration file
---nixdir)               
-    Set Nix directory
---option*)              
+--nixconfig)                
+    NixOS configuration file
+--nixdir)                   
+    Set NixOS directory
+--nixhwconfig)              
+    NixOS hardware configuration file
+--nixinstall)               
+    Run NixOS install script automatically on ISO
+--nixisoconfig)             
+    NixOS ISO configuration file
+--option*)                  
     Option(s) to set
 --password|--userpassword)  
     User password
---prefix)               
+--prefix)                   
     Install prefix
---rootcrypt)            
+--reboot)                   
+    Enable reboot after install
+--rootcrypt)                
     Root password crypt
---rootpassword)         
+--rootf*|--filesystem)      
+    Root Filesystem
+--rootpassword)             
     Root password
---rootpool)             
+--rootpool)                 
     Root pool name
---rootsize)             
+--rootsize)                 
     Root partition size
---rootvol*)             
+--rootvol*)                 
     Root volume name
---runsize)              
+--runsize)                  
     Run size
---shell)                
+--shell|usershell)          
     User Shell
---shellcheck)           
+--shellcheck)               
     Run shellcheck
---source)               
-    Source directory
---sshkey)               
+--source)                   
+    Source directory for ISO additions
+--sshkey)                   
     SSH key
---sshkeyfile)           
+--sshkeyfile)               
     SSH key file
---standalone)           
-    Create a standalone ISO
---stateversion)         
-    NixOS state version
---strict)               
+--sshserver)                
     Enable strict mode
---sudocommand*)         
-    Sudo commands
---sudooption*)          
-    Sudo options
---sudouser*)            
-    Sudo users
---systempackages)       
+--standalone)               
+    Create a standalone ISO
+--stateversion)             
     NixOS state version
---swapsize)             
+--strict)                   
+    Enable strict mode
+--sudocommand*)             
+    Sudo commands
+--sudooption*)              
+    Sudo options
+--sudouser*)                
+    Sudo users
+--systempackages)           
+    NixOS state version
+--swap)                     
+    Enable swap
+--swapsize)                 
     Swap partition size
---swapvol*)             
+--swapvol*)                 
     Swap volume name
---target)               
+--target*)                  
+    Target directory for ISO additions
+--temp*)                    
     Target directory
---usage)                
+--usage)                    
     Action to perform
---username)             
+--username)                 
     User username
---verbose)              
+--verbose)                  
     Enable verbose mode
---version|-V)           
+--version|-V)               
     Print version information
---videodriver)          
+--videodriver)              
     Video Driver
---workdir)              
-    Set Nix work directory
---zfsinstall)           
+--workdir)                  
+    Set NixOS work directory
+--zfsinstall)               
     ZFS install script
+--zsh)                      
+    Enable zsh
 ```
 
 Actions:
@@ -253,11 +324,9 @@ createinstall*)
 createiso)            
     Create ISO
 createnix*)           
-    Create Nix ISO config
-createzfs*)           
-    Create ZFS install script
-createext*)           
-    Create EXT4 install script
+    Create NixOS ISO config
+createoneshot*)       
+    Create install script
 help)                 
     Print actions help
 printenv*)            
@@ -279,8 +348,12 @@ Usage: manx.sh --action(s) [action(,action)] --option(s) [option(,option)]
 
 option(s):
 ---------
+fsoptions (default = -O mountpoint=none -O atime=off -O compression=lz4 -O xattr=sa -O acltype=posixacl -o ashift=12)
+   ZFS pool options
 isoimports (default = <nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal-combined.nix> <nixpkgs/nixos/modules/installer/cd-dvd/channel.nix>)
    - ISO imports
+prefix (default = ai)
+   Install directory prefix
 verbose (default = false)
    Verbose mode
 strict (default = false)
@@ -297,20 +370,26 @@ yes (default = false)
    Answer yes to questions
 dhcp (default = true)
    DHCP network
+swap (default = true)
+   Use swap
+lvm (default = true)
+   Use LVM
+zsh (default = true)
+   Enable zsh
 workdir (default = /home/user/manx)
-   Nix work directory
+   Script work directory
 sshkey (default = )
    SSH key
 disk (default = first)
    Disk
 nic (default = first)
    NIC
-zfs (default = false)
+zfs (default = true)
    ZFS filesystem
-ext4 (default = true)
+ext4 (default = false)
    EXT4 filesystem
-language (default = en_AU.UTF-8)
-   Language
+locale (default = en_AU.UTF-8)
+   Locale
 timezone (default = Australia/Melbourne)
    Timezone
 username (default = nixos)
@@ -323,7 +402,9 @@ hostname (default = nixos)
    Hostname
 sshkeyfile (default = )
    SSH key file
-filesystem (default = ext4)
+bootfs (default = vfat)
+   Boot filesystem
+rootfs (default = zfs)
    Root filesystem
 firmware (default = bios)
    Boot firmware type
@@ -331,30 +412,34 @@ bios (default = true)
    BIOS Boot firmware
 uefi (default = false)
    UEFI Boot firmware
+isomount (default = /iso)
+   ISO mount directory
+oneshot (default = /home/user/manx/ai/oneshot.sh)
+   Oneshot script
 install (default = /home/user/manx/ai/install.sh)
    Install script
 nixisoconfig (default = /home/user/manx/iso.nix)
-   Nix ISO config
-zfsinstall (default = /home/user/manx/ai/zfs.sh)
+   NixOS ISO config
+zfsinstall (default = /home/user/manx//zfs.sh)
    ZFS install script
-extinstall (default = /home/user/manx/ai/ext4.sh)
+extinstall (default = /home/user/manx//ext4.sh)
    EXT4 install script
 runsize (default = 50%)
    Run size
-prefix (default = ai)
-   Install directory prefix
 source (default = /home/user/manx/ai)
-   Source directory
+   Source directory for ISO additions
 target (default = /ai)
-   Target directory
+   Target directory for ISO additions
+installdir (default = /mnt)
+   Install directory
 nixdir (default = /mnt/etc/nixos)
-   NIX directory
+   NixOS directory for configs
 nixconfig (default = /mnt/etc/nixos/configuration.nix)
-   NIX install config file
+   NixOS install config file
 nixhwconfig (default = /mnt/etc/nixos/hardware-configuration.nix)
-   NIX install hardware config file
+   NixOS install hardware config file
 nixzfsconfig (default = /mnt/etc/nixos/zfs.nix)
-   NIX install ZFS config file
+   NixOS install ZFS config file
 systemd-boot (default = true)
    systemd-boot
 touchefi (default = true)
@@ -365,8 +450,6 @@ swapsize (default = 2G)
    Swap partition size
 rootsize (default = 100%)
    Root partition size
-bootpool (default = bpool)
-   Boot pool name
 rootpool (default = rpool)
    Root pool name
 rootpassword (default = nixos)
@@ -375,9 +458,9 @@ rootcrypt (default = )
    Root password crypt
 username (default = nixos)
    User Username
-gecos (default = nixos)
+usergecos (default = nixos)
    User GECOS
-shell (default = zsh)
+usershell (default = zsh)
    User Shell
 normaluser (default = true)
    Normal User
@@ -403,6 +486,8 @@ attended (default = false)
    Don't execute install script
 reboot (default = true)
    Reboot after install
+nixinstall (default = true)
+   Run nix installer on ISO
 networkmanager (default = true)
    Enable NetworkManager
 xserver (default = false)
@@ -435,13 +520,11 @@ gateway (default = )
    Gateway address
 standalone (default = false)
    Package all requirements on ISO
-zsh (default = true)
-   Enable zsh
-installdir (default = /mnt)
-   Install directory
 rootvolname (default = nixos)
    Root volume name
 bootvolname (default = boot)
+   Boot volume name
+mbrvolname (default = bootcode)
    Boot volume name
 swapvolname (default = swap)
    Swap volume name
@@ -455,5 +538,18 @@ usrvolname (default = usr)
    Usr volume name
 varvolname (default = var)
    Var volume name
-
+tempdir (default = /tmp)
+   Temp directory
+mbrpart (default = 1)
+   MBR partition
+rootpart (default = 2)
+   Root partition
+efipart (default = 3)
+   UEFI/Boot partition
+swappart (default = 4)
+   Swap partition
+devnodes (default = /dev/disk/by-uuid)
+   Device nodesDevice nodes
+logfile (default = /var/log/install.log)
+   Install log file
 ```

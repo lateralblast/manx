@@ -54,6 +54,7 @@ ZFS_OPTIONS="-O mountpoint=none -O atime=off -O compression=lz4 -O xattr=sa -O a
 AVAIL_MODS="\"ahci\" \"xhci_pci\" \"virtio_pci\" \"sr_mod\" \"virtio_blk\""
 NIX_EXP=""
 USE_UNFREE="false"
+SYSTEM_PACKAGES="ansible curl dmidecode efibootmgr file lsb-release lshw pciutils vim wget"
 
 # Set up non DHCP environment
 NIC_DEV="first"
@@ -63,7 +64,7 @@ NIC_GW="192.168.11.254"
 NIC_CIDR="22"
 if [ "${USE_DHCP}" = "false" ]; then
   if [ "${NIC_DEV}" = "first" ]; then
-    NIC_DEV=$( ip link | grep "state UP" | awk '{ print \$2}' | head -1 | grep ^e | cut -f1 -d: )
+    NIC_DEV=$( ip link | grep "state UP" | awk '{ print $2}' | head -1 | grep ^e | cut -f1 -d: )
   fi
 fi
 
@@ -202,6 +203,8 @@ tee ${NIX_CFG} << NIX_CFG
   networking.hostName = "${HOST_NAME}";
   # Services
   services.openssh.enable = ${SSH_SERVER};
+  # Packages to include
+  environment.systemPackages = with pkgs; [ ${SYSTEM_PACKAGES} ];
   # Additional Nix options
   nix.settings.experimental-features = "${NIX_EXP}";
   # Allow unfree packages
