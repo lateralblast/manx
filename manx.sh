@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      0.6.8
+# Version:      0.6.9
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -52,9 +52,11 @@ set_defaults () {
   # Imports
   imports['hardware']="<nixpkgs/nixos/modules/profiles/all-hardware.nix>"                                         # import : NixOS hardware profile
   imports['base']="<nixpkgs/nixos/modules/profiles/base.nix>"                                                     # import : NixOS base profile
-  imports['minimal']="<nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal-combined.nix>"              # -l import : NixOS CD minimal profile
+  imports['minimal']="<nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal-combined.nix>"              # import : NixOS CD minimal profile
   imports['channel']="<nixpkgs/nixos/modules/installer/cd-dvd/channel.nix>"                                       # import : NixOS CD channel profile
-  options['isoimports']="${imports['minimal']} ${imports['channel']}"                                             # option: - ISO imports
+  imports['grub']="<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>"                                      # import : NixOS grub profile
+  imports['kernel']="<nixpkgs/nixos/modules/system/boot/kernel.nix>"                                              # import : NixOS kernel profile
+  options['isoimports']="${imports['minimal']} ${imports['channel']} ${imports['kernel']}"                        # option : ISO imports
   # Options
   options['prefix']="ai"                                                      # option : Install directory prefix
   options['verbose']="false"                                                  # option : Verbose mode
@@ -125,6 +127,8 @@ set_defaults () {
   options['attended']="false"                                                 # option : Don't execute install script
   options['reboot']="true"                                                    # option : Reboot after install
   options['nixinstall']="true"                                                # option : Run Nix installer on ISO
+  options['gfxmode']="text"                                                   # option : Grub graphics mode
+  options['gfxpayload']="text"                                                # option : Grub graphics payload
   options['networkmanager']="true"                                            # option : Enable NetworkManager
   options['xserver']="false"                                                  # option : Enable Xserver
   options['keymap']="au"                                                      # option : Keymap
@@ -159,6 +163,7 @@ set_defaults () {
   options['logdir']="/var/log"                                                # option : Install log dir
   options['logfile']="${options['logdir']}/install.log"                       # option : Install log file
   options['bootsize']="512M"                                                  # option : Boot partition size
+  options['extraconfig']=""                                                   # option : Boot loader extra configs
   os['name']=$( uname -s )
   if [ "${os['name']}" = "Linux" ]; then
     lsb_check=$( command -v lsb_release )
@@ -611,6 +616,21 @@ get_ssh_key () {
   fi
 }
 
+# Function: build_extra_config
+#
+# Build extra configs to pass to boot option 
+
+build_extra_config () {
+  for param in rootfs lvm; do
+    value="${options[${param}]}"
+    if [ "${options['extraconfig']}" = "" ]; then
+      options['extraconfig']="\"${param}=${value}\""
+    else
+      options['extraconfig']="${options['extraconfig']} \"${param}=${value}\""
+    fi
+  done
+}
+
 # Function: create_nix_config
 #
 # Create NixOS config
@@ -618,6 +638,7 @@ get_ssh_key () {
 create_nix_iso_config () {
   check_nix_config
   get_ssh_key
+  build_extra_config
   verbose_message "Creating ${options['nixisoconfig']}"
   tee "${options['nixisoconfig']}" << NIXISOCONFIG
 # ISO build config
@@ -652,10 +673,11 @@ NIXISOCONFIG
 
   # Set boot params
   boot.runSize = "${options['runsize']}";
-
-  # Bootloader
-  # boot.loader.systemd-boot.enable = ${options['systemd-boot']};
-  # boot.loader.efi.canTouchEfiVariables = ${options['touchefi']};
+  boot.loader.grub.gfxmodeEfi = "${options['gfxmode']}";
+  boot.loader.grub.gfxpayloadEfi = "${options['gfxpayload']}";
+  boot.loader.grub.gfxmodeBios = "${options['gfxmode']}";
+  boot.loader.grub.gfxpayloadBios = "${options['gfxpayload']}";
+  boot.kernelParams = [ ${options['extraconfig']} ];
 
   # Set your time zone
   time.timeZone = "${options['timezone']}";
@@ -772,7 +794,7 @@ DO_REBOOT="${options['reboot']}"
 DO_INSTALL="${options['nixinstall']}"
 ROOT_FS="${options['rootfs']}"
 BOOT_FS="${options['bootfs']}"
-ROOT_DISK="${options['disk']}"
+ROOT_DISK="${options['rootdisk']}"
 MBR_PART="${options['mbrpart']}"
 ROOT_PART="${options['rootpart']}"
 EFI_PART="${options['efipart']}"
@@ -811,6 +833,8 @@ ZFS_OPTIONS="${options['zfsoptions']} -R \${TARGET_DIR}"
 AVAIL_MODS="\"ahci\" \"xhci_pci\" \"virtio_pci\" \"sr_mod\" \"virtio_blk\""
 NIX_EXP=""
 USE_UNFREE="${options['unfree']}"
+GFX_MODE="${options['gfxmode']}"
+GFX_LOAD="${options['gfxpayload']}"
 
 # Set up non DHCP environment
 NIC_DEV="${options['nic']}"
@@ -956,21 +980,31 @@ tee \${NIX_CFG} << NIX_CFG
   boot.loader.systemd-boot.enable = \${UEFI_FLAG};
   boot.loader.efi.canTouchEfiVariables = \${UEFI_FLAG};
   boot.loader.grub.devices = [ "\${GRUB_DEV}" ];
+  boot.loader.grub.gfxmodeEfi = "\${GFX_MODE}";
+  boot.loader.grub.gfxpayloadEfi = "\${GFX_LOAD}";
+  boot.loader.grub.gfxmodeBios = "\${GFX_MODE}";
+  boot.loader.grub.gfxpayloadBios = "\${GFX_LOAD}";
   boot.initrd.supportedFilesystems = ["\${ROOT_FS}"];
   boot.supportedFilesystems = [ "\${ROOT_FS}" ];
   boot.zfs.devNodes = "\${DEV_NODES}";
   services.lvm.boot.thin.enable = \${USE_LVM};
+
   # HostID and Hostname
   networking.hostId = "\${HOST_ID}";
   networking.hostName = "\${HOST_NAME}";
+
   # Services
   services.openssh.enable = \${SSH_SERVER};
+
   # Additional Nix options
   nix.settings.experimental-features = "\${NIX_EXP}";
+
   # Allow unfree packages
   nixpkgs.config.allowUnfree = \${USE_UNFREE};
+
   # Set your time zone.
   time.timeZone = "\${TIME_ZONE}";
+
   # Select internationalisation properties.
   i18n.defaultLocale = "\${LOCALE}";
   i18n.extraLocaleSettings = {
@@ -984,6 +1018,7 @@ tee \${NIX_CFG} << NIX_CFG
     LC_TELEPHONE = "\${LOCALE}";
     LC_TIME = "\${LOCALE}";
   };
+
   # Define a user account. 
   users.users.\${USER_NAME} = {
     shell = pkgs.\${USER_SHELL};
@@ -1005,6 +1040,8 @@ tee \${NIX_CFG} << NIX_CFG
       ];
     }
   ];
+
+  # Networking
   networking.useDHCP = lib.mkDefault \${USE_DHCP};
 NIX_CFG
 if [ "\${USE_DHCP}" = "false" ]; then
@@ -1111,7 +1148,7 @@ if [ "\${DO_INSTALL}" = "false" ]; then
   exit
 fi
 
-mkdir -p ${TARGET_DIR}/${LOG_DIR}
+mkdir -p \${TARGET_DIR}/\${LOG_DIR}
 
 nixos-install -v --show-trace --no-root-passwd 2>&1 |tee \${TARGET_DIR}\${LOG_FILE}
 
@@ -1335,6 +1372,11 @@ while test $# -gt 0; do
       options['experimental-features']="$2"
       shift 2
       ;;
+    --extraconf*)               # switch : Extra configs for kernel
+      check_value "$1" "$2"
+      options['extraconfig']="$2"
+      shift 2
+      ;;
     --extragroup*)              # switch : Extra groups
       check_value "$1" "$2"
       options['extragroups']="$2"
@@ -1358,6 +1400,16 @@ while test $# -gt 0; do
     --gecos|--usergecos)        # switch : GECOS field
       check_value "$1" "$2"
       options['usergecos']="$2"
+      shift 2
+      ;;
+    --gfxmode)                  # switch : Bios text mode
+      check_value "$1" "$2"
+      options['gfxmode']="$2"
+      shift 2
+      ;;
+    --gfxpayload)               # switch : Bios text mode
+      check_value "$1" "$2"
+      options['gfxpayload']="$2"
       shift 2
       ;;
     --help|-h)                  # switch : Print help information

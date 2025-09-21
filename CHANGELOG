@@ -136,3 +136,5 @@
 # Updated documentation
 # 0.6.8: Sun 21 Sep 2025 11:22:23 AEST
 # Improved options processing
+# 0.6.9: Sun 21 Sep 2025 15:03:06 AEST
+# Added gfxmode switch
