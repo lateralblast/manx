@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Manage/Automate NixOS)
-# Version:      0.6.6
+# Version:      0.6.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -1161,7 +1161,7 @@ preserve_iso () {
     execute_command "mkdir -p ${output_dir}"
   fi
   if [ -f "${options['output']}" ]; then
-    execute_command "rm ${options['output']}"
+    execute_command "rm -f ${options['output']}"
   fi
   execute_command "cp ${iso_file} ${options['output']}"
 }
@@ -1182,7 +1182,10 @@ create_iso () {
   if [ "${options['preserve']}" = "true" ]; then
     preserve_iso "${iso_file}"
   fi
-  verbose_message "Ouput ISO: ${iso_file}"
+  verbose_message "Generated ISO: ${iso_file}"
+  if [ "${options['preserve']}" = "true" ]; then
+    verbose_message "Preserved ISO: ${options['output']}"
+  fi
 }
 
 # Function: process_actions

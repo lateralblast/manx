@@ -9,7 +9,7 @@ Manage/Automate NixOS
 Version
 -------
 
-Current version: 0.6.6
+Current version: 0.6.7
 
 License
 -------
@@ -116,6 +116,18 @@ By setting the options in the script it can be used to install one of:
 
 - ZFS root with or without swap
 - EXT4/XFS/BTRFS root with or without swap on raw or LVM partitions 
+
+By default nix-build will create a symlink to created ISO in the work directory.
+
+If you use the preserve option, the script will copy and rename the ISO (based on options)
+into an isos directory in the work directory, e.g.
+
+```
+./manx.sh --createiso --options attended,noreboot,preserve
+....
+Generated ISO: /home/user/manx/result/iso/nixos-minimal-25.05.810061.d2ed99647a4b-x86_64-linux.iso
+Preserved ISO: /home/user/manx/isos/nixos-minimal-25.05.810061.d2ed99647a4b-x86_64-linux-unattended-nixos-zfs.iso
+```
 
 Examples
 --------
