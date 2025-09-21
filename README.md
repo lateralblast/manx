@@ -27,6 +27,10 @@ A script to an make an automated NixOS installation.
 By default this script creates an unattended install ISO
 with a ZFS root filesystem.
 
+Currently a NixOS installation is required to required
+to create the ISO, I will be addind support for nix/docker
+based creation.
+
 Features
 --------
 
