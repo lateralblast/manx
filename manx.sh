@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Manage/Automate NixOS)
-# Version:      0.6.5
+# Version:      0.6.6
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -68,6 +68,7 @@ set_defaults () {
   options['swap']="true"                                                      # option : Use swap
   options['lvm']="false"                                                      # option : Use LVM
   options['zsh']="true"                                                       # option : Enable zsh
+  options['preserve']="false"                                                 # option : Preserve ISO
   options['workdir']="${HOME}/${script['name']}"                              # option : Script work directory
   options['sshkey']=""                                                        # option : SSH key
   options['disk']="first"                                                     # option : Disk
@@ -1125,6 +1126,46 @@ INSTALL
 chmod +x "${options['install']}"
 }
 
+# Function: preserve_iso
+#
+# Preserve ISO
+
+preserve_iso () {
+  iso_file="$1"
+  if [ "${options['output']}" = "" ]; then
+    output_dir="${options['workdir']}/isos"
+    temp_name=$( basename -s ".iso" "${iso_file}" )
+    for param in unattended noreboot standalone lvm; do
+      value="${options[${param}]}"
+      if [ "${value}" = "true" ]; then
+        temp_name="${temp_name}-${param}"
+      fi
+    done
+    for param in disk nic ; do
+      value="${options[${param}]}"
+      if [ ! "${value}" = "first" ]; then
+        temp_name="${temp_name}-${value}"
+      fi
+    done
+    for param in ip username; do
+      value="${options[${param}]}"
+      if [ ! "${value}" = "" ]; then
+        temp_name="${temp_name}-${value}"
+      fi
+    done
+    temp_name="${temp_name}-${options['rootfs']}.iso"
+    options['output']="${output_dir}/${temp_name}"
+  fi
+  output_dir=$( dirname "${options['output']}" )
+  if [ ! -d "${output_dir}" ]; then
+    execute_command "mkdir -p ${output_dir}"
+  fi
+  if [ -f "${options['output']}" ]; then
+    execute_command "rm ${options['output']}"
+  fi
+  execute_command "cp ${iso_file} ${options['output']}"
+}
+
 # Function: create_iso
 #
 # Create ISO
@@ -1138,6 +1179,9 @@ create_iso () {
 #  execute_command "nixos-generate -f iso -c ${options['nixisoconfig']}"
   iso_dir="${options['workdir']}/result/iso"
   iso_file=$( find "${iso_dir}" -name "*.iso" )
+  if [ "${options['preserve']}" = "true" ]; then
+    preserve_iso "${iso_file}"
+  fi
   verbose_message "Ouput ISO: ${iso_file}"
 }
 
@@ -1411,6 +1455,12 @@ while test $# -gt 0; do
       options_list+=("$2")
       shift 2
       ;;
+    --output*)                  # switch : Output file
+      check_value "$1" "$2"
+      options['output']="$2"
+      options['preserve']="true"
+      shift 2
+      ;;
     --password|--userpassword)  # switch : User password
       check_value "$1" "$2"
       options['userpassword']="$2"
@@ -1420,6 +1470,10 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       options['prefix']="$2"
       shift 2
+      ;;
+    --preserve)                 # switch : Preserve output file
+      options['preserve']="true"
+      shift
       ;;
     --reboot)                   # switch : Enable reboot after install
       options['sshserver']="true"

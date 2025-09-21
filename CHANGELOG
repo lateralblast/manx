@@ -130,3 +130,5 @@
 # Fixed boot partition size
 # 0.6.5: Sun 21 Sep 2025 04:13:18 AEST
 # Fixed log directory/file creation
+# 0.6.6: Sun 21 Sep 2025 10:56:21 AEST
+# Added code to preserve ISO
