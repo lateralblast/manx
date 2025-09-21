@@ -3,7 +3,7 @@
 MANX
 ----
 
-Manage/Automate NixOS
+Make Automated NixOS (ISO)
 
 
 Version

@@ -1,6 +1,6 @@
 #!env bash
 
-# Name:         manx (Manage/Automate NixOS)
+# Name:         manx (Make Automated NixOS)
 # Version:      0.6.8
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
