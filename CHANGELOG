@@ -134,3 +134,5 @@
 # Added code to preserve ISO
 # 0.6.7: Sun 21 Sep 2025 11:14:31 AEST
 # Updated documentation
+# 0.6.8: Sun 21 Sep 2025 11:22:23 AEST
+# Improved options processing

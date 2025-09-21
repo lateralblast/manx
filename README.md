@@ -9,7 +9,7 @@ Manage/Automate NixOS
 Version
 -------
 
-Current version: 0.6.7
+Current version: 0.6.8
 
 License
 -------
@@ -125,8 +125,8 @@ into an isos directory in the work directory, e.g.
 ```
 ./manx.sh --createiso --options attended,noreboot,preserve
 ....
-Generated ISO: /home/user/manx/result/iso/nixos-minimal-25.05.810061.d2ed99647a4b-x86_64-linux.iso
-Preserved ISO: /home/user/manx/isos/nixos-minimal-25.05.810061.d2ed99647a4b-x86_64-linux-unattended-nixos-zfs.iso
+Generated ISO: /home/spindler/manx/result/iso/nixos-minimal-25.05.810061.d2ed99647a4b-x86_64-linux.iso
+Preserved ISO: /home/spindler/manx/isos/nixos-minimal-25.05.810061.d2ed99647a4b-x86_64-linux-unattended-noreboot-nixos-zfs.iso
 ```
 
 Examples

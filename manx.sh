@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Manage/Automate NixOS)
-# Version:      0.6.7
+# Version:      0.6.8
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -508,6 +508,7 @@ fi
 process_options () {
   option="$1"
   if [[ "${option}" =~ ^no ]] || [[ "${option}" =~ ^un ]]; then
+    options["${option}"]="true"
     option="${option:2}"
     value="false"
   else
