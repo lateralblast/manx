@@ -9,7 +9,7 @@ Make Automated NixOS (ISO)
 Version
 -------
 
-Current version: 0.6.9
+Current version: 0.7.4
 
 License
 -------
@@ -48,6 +48,7 @@ This script has the following capabilities:
   - EXT4 root install
   - SSH server enabled during install with keys if specified/available
 - Ability to:
+  - Alter install parameters by editing grub command line before booting
   - Specify:
     - Language
     - Timezone
@@ -70,11 +71,6 @@ This script is in the early stages of development
 
 To-do:
 
-- Add install options to grub menu rather than having to create a specific ISO
-  - ZFS install
-  - EXT4/XFS/BTRFS install or raw/LVM partitions
-  - Attended/Unattended (e.g. manual run of install script and/or reboot)
-- Add other filesystem options
 - Add support for pass-thru PCIe devices
 - Add otion to create and run KVM/QEMU VM to test ISO
 - Add ability to create image in a NixOS docker container
@@ -114,6 +110,7 @@ A standalone version of the script that was created for testing purposed,
 and then folded back into the script is located here:
 
 [Standalone Install Script](configs/install.sh)
+[Updated Standalone Install Script](configs/updated_install.sh)
 
 By setting the options in the script it can be used to install one of:
 
@@ -131,6 +128,36 @@ into an isos directory in the work directory, e.g.
 Generated ISO: /home/user/manx/result/iso/nixos-minimal-25.05.810061.d2ed99647a4b-x86_64-linux.iso
 Preserved ISO: /home/user/manx/isos/nixos-minimal-25.05.810061.d2ed99647a4b-x86_64-linux-unattended-noreboot-nixos-zfs.iso
 ```
+
+As previously mentioned when an automated install IOS is built,
+the install script runs via a systemd oneshot service.
+
+An example of the entry in the Nix ISO config file:
+
+```
+  # Unattended install service
+  systemd.services.unattended-install = {
+    description = "Unattended NixOS installation script";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "getty.target" ];
+    conflicts = [ "getty@tty1.service" ];
+    serviceConfig = {
+      User = "nixos";
+      Type = "oneshot";
+      StandardInput = "tty-force";
+      RestartSec = 1200;
+    };
+    unitConfig = {
+      OnFailure = "multi-user.target";
+    };
+    restartIfChanged = false;
+    script = ''
+      export PATH="/run/wrappers/bin:/root/.nix-profile/bin:/nix/profile/bin:/root/.local/state/nix/profile/bin:/etc/profiles/per-user/root/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin"
+      sudo /iso/ai/oneshot.sh 
+    '';
+  };
+```
+
 
 Examples
 --------

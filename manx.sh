@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      0.6.9
+# Version:      0.7.4
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -73,7 +73,7 @@ set_defaults () {
   options['preserve']="false"                                                 # option : Preserve ISO
   options['workdir']="${HOME}/${script['name']}"                              # option : Script work directory
   options['sshkey']=""                                                        # option : SSH key
-  options['disk']="first"                                                     # option : Disk
+  options['rootdisk']="first"                                                 # option : Disk
   options['nic']="first"                                                      # option : NIC
   options['zfs']="true"                                                       # option : ZFS filesystem
   options['ext4']="false"                                                     # option : EXT4 filesystem
@@ -126,6 +126,7 @@ set_defaults () {
   options['unattended']="true"                                                # option : Execute install script
   options['attended']="false"                                                 # option : Don't execute install script
   options['reboot']="true"                                                    # option : Reboot after install
+  options['poweroff']="true"                                                  # option : Poweroff after install
   options['nixinstall']="true"                                                # option : Run Nix installer on ISO
   options['gfxmode']="text"                                                   # option : Grub graphics mode
   options['gfxpayload']="text"                                                # option : Grub graphics payload
@@ -163,7 +164,14 @@ set_defaults () {
   options['logdir']="/var/log"                                                # option : Install log dir
   options['logfile']="${options['logdir']}/install.log"                       # option : Install log file
   options['bootsize']="512M"                                                  # option : Boot partition size
-  options['extraconfig']=""                                                   # option : Boot loader extra configs
+  options['isokernelparams']=""                                               # option : Additional kernel parameters to add to ISO grub commands
+  options['kernelparams']=""                                                  # option : Additional kernel parameters to add to system grub commands
+  options['availmods']='"ahci" "xhci_pci" "virtio_pci" "sr_mod" "virtio_blk"' # option : Available system kernel modules 
+  options['initmods']=''                                                      # option : Available system init modules 
+  options['bootmods']=''                                                      # option : Available system boot modules 
+  options['imports']=''                                                       # option : System configuration imports
+  options['hwimports']=''                                                     # option : System hardware configuration imports
+  options['oneshot']="true"                                                   # option : Enable oneshot service
   os['name']=$( uname -s )
   if [ "${os['name']}" = "Linux" ]; then
     lsb_check=$( command -v lsb_release )
@@ -616,17 +624,27 @@ get_ssh_key () {
   fi
 }
 
-# Function: build_extra_config
+# Function: pupulate_iso_kernel_params
 #
-# Build extra configs to pass to boot option 
+# Populate a list of extra parameters to add to grub boot command
 
-build_extra_config () {
-  for param in rootfs lvm; do
-    value="${options[${param}]}"
-    if [ "${options['extraconfig']}" = "" ]; then
-      options['extraconfig']="\"${param}=${value}\""
+populate_iso_kernel_params () {
+  for param in oneshot attended swap lvm zsh dhcp bridge sshserver bridgenic \
+    poweroff reboot nixinstall rootfs bootfs rootdisk mbrpart rootpart efipart \
+    swappart swapsize rootsize bootsize rootpool swapvolname rootvolname \
+    bootpolname installdir mbrpartname locale devnodes logdir logfile timezone \
+    usershell username extragroups usergecos normaluser sudocommand sudooptions \
+    rootpassword userpassword stateversion hostname unfree gfxmode gfxpatload \
+    nic dns ip gateway cidr zfsoptions sshkey; do
+    if [ "${param}" = "zfsoptions" ] || [ "${param}" = "sshkey" ]; then
+      value="\\\"${options[${param}]}\\\""
     else
-      options['extraconfig']="${options['extraconfig']} \"${param}=${value}\""
+      value="${options[${param}]}"
+    fi
+    if [ "${options['isokernelparams']}" = "" ]; then
+      options['isokernelparams']="\"ai.${param}=${value}\""
+    else
+      options['isokernelparams']="${options['isokernelparams']} \"ai.${param}=${value}\""
     fi
   done
 }
@@ -638,7 +656,7 @@ build_extra_config () {
 create_nix_iso_config () {
   check_nix_config
   get_ssh_key
-  build_extra_config
+  populate_iso_kernel_params
   verbose_message "Creating ${options['nixisoconfig']}"
   tee "${options['nixisoconfig']}" << NIXISOCONFIG
 # ISO build config
@@ -677,7 +695,7 @@ NIXISOCONFIG
   boot.loader.grub.gfxpayloadEfi = "${options['gfxpayload']}";
   boot.loader.grub.gfxmodeBios = "${options['gfxmode']}";
   boot.loader.grub.gfxpayloadBios = "${options['gfxpayload']}";
-  boot.kernelParams = [ ${options['extraconfig']} ];
+  boot.kernelParams = [ ${options['isokernelparams']} ];
 
   # Set your time zone
   time.timeZone = "${options['timezone']}";
@@ -734,8 +752,8 @@ NIXISOCONFIG
     restartIfChanged = false;
     script = ''
       export PATH="/run/wrappers/bin:/root/.nix-profile/bin:/nix/profile/bin:/root/.local/state/nix/profile/bin:/etc/profiles/per-user/root/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin"
-      sudo ${options['isomount']}/${options['prefix']}/install.sh 
-  '';
+      sudo ${options['isomount']}/${options['prefix']}/oneshot.sh 
+    '';
   };
 
 NIXISOCONFIG
@@ -779,384 +797,480 @@ create_install_script () {
   verbose_message "Creating ${options['install']}"
   tee "${options['install']}" << INSTALL
 #!/run/current-system/sw/bin/bash
-set -x
 export PATH="/run/wrappers/bin:/root/.nix-profile/bin:/nix/profile/bin:/root/.local/state/nix/profile/bin:/etc/profiles/per-user/root/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin"
 
 # Set general environment
-USE_SWAP="${options['swap']}"
-USE_LVM="${options['lvm']}"
-USE_ZSH="${options['zsh']}"
-USE_DHCP="${options['dhcp']}"
-USE_BRIDGE="${options['bridge']}"
-SSH_SERVER="${options['sshserver']}"
-BRIDGE_DEV="${options['bridgenic']}"
-DO_REBOOT="${options['reboot']}"
-DO_INSTALL="${options['nixinstall']}"
-ROOT_FS="${options['rootfs']}"
-BOOT_FS="${options['bootfs']}"
-ROOT_DISK="${options['rootdisk']}"
-MBR_PART="${options['mbrpart']}"
-ROOT_PART="${options['rootpart']}"
-EFI_PART="${options['efipart']}"
-BOOT_PART="${options['efipart']}"
-SWAP_PART="${options['swappart']}"
-SWAP_SIZE="${options['swapsize']}"
-ROOT_SIZE="${options['rootsize']}"
-BOOT_SIZE="${options['bootsize']}"
-ROOT_POOL="${options['rootpool']}"
-SWAP_NAME="${options['swapvolname']}"
-TARGET_DIR="${options['installdir']}"
-MBR_NAME="${options['mbrpartname']}"
-LOCALE="${options['locale']}"
-DEV_NODES="${options['devnodes']}"
-LOG_DIR="${options['logdir']}"
-LOG_FILE="${options['logfile']}"
-TIME_ZONE="${options['timezone']}"
-USER_SHELL="${options['usershell']}"
-USER_NAME="${options['username']}"
-USER_GROUPS="${options['extragroups']}"
-USER_GECOS="${options['usergecos']}"
-NORMAL_FLAG="${options['normaluser']}"
-SUDO_COMMAND="${options['sudocommand']}"
-SUDO_OPTIONS="${options['sudooptions']}"
-ROOT_PASSWORD="${options['rootpassword']}"
-ROOT_CRYPT=\$( mkpasswd --method=sha-512 "\${ROOT_PASSWORD}" )
-USER_PASSWORD="${options['userpassword']}"
-USER_CRYPT=\$( mkpasswd --method=sha-512 "\${USER_PASSWORD}" )
-STATE_VERSION="${options['stateversion']}"
-HOST_NAME="${options['hostname']}"
-HOST_ID=\$( head -c 8 /etc/machine-id )
-NIX_DIR="\${TARGET_DIR}/etc/nixos"
-NIX_CFG="\${NIX_DIR}/configuration.nix"
-HW_CFG="\${NIX_DIR}/hardware-configuration.nix"
-ZFS_OPTIONS="${options['zfsoptions']} -R \${TARGET_DIR}"
-AVAIL_MODS="\"ahci\" \"xhci_pci\" \"virtio_pci\" \"sr_mod\" \"virtio_blk\""
-NIX_EXP=""
-USE_UNFREE="${options['unfree']}"
-GFX_MODE="${options['gfxmode']}"
-GFX_LOAD="${options['gfxpayload']}"
+declare -A ai
+
+ai['swap']="${options['swap']}"
+ai['lvm']="${options['lvm']}"
+ai['zsh']="${options['zsh']}"
+ai['dhcp']="${options['dhcp']}"
+ai['bridge']="${options['bridge']}"
+ai['sshserver']="${options['sshserver']}"
+ai['bridgenic']="${options['bridgenic']}"
+ai['reboot']="${options['reboot']}"
+ai['poweroff']="${options['poweroff']}"
+ai['attended']="${options['attended']}"
+ai['nixinstall']="${options['nixinstall']}"
+ai['rootfs']="${options['rootfs']}"
+ai['bootfs']="${options['bootfs']}"
+ai['rootdisk']="${options['rootdisk']}"
+ai['mbrpart']="${options['mbrpart']}"
+ai['rootpart']="${options['rootpart']}"
+ai['efipart']="${options['efipart']}"
+ai['bootpart']="${options['efipart']}"
+ai['swappart']="${options['swappart']}"
+ai['swapsize']="${options['swapsize']}"
+ai['rootsize']="${options['rootsize']}"
+ai['bootsize']="${options['bootsize']}"
+ai['rootpool']="${options['rootpool']}"
+ai['swapvolname']="${options['swapvolname']}"
+ai['bootvolname']="${options['bootvolname']}"
+ai['rootvolname']="${options['rootvolname']}"
+ai['installdir']="${options['installdir']}"
+ai['mbrpartname']="${options['mbrpartname']}"
+ai['locale']="${options['locale']}"
+ai['devnodes']="${options['devnodes']}"
+ai['logdir']="${options['logdir']}"
+ai['logfile']="${options['logfile']}"
+ai['timezone']="${options['timezone']}"
+ai['usershell']="${options['usershell']}"
+ai['username']="${options['username']}"
+ai['extragroups']="${options['extragroups']}"
+ai['usergecos']="${options['usergecos']}"
+ai['normaluser']="${options['normaluser']}"
+ai['sudocommand']="${options['sudocommand']}"
+ai['sudooptions']="${options['sudooptions']}"
+ai['rootpassword']="${options['rootpassword']}"
+ai['rootcrypt']=\$( mkpasswd --method=sha-512 "\${ai['rootpassword']}" )
+ai['userpassword']="${options['userpassword']}"
+ai['usercrypt']=\$( mkpasswd --method=sha-512 "\${ai['userpassword']}" )
+ai['stateversion']="${options['stateversion']}"
+ai['hostname']="${options['hostname']}"
+ai['hostid']=\$( head -c 8 /etc/machine-id )
+ai['nixdir']="\${ai['installdir']}/etc/nixos"
+ai['nixcfg']="\${ai['nixdir']}/configuration.nix"
+ai['hwcfg']="\${ai['nixdir']}/hardware-configuration.nix"
+ai['zfsoptions']="${options['zfsoptions']}"
+ai['availmods']='${options['availmods']}'
+ai['initmods']='${options['initmods']}'
+ai['bootmods']='${options['bootmods']}'
+ai['experimental-features']="${options['experimental-features']}"
+ai['unfree']="${options['unfree']}"
+ai['gfxmode']="${options['gfxmode']}"
+ai['gfxpayload']="${options['gfxpayload']}"
+ai['nic']="${options['nic']}"
+ai['dns']="${options['dns']}"
+ai['ip']="${options['ip']}"
+ai['gateway']="${options['gateway']}"
+ai['cidr']="${options['cidr']}"
+ai['sshkey']="${options['sshkey']}"
+ai['oneshot']="${options['oneshot']}"
+
+# Parse parameters
+echo "Processing parameters"
+for param in \${!ai[@]}
+do
+  echo "Setting \${param} to \${ai[\${param}]}"
+done
+
+# Parse grub parameters
+echo "Processing grub parameters"
+str=\$( < /proc/cmdline )
+del="ai."
+sep="\${str}\${del}"
+items=();
+while [[ "\${sep}" ]]; do
+    items+=( "\${sep%%"\$del"*}" );
+    sep=\${sep#*"\$del"};
+done;
+declare -a items
+for item in "\${items[@]}"; do
+  if [[ ! \${item} =~ BOOT_IMAGE ]]; then
+    IFS='=' read -r param value <<< \${item}
+    value=\${value//\"/}
+    value=\${value// nohibernate*/}
+    value="\${value%"\${value##*[![:space:]]}"}"
+    if [ ! "\${value}" = "" ]; then
+      if [ ! "\${ai[\${param}]}" = "\${value}" ]; then
+        ai[\${param}]="\${value}"
+        echo "Setting \${param} to \${value}"
+      fi  
+    fi
+  fi
+done
+ai['zfsoptions']="\${ai['zfsoptions']} -R \${ai['installdir']}"
+echo "Setting zfsoptions to \${ai['zfsoptions']}"
+
+# If oneshot is disabled exit
+if [ "\${ai['oneshot']}" = "false" ]; then
+  exit
+fi 
 
 # Set up non DHCP environment
-NIC_DEV="${options['nic']}"
-NIC_DNS="${options['dns']}"
-NIC_IP="${options['ip']}"
-NIC_GW="${options['gateway']}"
-NIC_CIDR="${options['cidr']}"
-if [ "\${USE_DHCP}" = "false" ]; then
-  if [ "\${NIC_DEV}" = "first" ]; then
-    NIC_DEV=\$( ip link | grep "state UP" | awk '{ print \$2}' | head -1 | grep ^e | cut -f1 -d: )
+if [ "\${ai['dhcp']}" = "false" ]; then
+  if [ "\${ai['nic']}" = "first" ]; then
+    ai['nic']=\$( ip link | grep "state UP" | awk '{ print \$2}' | head -1 | grep ^e | cut -f1 -d: )
+    echo "Setting nic to \${ai['nic']}"
   fi
 fi
 
 # Discover first disk
-if [ "\${ROOT_DISK}" = "first" ]; then
-  ROOT_DISK=\$( lsblk -x TYPE|grep disk |sort |head -1 |awk '{print \$1}' )
-  ROOT_DISK="/dev/\${ROOT_DISK}"
+if [ "\${ai['rootdisk']}" = "first" ]; then
+  ai['rootdisk']=\$( lsblk -x TYPE|grep disk |sort |head -1 |awk '{print \$1}' )
+  ai['rootdisk']="/dev/\${ai['rootdisk']}"
+  echo "Setting rootdisk to \${ai['rootdisk']}"
 fi
 
 # Check we are using only one volume manager
-if [ "\${USE_LVM}" = "true" ] && [ "\${ROOT_FS}" = "zfs" ]; then
+if [ "\${ai['lvm']}" = "true" ] && [ "\${ai['rootfs']}" = "zfs" ]; then
   echo "Cannot use two volume managers (LVM and ZFS)"
   exit
 fi
 
 # QEMU check
-QEMU_CHECK=\$( cat /proc/ioports |grep QEMU )
-if [ -n "\${QEMU_CHECK}" ]; then
-  BOOT_MODS="\"kvm-intel\""
-  HW_IMPORTS="(modulesPath + \"/profiles/qemu-guest.nix\")"
-else
-  BOOT_MODS=""
-  HW_IMPORTS=""
+qemu_check=\$( cat /proc/ioports |grep QEMU )
+if [ -n "\${qemu_check}" ]; then
+  if [ "\${ai['bootmods']}" = "" ]; then
+    ai['bootmods']="\"kvm-intel\""
+  else
+    ai['bootmods']="\${ai['bootmods']} \"kvm-intel\""
+  fi
+  echo "Setting bootmods to \${ai['bootmods']}"
+  if [ "\${ai['hwimports']}" = "" ]; then
+    ai['hwimports']="(modulesPath + \"/profiles/qemu-guest.nix\")"
+  else
+    ai['hwimports']="\${ai['hwimports']} (modulesPath + \"/profiles/qemu-guest.nix\")"
+  fi
+  echo "Setting hwimports to \${ai['hwimports']}"
 fi
 
 # Check if BIOS or UEFI boot
 if [ -d "/sys/firmware/efi" ]; then
-  BIOS_FLAG="false"
-  UEFI_FLAG="true"
-  GRUB_DEV="nodev"
-  BOOT_NAME="uefiboot"
+  ai['biosflag']="false"
+  ai['uefiflag']="true"
+  ai['grubdev']="nodev"
+  ai['bootvolname']="uefiboot"
 else
-  BIOS_FLAG="true"
-  UEFI_FLAG="false"
-  GRUB_DEV="\${ROOT_DISK}"
-  BOOT_NAME="biosboot"
+  ai['biosflag']="true"
+  ai['uefiflag']="false"
+  ai['grubdev']="\${ai['rootdisk']}"
+  ai['bootvolname']="biosboot"
 fi
+echo "Setting biosflag to \${ai['biosflag']}"
+echo "Setting uefiflag to \${ai['uefiflag']}"
+echo "Setting grubdev to \${ai['grubdev']}"
+echo "Setting biosvolname to \${ai['biosvolname']}"
 
 # Set root partition type
-case "\${ROOT_FS}" in
+case "\${ai['rootfs']}" in
   "zfs")
-    PART_FLAG="BF01"
-    ROOT_NAME="rpool"
+    ai['partflag']="BF01"
+    ai['rootname']="rpool"
     ;;
   *)
-    PART_FLAG="8300"
-    ROOT_NAME="root"
+    ai['partflag']="8300"
+    ai['rootname']="root"
     ;;
 esac
+echo "Setting partflag to \${ai['partflag']}"
+echo "Setting rootname to \${ai['rootname']}"
 
 # Wipe and set up disks
+echo "Wiping \${ai['rootdisk']}"
 swapoff -a
-umount -Rl \${TARGET_DIR}
-zpool destroy -f \${ROOT_POOL}
-lvremove -f \${ROOT_POOL}
-wipefs \${ROOT_DISK}
-sgdisk --zap-all \${ROOT_DISK}
-zpool labelclear -f \${ROOT_DISK}
-partprobe \${ROOT_DISK}
-sleep 2s
-if [ "\${BIOS_FLAG}" = "true" ]; then
-  sgdisk -a \${MBR_PART} -n \${MBR_PART}:0:+1M -t \${MBR_PART}:EF02 -c \${MBR_PART}:\${MBR_NAME} \${ROOT_DISK}
+umount -Rl \${ai['installdir']}
+zpool destroy -f \${ai['rootpool']}
+lvremove -f \${ai['rootpool']}
+wipefs \${ai['rootdisk']}
+sgdisk --zap-all \${ai['rootdisk']}
+zpool labelclear -f \${ai['rootdisk']}
+partprobe \${ai['rootdisk']}
+sleep 5s
+echo "Partitioning \${ai['rootdisk']}"
+if [ "\${ai['biosflag']}" = "true" ]; then
+  sgdisk -a \${ai['mbrpart']} -n \${ai['mbrpart']}:0:+1M -t \${ai['mbrpart']}:EF02 -c \${ai['mbrpart']}:\${ai['mbrvolname']} \${ai['rootdisk']}
 fi
-if [ "\${USE_LVM}" = "true" ]; then
-  sgdisk -n \${ROOT_PART}:0:0 -t \${ROOT_PART}:\${PART_FLAG} -c \${ROOT_PART}:\${ROOT_NAME} \${ROOT_DISK}
-  pvcreate -f \${ROOT_DISK}\${ROOT_PART}
-  vgcreate -f \${ROOT_POOL} \${ROOT_DISK}\${ROOT_PART}
-  lvcreate -y --size \${BOOT_SIZE} --name \${BOOT_NAME} \${ROOT_POOL}
+if [ "\${ai['lvm']}" = "true" ]; then
+  sgdisk -n \${ai['rootpart']}:0:0 -t \${ai['rootpart']}:\${ai['partflag']} -c \${ai['rootpart']}:\${ai['rootvolname']} \${ai['rootdisk']}
+  pvcreate -f \${ai['rootdisk']}\${ai['rootpart']}
+  vgcreate -f \${ai['rootpool']} \${ai['rootdisk']}\${ai['rootpart']}
+  lvcreate -y --size \${ai['bootsize']} --name \${ai['bootvolname']} \${ai['rootpool']}
   if [ "\${USE_SWAP}" = "true" ]; then
-    lvcreate -y --size \${SWAP_SIZE} --name \${SWAP_NAME} \${ROOT_POOL}
+    lvcreate -y --size \${ai['swapsize']} --name \${ai['swapvolname']} \${ai['rootpool']}
   fi
-  lvcreate -y --size \${ROOT_SIZE} --name \${ROOT_NAME} \${ROOT_POOL}
-  SWAP_VOL="/dev/\${ROOT_POOL}/\${SWAP_NAME}"
-  BOOT_VOL="/dev/\${ROOT_POOL}/\${BOOT_NAME}"
-  ROOT_VOL="/dev/\${ROOT_POOL}/\${ROOT_NAME}"
-  lvextend -l +100%FREE \${ROOT_VOL} 
-  INIT_MODS="\"dm-snapshot\" \"dm-raid\" \"dm-cache-default\""
-  ROOT_SEARCH=\$( ls -l \${ROOT_VOL} | awk '{print \$11}' |cut -f2 -d/ )
-  BOOT_SEARCH=\$( ls -l \${BOOT_VOL} | awk '{print \$11}' |cut -f2 -d/ )
-  SWAP_SEARCH=\$( ls -l \${SWAP_VOL} | awk '{print \$11}' |cut -f2 -d/ )
+  lvcreate -y --size \${ai['rootsize']} --name \${ai['rootvolname']} \${ai['rootpool']}
+  ai['swapvol']="/dev/\${ai['rootpool']}/\${ai['swapvolname']}"
+  ai['bootvol']="/dev/\${ai['rootpool']}/\${ai['bootvolname']}"
+  ai['rootvol']="/dev/\${ai['rootpool']}/\${ai['rootvolname']}"
+  lvextend -l +100%FREE \${ai['rootvol']} 
+  if [ "\${ai[initmods]}" = "" ]; then
+    ai['initmods']="\"dm-snapshot\" \"dm-raid\" \"dm-cache-default\""
+  else
+    ai['initmods']="\${ai['initmods']} \"dm-snapshot\" \"dm-raid\" \"dm-cache-default\""
+  fi
+  ai['rootsearch']=\$( ls -l \${ai['rootvol']} | awk '{print \$11}' |cut -f2 -d/ )
+  ai['bootsearch']=\$( ls -l \${ai['bootvol']} | awk '{print \$11}' |cut -f2 -d/ )
+  ai['swapsearch']=\$( ls -l \${ai['swapvol']} | awk '{print \$11}' |cut -f2 -d/ )
 else
-  sgdisk -n \${EFI_PART}:2M:+\${BOOT_SIZE} -t \${EFI_PART}:EF00 -c \${EFI_PART}:\${BOOT_NAME} \${ROOT_DISK}
-  if [ "\${USE_SWAP}" = "true" ]; then
-    sgdisk -n \${SWAP_PART}:0:+\${SWAP_SIZE} -t \${SWAP_PART}:8200 -c \${SWAP_PART}:\${SWAP_NAME} \${ROOT_DISK}
+  sgdisk -n \${ai['efipart']}:2M:+\${ai['bootsize']} -t \${ai['efipart']}:EF00 -c \${ai['efipart']}:\${ai['bootvolname']} \${ai['rootdisk']}
+  if [ "\${ai['swap']}" = "true" ]; then
+    sgdisk -n \${ai['swappart']}:0:+\${ai['swapsize']} -t \${ai['swappart']}:8200 -c \${ai['swappart']}:\${ai['swapname']} \${ai['rootdisk']}
   fi
-  sgdisk -n \${ROOT_PART}:0:0 -t \${ROOT_PART}:\${PART_FLAG} -c \${ROOT_PART}:\${ROOT_NAME} \${ROOT_DISK}
-  SWAP_VOL="\${ROOT_DISK}\${SWAP_PART}"
-  BOOT_VOL="\${ROOT_DISK}\${BOOT_PART}"
-  ROOT_VOL="\${ROOT_DISK}\${ROOT_PART}"
-  INIT_MODS=""
-  ROOT_SUFFIX=\$( echo "\${ROOT_DISK}" | cut -f3 -d/  )
-  ROOT_SEARCH="\${ROOT_SUFFIX}\${ROOT_PART}"
-  BOOT_SEARCH="\${ROOT_SUFFIX}\${BOOT_PART}"
-  SWAP_SEARCH="\${ROOT_SUFFIX}\${SWAP_PART}"
+  sgdisk -n \${ai['rootpart']}:0:0 -t \${ai['rootpart']}:\${ai['partflag']} -c \${ai['rootpart']}:\${ai['rootvolname']} \${ai['rootdisk']}
+  ai['swapvol']="\${ai['rootdisk']}\${ai['swappart']}"
+  ai['bootvol']="\${ai['rootdisk']}\${ai['bootpart']}"
+  ai['rootvol']="\${ai['rootdisk']}\${ai['rootpart']}"
+  ai['rootsuffix']=\$( echo "\${ai['rootdisk']}" | cut -f3 -d/  )
+  ai['rootsearch']="\${ai['rootsuffix']}\${ai['rootpart']}"
+  ai['bootsearch']="\${ai['rootsuffix']}\${ai['bootpart']}"
+  ai['swapsearch']="\${ai['rootsuffix']}\${ai['swappart']}"
 fi
-partprobe \${ROOT_DISK}
-sleep 2s
+partprobe \${ai['rootdisk']}
+sleep 5s
+echo "Setting rootvol to \${ai['rootvol']}"
+echo "Setting bootvol to \${ai['bootvol']}"
+echo "Setting swapvol to \${ai['swapvol']}"
+echo "Setting rootsearch to \${ai['rootsearch']}"
+echo "Setting bootsearch to \${ai['bootsearch']}"
+echo "Setting swapsearch to \${ai['swapsearch']}"
 
 # Make and mount filesystems
-if [ "\${USE_SWAP}" = "true" ]; then
-  mkswap -L \${SWAP_NAME} \${SWAP_VOL}
-  swapon \${SWAP_VOL}
+echo "Making and mounting filesystems"
+if [ "\${ai['swap']}" = "true" ]; then
+  mkswap -L \${ai['swapvolname']} \${ai['swapvol']}
+  swapon \${ai['swapvol']}
 fi
-if [ "\${ROOT_FS}" = "zfs" ]; then
-  zpool create -f \${ZFS_OPTIONS} \${ROOT_POOL} \${ROOT_DISK}\${ROOT_PART}
-  for DIR_NAME in root nix var home; do
-    zfs create -o mountpoint=legacy \${ROOT_POOL}/\${DIR_NAME}
+if [ "\${ai['rootfs']}" = "zfs" ]; then
+  zpool create -f \${ai['zfsoptions']} \${ai['rootpool']} \${ai['rootdisk']}\${ai['rootpart']}
+  for mount_name in root nix var home; do
+    zfs create -o mountpoint=legacy \${ai['rootpool']}/\${mount_name}
   done
-  mount -t zfs \${ROOT_POOL}/root \${TARGET_DIR}
-  for DIR_NAME in nix var home; do
-    mkdir -p \${TARGET_DIR}/\${DIR_NAME}
-    mount -t \${ROOT_FS} \${ROOT_POOL}/\${DIR_NAME} \${TARGET_DIR}/\${DIR_NAME}
+  mount -t zfs \${ai['rootpool']}/root \${ai['installdir']}
+  for mount_name in nix var home; do
+    mkdir -p \${ai['installdir']}/\${mount_name}
+    mount -t \${ai['rootfs']} \${ai['rootpool']}/\${mount_name} \${ai['installdir']}/\${mount_name}
   done
 else
-  if [ "\${ROOT_FS}" = "ext4" ]; then
-    mkfs.\${ROOT_FS} -F -L \${ROOT_NAME} \${ROOT_VOL}
+  if [ "\${ai['rootfs']}" = "ext4" ]; then
+    mkfs.\${ai['rootfs']} -F -L \${ai['rootvolname']} \${ai['rootvol']}
   else
-    mkfs.\${ROOT_FS} -f -L \${ROOT_NAME} \${ROOT_VOL}
+    mkfs.\${ai['rootfs']} -f -L \${ai['rootvolname']} \${ai['rootvol']}
   fi
-  mount -t \${ROOT_FS} \${ROOT_VOL} \${TARGET_DIR}
+  mount -t \${ai['rootfs']} \${ai['rootvol']} \${ai['installdir']}
 fi
-mkfs.\${BOOT_FS} \${BOOT_VOL}
-mkdir \${TARGET_DIR}/boot
-mount \${BOOT_VOL} \${TARGET_DIR}/boot
-mkdir -p \${NIX_DIR}
-rm \${NIX_DIR}/*
+mkfs.\${ai['bootfs']} \${ai['bootvol']}
+mkdir \${ai['installdir']}/boot
+mount \${ai['bootvol']} \${ai['installdir']}/boot
+mkdir -p \${ai['nixdir']}
+rm \${ai['nixdir']}/*
 
 # Create configuration.nix
-tee \${NIX_CFG} << NIX_CFG
+echo "Creating \${ai['nixcfg']}"
+tee \${ai['nixcfg']} << NIX_CFG
 { config, lib, pkgs, ... }:
 {
   imports = [ ./hardware-configuration.nix ];
-  boot.loader.systemd-boot.enable = \${UEFI_FLAG};
-  boot.loader.efi.canTouchEfiVariables = \${UEFI_FLAG};
-  boot.loader.grub.devices = [ "\${GRUB_DEV}" ];
-  boot.loader.grub.gfxmodeEfi = "\${GFX_MODE}";
-  boot.loader.grub.gfxpayloadEfi = "\${GFX_LOAD}";
-  boot.loader.grub.gfxmodeBios = "\${GFX_MODE}";
-  boot.loader.grub.gfxpayloadBios = "\${GFX_LOAD}";
-  boot.initrd.supportedFilesystems = ["\${ROOT_FS}"];
-  boot.supportedFilesystems = [ "\${ROOT_FS}" ];
-  boot.zfs.devNodes = "\${DEV_NODES}";
-  services.lvm.boot.thin.enable = \${USE_LVM};
+  boot.loader.systemd-boot.enable = \${ai['uefiflag']};
+  boot.loader.efi.canTouchEfiVariables = \${ai['uefiflag']};
+  boot.loader.grub.devices = [ "\${ai['grubdev']}" ];
+  boot.loader.grub.gfxmodeEfi = "\${ai['gfxmode']}";
+  boot.loader.grub.gfxpayloadEfi = "\${ai['gfpayxload']}";
+  boot.loader.grub.gfxmodeBios = "\${ai['gfxmode']}";
+  boot.loader.grub.gfxpayloadBios = "\${ai['gfxpayload']}";
+  boot.initrd.supportedFilesystems = ["\${ai['rootfs']}"];
+  boot.supportedFilesystems = [ "\${ai['rootfs']}" ];
+  boot.zfs.devNodes = "\${ai['devnodes']}";
+  services.lvm.boot.thin.enable = \${ai['lvm']};
 
   # HostID and Hostname
-  networking.hostId = "\${HOST_ID}";
-  networking.hostName = "\${HOST_NAME}";
+  networking.hostId = "\${ai['hostid']}";
+  networking.hostName = "\${ai['hostname']}";
 
   # Services
-  services.openssh.enable = \${SSH_SERVER};
+  services.openssh.enable = \${ai['sshserver']};
 
   # Additional Nix options
-  nix.settings.experimental-features = "\${NIX_EXP}";
+  nix.settings.experimental-features = "\${ai['experimental-features']}";
 
   # Allow unfree packages
-  nixpkgs.config.allowUnfree = \${USE_UNFREE};
+  nixpkgs.config.allowUnfree = \${ai['unfree']};
 
   # Set your time zone.
-  time.timeZone = "\${TIME_ZONE}";
+  time.timeZone = "\${ai['timezone']}";
 
   # Select internationalisation properties.
-  i18n.defaultLocale = "\${LOCALE}";
+  i18n.defaultLocale = "\${ai['locale']}";
   i18n.extraLocaleSettings = {
-    LC_ADDRESS = "\${LOCALE}";
-    LC_IDENTIFICATION = "\${LOCALE}";
-    LC_MEASUREMENT = "\${LOCALE}";
-    LC_MONETARY = "\${LOCALE}";
-    LC_NAME = "\${LOCALE}";
-    LC_NUMERIC = "\${LOCALE}";
-    LC_PAPER = "\${LOCALE}";
-    LC_TELEPHONE = "\${LOCALE}";
-    LC_TIME = "\${LOCALE}";
+    LC_ADDRESS = "\${ai['locale']}";
+    LC_IDENTIFICATION = "\${ai['locale']}";
+    LC_MEASUREMENT = "\${ai['locale']}";
+    LC_MONETARY = "\${ai['locale']}";
+    LC_NAME = "\${ai['locale']}";
+    LC_NUMERIC = "\${ai['locale']}";
+    LC_PAPER = "\${ai['locale']}";
+    LC_TELEPHONE = "\${ai['locale']}";
+    LC_TIME = "\${ai['locale']}";
   };
 
   # Define a user account. 
-  users.users.\${USER_NAME} = {
-    shell = pkgs.\${USER_SHELL};
-    isNormalUser = \${NORMAL_FLAG};
-    description = "\${USER_GECOS}";
-    extraGroups = [ "\${USER_GROUPS}" ];
-    openssh.authorizedKeys.keys = [ "\${SSH_KEY}" ];
-    hashedPassword = "\${USER_CRYPT}";
+  users.users.\${ai['username']} = {
+    shell = pkgs.\${ai['usershell']};
+    isNormalUser = \${ai['normaluser']};
+    description = "\${ai['usergecos']}";
+    extraGroups = [ "\${ai['extragroups']}" ];
+    openssh.authorizedKeys.keys = [ "\${ai['sshkey']}" ];
+    hashedPassword = "\${ai['usercrypt']}";
   };
-  programs.zsh.enable = \${USE_ZSH};
+  programs.zsh.enable = \${ai['zsh']};
 
   # Sudo configuration
   security.sudo.extraRules= [
-    { users = [ "\${USER_NAME}" ];
+    { users = [ "\${ai['username']}" ];
       commands = [
-        { command = "\${SUDO_COMMAND}" ;
-          options= [ "\${SUDO_OPTIONS}" ];
+        { command = "\${ai['sudocommand']}" ;
+          options= [ "\${ai['sudooptions']}" ];
         }
       ];
     }
   ];
 
   # Networking
-  networking.useDHCP = lib.mkDefault \${USE_DHCP};
+  networking.useDHCP = lib.mkDefault \${ai['dhcp']};
 NIX_CFG
-if [ "\${USE_DHCP}" = "false" ]; then
-  if [ "\${USE_BRIDGE}" = "false" ]; then
-    tee -a \${NIX_CFG} << NIX_CFG
+if [ "\${ai['dhcp']}" = "false" ]; then
+  if [ "\${ai['bridge']}" = "false" ]; then
+    tee -a \${ai['nixcfg']} << NIX_CFG
   networking = {
-    interfaces."\${NIC_DEV}".useDHCP = \${USE_DHCP};
-    interfaces."\${NIC_DEV}".ipv4.addresses = [{
-      address = "\${NIC_IP}";
-      prefixLength = \${NIC_CIDR};
+    interfaces."\${ai['nic']}".useDHCP = \${ai['dhcp']};
+    interfaces."\${ai['nic']}".ipv4.addresses = [{
+      address = "\${ai['ip']}";
+      prefixLength = \${ai['cidr']};
     }];
-    defaultGateway = "\${NIC_GW}";
-    nameservers = [ "\${NIC_DNS}" ];
+    defaultGateway = "\${ai['gateway']}";
+    nameservers = [ "\${ai['dns']}" ];
   };
 NIX_CFG
   else
-    tee -a \${NIX_CFG} << NIX_CFG
+    tee -a \${ai['nixcfg']} << NIX_CFG
   networking = {
-    bridges."\${BRIDGE_DEV}".interfaces = [ "\${NIC_DEV}" ];
-    interfaces."\${BRIDGE_DEV}".useDHCP = \${USE_DHCP};
-    interfaces."\${NIC_DEV}".useDHCP = \${USE_DHCP};
-    interfaces."\${BRIDGE_DEV}".ipv4.addresses = [{
-      address = "\${NIC_IP}";
-      prefixLength = \${NIC_CIDR};
+    bridges."\${ai['bridgenic']}".interfaces = [ "\${ai['nic']}" ];
+    interfaces."\${bridgenic}".useDHCP = \${ai['dhcp']};
+    interfaces."\${nic}".useDHCP = \${ai['dhcp']};
+    interfaces."\${bridgenic}".ipv4.addresses = [{
+      address = "\${ai['ip']}";
+      prefixLength = \${ai['cidr']};
     }];
-    defaultGateway = "\${NIC_GW}";
-    nameservers = [ "\${NIC_DNS}" ];
+    defaultGateway = "\${ai['gateway']}";
+    nameservers = [ "\${ai['dns']}" ];
   };    
 NIX_CFG
   fi
 fi
-tee -a \${NIX_CFG} << NIX_CFG
-  users.users.root.initialHashedPassword = "\${ROOT_CRYPT}";
+tee -a \${ai['nixcfg']} << NIX_CFG
+  users.users.root.initialHashedPassword = "\${ai['rootcrypt']}";
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
-  system.stateVersion = "\${STATE_VERSION}";
+  system.stateVersion = "\${ai['stateversion']}";
 }
 NIX_CFG
 
 # Get device UUIDs
-if [ "\${USE_SWAP}" = "true" ]; then
-  SWAP_UUID=\$(ls -l \${DEV_NODES} |grep \${SWAP_SEARCH} |awk '{print \$9}' )
-  SWAP_DEV="\${DEV_NODES}/\${SWAP_UUID}"
+if [ "\${ai['swap']}" = "true" ]; then
+  ai['swapuuid']=\$(ls -l \${ai['devnodes']} |grep \${ai['swapsearch']} |awk '{print \$9}' )
+  ai['swapdev']="\${ai['devnodes']}/\${ai['swapuuid']}"
 else
-  SWAP_DEV=""
+  ai['swapdev']=""
 fi
-BOOT_UUID=\$(ls -l \${DEV_NODES} |grep \${BOOT_SEARCH} |awk '{print \$9}' )
-BOOT_DEV="\${DEV_NODES}/\${BOOT_UUID}"
-ROOT_UUID=\$(ls -l \${DEV_NODES} |grep \${ROOT_SEARCH} |awk '{print \$9}' )
-ROOT_DEV="\${DEV_NODES}/\${ROOT_UUID}"
+ai['bootuuid']=\$(ls -l \${ai['devnodes']} |grep \${ai['bootsearch']} |awk '{print \$9}' )
+ai['bootdev']="\${ai['devnodes']}/\${ai['bootuuid']}"
+ai['rootuuid']=\$(ls -l \${ai['devnodes']} |grep \${ai['rootsearch']} |awk '{print \$9}' )
+ai['rootdev']="\${ai['devnodes']}/\${ai['rootuuid']}"
+echo "Setting rootuuid to \${ai['rootuuid']}"
+echo "Setting rootdev to \${ai['rootdev']}"
+echo "Setting bootuuid to \${ai['bootuuid']}"
+echo "Setting bootdev to \${ai['bootdev']}"
+echo "Setting swapuuid to \${ai['swapuuid']}"
+echo "Setting swapdev to \${ai['swapdev']}"
 
 # Create hardware-configuration.nix
-tee \${HW_CFG} << HW_CFG
+echo "Creating \${ai['nixcfg']}"
+tee \${ai['hwcfg']} << HW_CFG
 { config, lib, pkgs, modulesPath, ... }:
 {
-  imports = [ \${HW_IMPORTS} ];
-  boot.initrd.availableKernelModules = [ \${AVAIL_MODS} ];
-  boot.initrd.kernelModules = [ \${INIT_MODS} ];
-  boot.kernelModules = [ \${BOOT_MODS} ];
+  imports = [ \${ai['hwimports']} ];
+  boot.initrd.availableKernelModules = [ \${ai['availmods']} ];
+  boot.initrd.kernelModules = [ \${ai['initmods']} ];
+  boot.kernelModules = [ \${ai['bootmods']} ];
   boot.extraModulePackages = [ ];
 HW_CFG
-if [ "\${ROOT_FS}" = "zfs" ]; then
-  tee -a \${HW_CFG} << HW_CFG
+if [ "\${ai['rootfs']}" = "zfs" ]; then
+  tee -a \${ai['hwcfg']} << HW_CFG
   fileSystems."/" = {
-    device = "\${ROOT_POOL}/root";
-    fsType = "\${ROOT_FS}";
+    device = "\${ai['rootpool']}/root";
+    fsType = "\${ai['rootfs']}";
     neededForBoot = true;
   };
   fileSystems."/nix" = {
-    device = "\${ROOT_POOL}/nix";
-    fsType = "\${ROOT_FS}";
+    device = "\${ai['rootpool']}/nix";
+    fsType = "\${ai['rootfs']}";
   };
   fileSystems."/home" = {
-    device = "\${ROOT_POOL}/home";
-    fsType = "\${ROOT_FS}";
+    device = "\${ai['rootpool']}/home";
+    fsType = "\${ai['rootfs']}";
   };
   fileSystems."/var" = {
-    device = "\${ROOT_POOL}/var";
-    fsType = "\${ROOT_FS}";
+    device = "\${ai['rootpool']}/var";
+    fsType = "\${ai['rootfs']}";
   };
 HW_CFG
 else
-  tee -a \${HW_CFG} << HW_CFG
+  tee -a \${ai['hwcfg']} << HW_CFG
   fileSystems."/" = {
-    device = "\${ROOT_DEV}";
-    fsType = "\${ROOT_FS}";
+    device = "\${ai['rootdev']}";
+    fsType = "\${ai['rootfs']}";
     neededForBoot = true;
   };
 HW_CFG
 fi
-tee -a \${HW_CFG} << HW_CFG
+tee -a \${ai['hwcfg']} << HW_CFG
   fileSystems."/boot" = {
-    device = "\${BOOT_DEV}";
-    fsType = "\${BOOT_FS}";
+    device = "\${ai['bootdev']}";
+    fsType = "\${ai['bootfs']}";
     options = [ "fmask=0022" "dmask=0022" ];
   };
-  swapDevices = [ { device = "\${SWAP_DEV}"; } ];
+  swapDevices = [ { device = "\${ai['swapdev']}"; } ];
 }
 HW_CFG
 
 # Manual config creation command if you need it
-# nixos-generate-config --root \${TARGET_DIR}
+# nixos-generate-config --root \${ai['installdir']}
 
-if [ "\${DO_INSTALL}" = "false" ]; then
+echo "Creating log directory \${ai['installdir']}\${ai['logdir']}"
+mkdir -p \${ai['installdir']}/\${ai['logdir']}
+
+if [ "\${ai['attended']}" = "true" ]; then
+  echo "To install:"
+  echo "nixos-install -v --show-trace --no-root-passwd 2>&1 |tee \${ai['installdir']}\${ai['logfile']}"
+  echo "To unmount filesystems and reboot:"
+  echo "umount -Rl \${ai['installdir']}"
+  echo "zpool export -a"
+  echo "swapoff -a"
+  echo "reboot"
   exit
+else
+  nixos-install -v --show-trace --no-root-passwd 2>&1 |tee \${ai['installdir']}\${ai['logfile']}
+  echo "Logged to \${ai['installdir']}\${ai['logfile']}"
 fi
 
-mkdir -p \${TARGET_DIR}/\${LOG_DIR}
-
-nixos-install -v --show-trace --no-root-passwd 2>&1 |tee \${TARGET_DIR}\${LOG_FILE}
-
-umount -Rl \${TARGET_DIR}
+umount -Rl \${ai['installdir']}
 zpool export -a
 swapoff -a
 
-if [ "\${DO_REBOOT}" = "true" ]; then
+if [ "\${ai['poweroff']}" = "true" ]; then
+  poweroff
+fi
+if [ "\${ai['reboot']}" = "true" ]; then
   reboot
 fi
 
@@ -1179,7 +1293,7 @@ preserve_iso () {
         temp_name="${temp_name}-${param}"
       fi
     done
-    for param in disk nic ; do
+    for param in rootdisk nic ; do
       value="${options[${param}]}"
       if [ ! "${value}" = "first" ]; then
         temp_name="${temp_name}-${value}"
@@ -1291,6 +1405,16 @@ while test $# -gt 0; do
       actions_list+=("$2")
       shift 2
       ;;
+    --availmod*)                # switch : Available system kernel modules
+      check_value "$1" "$2"
+      options['availmods']="$2"
+      shift 2
+      ;;
+    --bootmod*)                 # switch : Available system boot modules
+      check_value "$1" "$2"
+      options['bootmods']="$2"
+      shift 2
+      ;;
     --bootsize)                 # switch : Boot partition size
       check_value "$1" "$2"
       options['bootsize']="$2"
@@ -1352,9 +1476,9 @@ while test $# -gt 0; do
       options['dhcp']="true"
       shift
       ;;
-    --disk)                     # switch : SSH key
+    --disk|rootdisk)            # switch : Root disk
       check_value "$1" "$2"
-      options['disk']="$2"
+      options['rootdisk']="$2"
       shift 2
       ;;
     --dns|--nameserver)         # switch : DNS/Nameserver address
@@ -1370,11 +1494,6 @@ while test $# -gt 0; do
     --experimental*)            # switch : SSH key
       check_value "$1" "$2"
       options['experimental-features']="$2"
-      shift 2
-      ;;
-    --extraconf*)               # switch : Extra configs for kernel
-      check_value "$1" "$2"
-      options['extraconfig']="$2"
       shift 2
       ;;
     --extragroup*)              # switch : Extra groups
@@ -1422,9 +1541,19 @@ while test $# -gt 0; do
       options['hostname']="$2"
       shift 2
       ;;
-    --imports)                  # switch : Imports for system
+    --hwimports)                # switch : Imports for system hardware configuration
+      check_value "$1" "$2"
+      options['hwimports']="$2"
+      shift 2
+      ;;
+    --imports)                  # switch : Imports for system configuration
       check_value "$1" "$2"
       options['imports']="$2"
+      shift 2
+      ;;
+    --initmod*)                 # switch : Available system init modules
+      check_value "$1" "$2"
+      options['initmods']="$2"
       shift 2
       ;;
     --install)                  # switch : Install script
@@ -1448,6 +1577,11 @@ while test $# -gt 0; do
       options['isoimports']="$2"
       shift 2
       ;;
+    --isokernelparam*)          # switch : Extra kernel parameters to add to ISO grub commands
+      check_value "$1" "$2"
+      options['isokernelparams']="$2"
+      shift 2
+      ;;
     --isomount)                 # switch : Install ISO mount directory
       check_value "$1" "$2"
       options['isomount']="$2"
@@ -1456,6 +1590,11 @@ while test $# -gt 0; do
     --keymap)                   # switch : Keymap
       check_value "$1" "$2"
       options['keymap']="$2"
+      shift 2
+      ;;
+    --kernelparam*)             # switch : Extra kernel parameters to add to systembuild
+      check_value "$1" "$2"
+      options['kernelparams']="$2"
       shift 2
       ;;
     --locale)                   # switch : Locale
@@ -1506,6 +1645,14 @@ while test $# -gt 0; do
       options['nixisoconfig']="$2"
       shift 2
       ;;
+    --nooneshot)                # switch : Disable oneshot service
+      options['oneshot']="false"
+      shift
+      ;;
+    --oneshot)                  # switch : Enable oneshot service
+      options['oneshot']="true"
+      shift
+      ;;
     --option*)                  # switch : Option(s) to set
       check_value "$1" "$2"
       options_list+=("$2")
@@ -1522,6 +1669,10 @@ while test $# -gt 0; do
       options['userpassword']="$2"
       shift 2
       ;;
+    --poweroff)                 # switch : Enable poweroff after install
+      options['poweroff']="true"
+      shift
+      ;;
     --prefix)                   # switch : Install prefix
       check_value "$1" "$2"
       options['prefix']="$2"
@@ -1532,7 +1683,7 @@ while test $# -gt 0; do
       shift
       ;;
     --reboot)                   # switch : Enable reboot after install
-      options['sshserver']="true"
+      options['reboot']="true"
       shift
       ;;
     --rootcrypt)                # switch : Root password crypt

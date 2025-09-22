@@ -138,3 +138,13 @@
 # Improved options processing
 # 0.6.9: Sun 21 Sep 2025 15:03:06 AEST
 # Added gfxmode switch
+# 0.7.0: Mon 22 Sep 2025 17:14:22 AEST
+# Updated install script to allow grub parameters to be parsed to installer
+# 0.7.1: Mon 22 Sep 2025 17:16:56 AEST
+# Added new standalone installer script
+# 0.7.2: Mon 22 Sep 2025 17:20:09 AEST
+# Updated documentation
+# 0.7.3: Mon 22 Sep 2025 17:30:28 AEST
+# Updated oneshot service
+# 0.7.4: Mon 22 Sep 2025 17:44:26 AEST
+# Added nooneshot switch
