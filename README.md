@@ -109,7 +109,8 @@ This service copies the install scipt into /tmp and runs it.
 A standalone version of the script that was created for testing purposed,
 and then folded back into the script is located here:
 
-[Standalone Install Script](configs/install.sh)
+[Original Standalone Install Script](configs/install.sh)
+
 [Updated Standalone Install Script](configs/updated_install.sh)
 
 By setting the options in the script it can be used to install one of:
