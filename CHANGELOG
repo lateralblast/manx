@@ -148,3 +148,25 @@
 # Updated oneshot service
 # 0.7.4: Mon 22 Sep 2025 17:44:26 AEST
 # Added nooneshot switch
+# 0.7.5: Tue 23 Sep 2025 17:33:59 AEST
+# Added intial code to create vm
+# 0.7.6: Tue 23 Sep 2025 17:40:09 AEST
+# Improved mask function
+# 0.7.7: Tue 23 Sep 2025 17:41:29 AEST
+# Updated documentation
+# 0.7.8: Tue 23 Sep 2025 17:52:38 AEST
+# Added noautoconsole switch
+# 0.7.9: Tue 23 Sep 2025 18:32:00 AEST
+# Added grub extraargs
+# 0.8.0: Tue 23 Sep 2025 19:47:19 AEST
+# Added serial support
+# 0.8.1: Tue 23 Sep 2025 20:38:05 AEST
+# Added imports for system build
+# 0.8.2: Tue 23 Sep 2025 21:06:25 AEST
+# Fixed escaping of kernelparams
+# 0.8.3: Tue 23 Sep 2025 21:14:50 AEST
+# Fixed VM deletion
+# 0.8.4: Tue 23 Sep 2025 23:05:58 AEST
+# Improved VM creation
+# 0.8.5: Tue 23 Sep 2025 23:17:10 AEST
+# Updated documentation

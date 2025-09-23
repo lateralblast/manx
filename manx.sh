@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      0.7.4
+# Version:      0.8.5
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -24,6 +24,7 @@
 # Create arrays
 
 declare -A os
+declare -A vm
 declare -A script
 declare -A imports 
 declare -A options 
@@ -56,10 +57,13 @@ set_defaults () {
   imports['channel']="<nixpkgs/nixos/modules/installer/cd-dvd/channel.nix>"                                       # import : NixOS CD channel profile
   imports['grub']="<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>"                                      # import : NixOS grub profile
   imports['kernel']="<nixpkgs/nixos/modules/system/boot/kernel.nix>"                                              # import : NixOS kernel profile
-  options['isoimports']="${imports['minimal']} ${imports['channel']} ${imports['kernel']}"                        # option : ISO imports
+  options['isoimports']="${imports['minimal']} ${imports['channel']} ${imports['grub']} ${imports['kernel']}"     # option : ISO imports
+  options['imports']="${imports['grub']} ${imports['kernel']}"                                                    # option : System imports
+  options['hwimports']=""                                                                                         # option : System hardware configuration imports
   # Options
   options['prefix']="ai"                                                      # option : Install directory prefix
   options['verbose']="false"                                                  # option : Verbose mode
+  options['testmode']="false"                                                 # option : Test mode
   options['strict']="false"                                                   # option : Strict mode
   options['dryrun']="false"                                                   # option : Dryrun mode
   options['debug']="false"                                                    # option : Debug mode
@@ -166,12 +170,34 @@ set_defaults () {
   options['bootsize']="512M"                                                  # option : Boot partition size
   options['isokernelparams']=""                                               # option : Additional kernel parameters to add to ISO grub commands
   options['kernelparams']=""                                                  # option : Additional kernel parameters to add to system grub commands
+  options['isoextraargs']=""                                                  # option : Additional kernel config to add to ISO grub commands
+  options['extraargs']=""                                                     # option : Additional kernel config to add to system grub commands
   options['availmods']='"ahci" "xhci_pci" "virtio_pci" "sr_mod" "virtio_blk"' # option : Available system kernel modules 
   options['initmods']=''                                                      # option : Available system init modules 
   options['bootmods']=''                                                      # option : Available system boot modules 
-  options['imports']=''                                                       # option : System configuration imports
-  options['hwimports']=''                                                     # option : System hardware configuration imports
   options['oneshot']="true"                                                   # option : Enable oneshot service
+  options['serial']="true"                                                    # option : Enable serial
+  # VM defaults
+  vm['name']="nixos"                                                          # vm : VM name
+  vm['vcpus']="2"                                                             # vm : VM vCPUs
+  vm['cpu']="host-passthrough"                                                # vm : VM CPU
+  vm['os-variant']="nixos-unknown"                                            # vm : VM OS variant
+  vm['host-device']=""                                                        # vm : VM Host-device for pass-through
+  vm['graphics']="none"                                                       # vm : VM Graphics
+  vm['virt-type']="kvm"                                                       # vm : VM Virtualisation type
+  vm['network']="bridge=br0,model=virtio"                                     # vm : VM NIC
+  vm['memory']="4G"                                                           # vm : VM RAM
+  vm['cdrom']=""                                                              # vm : VM ISO
+  vm['boot']="uefi"                                                           # vm : VM Boot type
+  vm['disk']=""                                                               # vm : VM Disk
+  vm['features']="kvm_hidden=on"                                              # vm : VM Features
+  vm['size']="20G"                                                            # vm : VM Disk size
+  vm['machine']="q35"                                                         # vm : VM Machine
+  vm['dir']="/var/lib/libvirt/images"                                         # vm : VM Directory
+  vm['noautoconsole']="true"                                                  # vm : VM Autoconsole
+  vm['noreboot']="true"                                                       # vm : VM Reboot
+  vm['wait']=""                                                               # vm : VM Wait before starting
+
   os['name']=$( uname -s )
   if [ "${os['name']}" = "Linux" ]; then
     lsb_check=$( command -v lsb_release )
@@ -331,6 +357,29 @@ reset_defaults () {
   if [ "${options['uefi']}" = "true" ] || [ "${options['firmware']}" = "uefi" ]; then
     options['uefi']='true'
     options['firmware']='uefi'
+  fi
+  if [ "${options['serial']}" = "true" ]; then
+    if [ "${options['isokernelparams']}" = "" ]; then
+      options['isokernelparams']="\"console=tty1\" \"console=ttyS0,115200n8\" \"console=ttyS1,115200n8\""
+    else
+      options['isokernelparams']="${options['isokernelparams']} \"console=tty1\" \"console=ttyS0,115200n8\" \"console=ttyS1,115200n8\""
+    fi
+    if [ "${options['kernelparams']}" = "" ]; then
+      options['kernelparams']="\\\"console=tty1\\\" \\\"console=ttyS0,115200n8\\\" \\\"console=ttyS1,115200n8\\\""
+    else
+      options['kernelparams']="${options['kernelparams']} \\\"console=tty1\\\" \\\"console=ttyS0,115200n8\\\" \\\"console=ttyS1,115200n8\\\""
+    fi
+    spacer=$'\n    '
+    if [ "${options['isoextraargs']}" = "" ]; then
+      options['isoextraargs']="serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}terminal_input serial${spacer}terminal_output serial"
+    else
+      options['isoextraargs']="${spacer}${options['isoextraargs']}${spacer}serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}terminal_input serial${spacer}terminal_output serial"
+    fi
+    if [ "${options['extraargs']}" = "" ]; then
+      options['extraargs']="serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}terminal_input serial${spacer}terminal_output serial"
+    else
+      options['extraargs']="${spacer}${options['extraargs']}${spacer}serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}terminal_input serial${spacer}terminal_output serial"
+    fi
   fi
 }
 
@@ -635,8 +684,8 @@ populate_iso_kernel_params () {
     bootpolname installdir mbrpartname locale devnodes logdir logfile timezone \
     usershell username extragroups usergecos normaluser sudocommand sudooptions \
     rootpassword userpassword stateversion hostname unfree gfxmode gfxpatload \
-    nic dns ip gateway cidr zfsoptions sshkey; do
-    if [ "${param}" = "zfsoptions" ] || [ "${param}" = "sshkey" ]; then
+    nic dns ip gateway cidr zfsoptions sshkey imports hwimports; do
+    if [ "${param}" = "zfsoptions" ] || [ "${param}" = "sshkey" ] || [ "${param}" = "imports" ]; then
       value="\\\"${options[${param}]}\\\""
     else
       value="${options[${param}]}"
@@ -696,6 +745,9 @@ NIXISOCONFIG
   boot.loader.grub.gfxmodeBios = "${options['gfxmode']}";
   boot.loader.grub.gfxpayloadBios = "${options['gfxpayload']}";
   boot.kernelParams = [ ${options['isokernelparams']} ];
+  boot.loader.grub.extraConfig = "
+    ${options['isoextraargs']} 
+  ";
 
   # Set your time zone
   time.timeZone = "${options['timezone']}";
@@ -867,6 +919,9 @@ ai['gateway']="${options['gateway']}"
 ai['cidr']="${options['cidr']}"
 ai['sshkey']="${options['sshkey']}"
 ai['oneshot']="${options['oneshot']}"
+ai['kernelparams']="${options['kernelparams']}"
+ai['extraargs']="${options['extraargs']}"
+ai['imports']="${options['imports']}"
 
 # Parse parameters
 echo "Processing parameters"
@@ -1071,7 +1126,7 @@ echo "Creating \${ai['nixcfg']}"
 tee \${ai['nixcfg']} << NIX_CFG
 { config, lib, pkgs, ... }:
 {
-  imports = [ ./hardware-configuration.nix ];
+  imports = [ \${ai['imports']} ./hardware-configuration.nix ];
   boot.loader.systemd-boot.enable = \${ai['uefiflag']};
   boot.loader.efi.canTouchEfiVariables = \${ai['uefiflag']};
   boot.loader.grub.devices = [ "\${ai['grubdev']}" ];
@@ -1202,6 +1257,10 @@ tee \${ai['hwcfg']} << HW_CFG
   boot.initrd.availableKernelModules = [ \${ai['availmods']} ];
   boot.initrd.kernelModules = [ \${ai['initmods']} ];
   boot.kernelModules = [ \${ai['bootmods']} ];
+  boot.kernelParams = [ \${ai['kernelparams']} ];
+  boot.loader.grub.extraConfig = "
+    \${ai['extraargs']} 
+  ";
   boot.extraModulePackages = [ ];
 HW_CFG
 if [ "\${ai['rootfs']}" = "zfs" ]; then
@@ -1340,6 +1399,95 @@ create_iso () {
   fi
 }
 
+# Function: delete_kvm_vm
+#
+# Delete a KVM VM
+
+delete_kvm_vm () {
+  if [ "${os['name']}" = "Darwin" ]; then
+    vm['status']=$( virsh list --all | grep "${vm['name']} " | grep -c "shut off" )
+    if [ "${vm['status']}" = "0" ]; then
+      information_message "Stopping KVM VM ${vm['name']}"
+      execute_command "virsh -c \"qemu:///session\" destroy ${vm['name']} 2> /dev/null"
+    fi
+    information_message "Deleting VM ${vm['name']}"
+    execute_command "virsh -c \"qemu:///session\" undefine ${vm['name']} --nvram 2> /dev/null"
+  else
+    vm['status']=$( sudo virsh list --all | grep "${vm['name']}" | grep -c "shut off" )
+    if [ "${vm['status']}" = "0" ]; then
+      information_message "Stopping KVM VM ${vm['name']}"
+      execute_command "sudo virsh destroy ${vm['name']} 2> /dev/null"
+    fi
+    information_message "Deleting VM ${vm['name']}"
+    execute_command "sudo virsh undefine ${vm['name']} --nvram 2> /dev/null"
+  fi
+}
+
+# Function: create_kvm_vm
+#
+# Create a KVM VM for testing an ISO
+
+create_kvm_vm () {
+  if [ "${vm['disk']}" = "" ]; then
+    vm['size']=${vm['size']//G/}
+    vm['disk']="path=${vm['dir']}/${vm['name']},size=${vm['size']}"
+  fi
+  if [[ ${vm['memory']} =~ G$ ]]; then 
+    ram="${vm['memory']}"
+    ram=${ram//G/}
+    ram=$(( 1024 * ${ram} ))
+    vm['memory']="${ram}"
+  fi
+  if [ "${vm['cdrom']}" = "" ]; then
+    iso_dir="${options['workdir']}/result/iso"
+    if [ -d "${iso_dir}" ]; then
+      vm['cdrom']=$( find ${iso_dir} -name "*.iso" )
+    else
+      warning_message "Could not find an ISO to use"
+      exit
+    fi
+  fi
+  if [ ! -f "${vm['cdrom']}" ]; then
+    warning_message "File ${vm['cdrom']} does not exist"
+    do_exit
+  fi
+  if [ "${os['name']}" = "Darwin" ]; then
+    command="virt-install"
+    vm['status']=$( virsh list --all | grep "${vm['name']} " | grep -c "${vm['name']}" )
+  else
+    command="sudo virt-install"
+    vm['status']=$( sudo virsh list --all | grep "${vm['name']} " | grep -c "${vm['name']}" )
+  fi
+  if [ "${vm['status']}" = "0" ]; then
+    for param in name machine vcpus cpu os-variant host-device graphics virt-type network memory cdrom boot disk features wait; do
+      if [ ! "${vm[${param}]}" = "" ]; then
+        value="${vm[${param}]}"
+        command="${command} --${param} ${value}"
+      fi
+    done
+    for param in noautoconsole noreboot; do
+      value="${vm[${param}]}"
+      if [ "${value}" = "true" ]; then
+        command="${command} --${param}"
+      fi
+    done
+    vm_dir="${options['workdir']}/vms"
+    if [ ! -d "${vm_dir}" ]; then
+      execute_command "mkdir ${vm_dir}"
+    fi
+    vm_file="${vm_dir}/${vm['name']}.xml"
+    ${command} --print-xml 1 > ${vm_file}
+    sudo virsh define ${vm_file}
+    verbose_message "" 
+    verbose_message "To start the VM and connect to console run the following command:"
+    verbose_message "" 
+    verbose_message "sudo virsh start ${vm['name']} ; sudo virsh console ${vm['name']}"
+  else
+    warning_message "KVM VM ${vm['name']} already exists"
+    do_exit
+  fi
+}
+
 # Function: process_actions
 #
 # Handle actions
@@ -1347,39 +1495,47 @@ create_iso () {
 process_actions () {
   actions="$1"
   case $actions in
-    createinstall*)       # action : Create install script
+    createinstall*)         # action : Create install script
       create_install_script
       exit
       ;;
-    createiso)            # action : Create ISO
+    createiso)              # action : Create ISO
       create_iso
       exit
       ;;
-    createnix*)           # action : Create NixOS ISO config
+    createnix*)             # action : Create NixOS ISO config
       create_nix_iso_config
       exit
       ;;
-    createoneshot*)       # action : Create install script
+    createoneshot*)         # action : Create install script
       create_oneshot_script
       exit
       ;;
-    help)                 # action : Print actions help
+    createvm)   # action : Create install script
+      create_kvm_vm
+      exit
+      ;;
+    deletevm)   # action : Create install script
+      delete_kvm_vm
+      exit
+      ;;
+    help)                   # action : Print actions help
       print_actions
       exit
       ;;
-    printenv*)            # action : Print environment
+    printenv*)              # action : Print environment
       print_environment
       exit
       ;;
-    printdefaults)        # action : Print defaults
+    printdefaults)          # action : Print defaults
       print_defaults
       exit
       ;;
-    shellcheck)           # action : Shellcheck script
+    shellcheck)             # action : Shellcheck script
       check_shellcheck
       exit
       ;;
-    version)              # action : Print version
+    version)                # action : Print version
       print_version
       exit
       ;;
@@ -1392,7 +1548,7 @@ process_actions () {
 
 # Handle mask option
 
-if [[ $@ =~ --option ]] && [[ $@ =~ mask ]]; then
+if [[ $@ =~ --option ]] && [[ $@ =~ mask ]] || [[ $@ =~ --mask ]]; then
   options['mask']="true"
 fi
 
@@ -1463,6 +1619,10 @@ while test $# -gt 0; do
       actions_list+=("createoneshot")
       shift
       ;;
+    --createvm)                 # switch : Create oneshot script
+      actions_list+=("createvm")
+      shift
+      ;;
     --usercrypt|--crypt)        # switch : User Password Crypt 
       check_value "$1" "$2"
       options['usercrypt']="$2"
@@ -1470,6 +1630,10 @@ while test $# -gt 0; do
       ;;
     --debug)                    # switch : Enable debug mode
       options['debug']="true"
+      shift
+      ;;
+    --deletevm)                 # switch : Delete VM
+      actions_list+=("deletevm")
       shift
       ;;
     --dhcp)                     # switch : Enable DHCP
@@ -1494,6 +1658,11 @@ while test $# -gt 0; do
     --experimental*)            # switch : SSH key
       check_value "$1" "$2"
       options['experimental-features']="$2"
+      shift 2
+      ;;
+    --extraargs)                # switch : ISO Kernel extra args
+      check_value "$1" "$2"
+      options['extraargs']="$2"
       shift 2
       ;;
     --extragroup*)              # switch : Extra groups
@@ -1572,6 +1741,11 @@ while test $# -gt 0; do
       options['dhcp']="false"
       shift 2
       ;;
+    --isoextra*)                # switch : ISO Kernel extra args
+      check_value "$1" "$2"
+      options['isoextraargs']="$2"
+      shift 2
+      ;;
     --isoimports)               # switch : NixOS imports for ISO build
       check_value "$1" "$2"
       options['isoimports']="$2"
@@ -1609,6 +1783,10 @@ while test $# -gt 0; do
       ;;
     --lvm)                      # switch : Enable LVM
       options['lvm']="true"
+      shift
+      ;;
+    --mask*)                    # switch : Enable LVM
+      options['mask']="true"
       shift
       ;;
     --mbrpartname)              # switch : MBR partition name
@@ -1721,6 +1899,10 @@ while test $# -gt 0; do
       options['runsize']="$2"
       shift 2
       ;;
+    --serial)                   # switch : Enable serial
+      options['serial']="true"
+      shift
+      ;;
     --shell|usershell)          # switch : User Shell
       check_value "$1" "$2"
       options['usershell']="$2"
@@ -1808,6 +1990,10 @@ while test $# -gt 0; do
       options['tempdir']="$2"
       shift 2
       ;;
+    --testmode)                 # switch : Enable swap
+      options['testmode']="true"
+      shift
+      ;;
     --usage)                    # switch : Action to perform
       check_value "$1" "$2"
       usage="$2"
@@ -1831,6 +2017,102 @@ while test $# -gt 0; do
     --videodriver)              # switch : Video Driver
       check_value "$1" "$2"
       options['videodriver']="$2"
+      shift 2
+      ;;
+    --vmautoconsole)            # switch : VM Autoconsole
+      vm['noautoconsole']="false"
+      shift
+      ;;
+    --vmboot)                   # switch : VM Boot type
+      check_value "$1" "$2"
+      vm['boot']="$2"
+      shift 2
+      ;;
+    --vmcpu)                    # switch : VM CPU
+      check_value "$1" "$2"
+      vm['cpu']="$2"
+      shift 2
+      ;;
+    --vmdir)                    # switch : VM Directory
+      check_value "$1" "$2"
+      vm['dir']="$2"
+      shift 2
+      ;;
+    --vmfeatures)               # switch : VM Features
+      check_value "$1" "$2"
+      vm['features']="$2"
+      shift 2
+      ;;
+    --vmhostdevice)             # switch : VM Host device
+      check_value "$1" "$2"
+      vm['host-device']="$2"
+      shift 2
+      ;;
+    --vmgraphics)               # switch : VM Graphics
+      check_value "$1" "$2"
+      vm['graphics']="$2"
+      shift 2
+      ;;
+    --vmiso|--vmcdrom)          # switch : VM ISO
+      check_value "$1" "$2"
+      vm['cdrom']="$2"
+      shift 2
+      ;;
+    --vmmachine)                # switch : VM Machine
+      check_value "$1" "$2"
+      vm['machine']="$2"
+      shift 2
+      ;;
+    --vmmemory)                 # switch : VM Memory
+      check_value "$1" "$2"
+      vm['memory']="$2"
+      shift 2
+      ;;
+    --vmname)                   # switch : VM Name
+      check_value "$1" "$2"
+      vm['name']="$2"
+      shift 2
+      ;;
+    --vmnetwork)                # switch : VM Network
+      check_value "$1" "$2"
+      vm['network']="$2"
+      shift 2
+      ;;
+    --vmnoautoconsole)          # switch : VM No autoconsole
+      vm['noautoconsole']="true"
+      shift
+      ;;
+    --vmnoreboot)               # switch : VM Do not reboot VM after creation
+      vm['noreboot']="true"
+      shift
+      ;;
+    --vmreboot)                 # switch : VM Reboot VM after creation
+      vm['noreboot']="false"
+      shift
+      ;;
+    --vmsize)                   # switch : VM Size
+      check_value "$1" "$2"
+      vm['size']="$2"
+      shift 2
+      ;;
+    --vmosvariant)              # switch : VM OS variant
+      check_value "$1" "$2"
+      vm['os-variant']="$2"
+      shift 2
+      ;;
+    --vmvirttype)               # switch : VM Virtualisation type
+      check_value "$1" "$2"
+      vm['virt-type']="$2"
+      shift 2
+      ;;
+    --vmvcpus)                  # switch : VM vCPUs
+      check_value "$1" "$2"
+      vm['vcpus']="$2"
+      shift 2
+      ;;
+    --vmwait)                   # switch : VM number of seconds to wait before starting
+      check_value "$1" "$2"
+      vm['wait']="$2"
       shift 2
       ;;
     --workdir)                  # switch : Set script work directory

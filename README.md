@@ -9,7 +9,7 @@ Make Automated NixOS (ISO)
 Version
 -------
 
-Current version: 0.7.4
+Current version: 0.8.5
 
 License
 -------
@@ -53,6 +53,7 @@ This script has the following capabilities:
     - Language
     - Timezone
     - Keymap
+    - etc
   - Add additional packages
   - Specify static IP or use DHCP
   - Configure bridge devices
@@ -72,7 +73,6 @@ This script is in the early stages of development
 To-do:
 
 - Add support for pass-thru PCIe devices
-- Add otion to create and run KVM/QEMU VM to test ISO
 - Add ability to create image in a NixOS docker container
 - Add ability to run this script via nix-shell on non NixOS Linux distros
 
@@ -105,6 +105,20 @@ The script follows this process:
 
 In automated/unattended mode the install runs from a systemd oneshot service.
 This service copies the install scipt into /tmp and runs it.
+
+The parameters passed to grub can be modified in order to change the install parameters.
+The install script check these parameters on start up and passes them to the installer.
+
+For example if the root filesystem was set to ZFS, there will be the following matching grub parameter:
+
+```
+ai.rootfs=zfs
+```
+
+This parameter can modified by editing the grub boot parameter before booting.
+
+Background
+----------
 
 A standalone version of the script that was created for testing purposed,
 and then folded back into the script is located here:
@@ -159,7 +173,6 @@ An example of the entry in the Nix ISO config file:
   };
 ```
 
-
 Examples
 --------
 
@@ -181,6 +194,13 @@ Create a standalone unattended install with defaults (ZFS root, DHCP):
 ./manx.sh --createiso --options standalone
 ```
 
+After creating an ISO, you can test it by creating a VM:
+
+```
+./manx.sh --createvm --vmname test
+```
+
+
 Help
 ----
 
@@ -192,9 +212,15 @@ General Usage:
 Usage: manx.sh --action(s) [action(,action)] --option(s) [option(,option)]
 
 switch(es):
+----------
+witch(es):
 ---------
 --action*)                  
     Action(s) to perform
+--availmod*)                
+    Available system kernel modules
+--bootmod*)                 
+    Available system boot modules
 --bootsize)                 
     Boot partition size
 --bridge)                   
@@ -215,14 +241,18 @@ switch(es):
     Create NixOS ISO config
 --createoneshot*)           
     Create oneshot script
+--createvm)                 
+    Create oneshot script
 --usercrypt|--crypt)        
     User Password Crypt
 --debug)                    
     Enable debug mode
+--deletevm)                 
+    Delete VM
 --dhcp)                     
     Enable DHCP
---disk)                     
-    SSH key
+--disk|rootdisk)            
+    Root disk
 --dns|--nameserver)         
     DNS/Nameserver address
 --dryrun)                   
@@ -239,12 +269,20 @@ switch(es):
     Gateway address
 --gecos|--usergecos)        
     GECOS field
+--gfxmode)                  
+    Bios text mode
+--gfxpayload)               
+    Bios text mode
 --help|-h)                  
     Print help information
 --hostname)                 
     Hostname
+--hwimports)                
+    Imports for system hardware configuration
 --imports)                  
-    Imports for system
+    Imports for system configuration
+--initmod*)                 
+    Available system init modules
 --install)                  
     Install script
 --installdir)               
@@ -253,10 +291,14 @@ switch(es):
     IP address
 --isoimports)               
     NixOS imports for ISO build
+--isokernelparam*)          
+    Extra kernel parameters to add to ISO grub commands
 --isomount)                 
     Install ISO mount directory
 --keymap)                   
     Keymap
+--kernelparam*)             
+    Extra kernel parameters to add to systembuild
 --locale)                   
     Locale
 --logfile)                  
@@ -277,12 +319,22 @@ switch(es):
     Run NixOS install script automatically on ISO
 --nixisoconfig)             
     NixOS ISO configuration file
+--nooneshot)                
+    Disable oneshot service
+--oneshot)                  
+    Enable oneshot service
 --option*)                  
     Option(s) to set
+--output*)                  
+    Output file
 --password|--userpassword)  
     User password
+--poweroff)                 
+    Enable poweroff after install
 --prefix)                   
     Install prefix
+--preserve)                 
+    Preserve output file
 --reboot)                   
     Enable reboot after install
 --rootcrypt)                
@@ -335,6 +387,8 @@ switch(es):
     Target directory for ISO additions
 --temp*)                    
     Target directory
+--testmode)                 
+    Enable swap
 --usage)                    
     Action to perform
 --username)                 
@@ -345,41 +399,42 @@ switch(es):
     Print version information
 --videodriver)              
     Video Driver
+--vmboot)                   
+    VM Boot type
+--vmcpu)                    
+    VM CPU
+--vmdir)                    
+    VM Directory
+--vmfeatures)               
+    VM Features
+--vmhostdevice)             
+    VM Host device
+--vmgraphics)               
+    VM Graphics
+--vmiso|--vmcdrom)          
+    VM ISO
+--vmmachine)                
+    VM Machine
+--vmmemory)                 
+    VM Memory
+--vmname)                   
+    VM Name
+--vmnetwork)                
+    VM Network
+--vmsize)                   
+    VM Size
+--vmosvariant)              
+    VM OS variant
+--vmvirttype)               
+    VM Virtualisation type
+--vmvcpus)                  
+    VM vCPUs
 --workdir)                  
-    Set NixOS work directory
+    Set script work directory
 --zfsinstall)               
     ZFS install script
 --zsh)                      
     Enable zsh
-```
-
-Actions:
-
-```
-./manx.sh --usage actions
-
-Usage: manx.sh --action(s) [action(,action)] --option(s) [option(,option)]
-
-action(s):
----------
-createinstall*)       
-    Create install script
-createiso)            
-    Create ISO
-createnix*)           
-    Create NixOS ISO config
-createoneshot*)       
-    Create install script
-help)                 
-    Print actions help
-printenv*)            
-    Print environment
-printdefaults)        
-    Print defaults
-shellcheck)           
-    Shellcheck script
-version)              
-    Print version
 ```
 
 Options:
@@ -391,14 +446,16 @@ Usage: manx.sh --action(s) [action(,action)] --option(s) [option(,option)]
 
 option(s):
 ---------
-fsoptions (default = -O mountpoint=none -O atime=off -O compression=lz4 -O xattr=sa -O acltype=posixacl -o ashift=12)
+zfsoptions (default = -O mountpoint=none -O atime=off -O compression=lz4 -O xattr=sa -O acltype=posixacl -o ashift=12)
    ZFS pool options
-isoimports (default = <nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal-combined.nix> <nixpkgs/nixos/modules/installer/cd-dvd/channel.nix>)
-   - ISO imports
+isoimports (default = <nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal-combined.nix> <nixpkgs/nixos/modules/installer/cd-dvd/channel.nix> <nixpkgs/nixos/modules/system/boot/kernel.nix>)
+   ISO imports
 prefix (default = ai)
    Install directory prefix
 verbose (default = false)
    Verbose mode
+testmode (default = false)
+   Test mode
 strict (default = false)
    Strict mode
 dryrun (default = false)
@@ -415,15 +472,17 @@ dhcp (default = true)
    DHCP network
 swap (default = true)
    Use swap
-lvm (default = true)
+lvm (default = false)
    Use LVM
 zsh (default = true)
    Enable zsh
+preserve (default = false)
+   Preserve ISO
 workdir (default = /home/user/manx)
    Script work directory
 sshkey (default = )
    SSH key
-disk (default = first)
+rootdisk (default = first)
    Disk
 nic (default = first)
    NIC
@@ -457,7 +516,7 @@ uefi (default = false)
    UEFI Boot firmware
 isomount (default = /iso)
    ISO mount directory
-oneshot (default = /home/user/manx/ai/oneshot.sh)
+oneshot (default = true)
    Oneshot script
 install (default = /home/user/manx/ai/install.sh)
    Install script
@@ -515,7 +574,7 @@ sudocommand (default = ALL)
    Sudo Command
 sudooptions (default = NOPASSWD)
    Sudo Options
-systempackages (default = curl dmidecode efibootmgr file lsb-release lshw pciutils vim wget)
+systempackages (default = ansible curl dmidecode efibootmgr file lsb-release lshw pciutils vim wget)
    System Packages
 experimental-features (default = nix-command flakes)
    Experimental Features
@@ -529,8 +588,14 @@ attended (default = false)
    Don't execute install script
 reboot (default = true)
    Reboot after install
+poweroff (default = true)
+   Poweroff after install
 nixinstall (default = true)
-   Run nix installer on ISO
+   Run Nix installer on ISO
+gfxmode (default = text)
+   Grub graphics mode
+gfxpayload (default = text)
+   Grub graphics payload
 networkmanager (default = true)
    Enable NetworkManager
 xserver (default = false)
@@ -593,6 +658,26 @@ swappart (default = 4)
    Swap partition
 devnodes (default = /dev/disk/by-uuid)
    Device nodesDevice nodes
+logdir (default = /var/log)
+   Install log dir
 logfile (default = /var/log/install.log)
    Install log file
+bootsize (default = 512M)
+   Boot partition size
+isokernelparams (default = )
+   Additional kernel parameters to add to ISO grub commands
+kernelparams (default = )
+   Additional kernel parameters to add to system grub commands
+availmods (default = "ahci" "xhci_pci" "virtio_pci" "sr_mod" "virtio_blk")
+   Available system kernel modules
+initmods (default = )
+   Available system init modules
+bootmods (default = )
+   Available system boot modules
+imports (default = )
+   System configuration imports
+hwimports (default = )
+   System hardware configuration imports
+oneshot (default = true)
+   Enable oneshot service
 ```
