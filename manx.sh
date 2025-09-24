@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      0.9.4
+# Version:      0.9.5
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -782,7 +782,7 @@ NIXISOCONFIG
   boot.loader.grub.gfxmodeBios = "${options['gfxmode']}";
   boot.loader.grub.gfxpayloadBios = "${options['gfxpayload']}";
   boot.kernelParams = [ ${options['isokernelparams']} ];
-  boot.kernelPackages = pkgs.linuxPackages${options['kernel']};
+#  boot.kernelPackages = pkgs.linuxPackages${options['kernel']};
   boot.loader.grub.extraConfig = "
     ${options['isoextraargs']} 
   ";
@@ -813,7 +813,7 @@ NIXISOCONFIG
 
   # OpenSSH
   services.openssh.enable = ${options['sshserver']};
-  services.openssh.passwordAuthentication = ${options['sshpasswordauthentication']};
+  services.openssh.settings.PasswordAuthentication = ${options['sshpasswordauthentication']};
 
   # Enable SSH in the boot process.
   systemd.services.sshd.wantedBy = pkgs.lib.mkForce [ "multi-user.target" ];
@@ -1191,7 +1191,7 @@ tee \${ai['nixcfg']} << NIX_CFG
   boot.supportedFilesystems = [ "\${ai['rootfs']}" ];
   boot.zfs.devNodes = "\${ai['devnodes']}";
   services.lvm.boot.thin.enable = \${ai['lvm']};
-  boot.kernelPackages = pkgs.linuxPackages\${ai['kernel']};
+#  boot.kernelPackages = pkgs.linuxPackages\${ai['kernel']};
 
   # HostID and Hostname
   networking.hostId = "\${ai['hostid']}";
@@ -1199,7 +1199,7 @@ tee \${ai['nixcfg']} << NIX_CFG
 
   # Services
   services.openssh.enable = \${ai['sshserver']};
-  services.openssh.passwordAuthentication = \${ai['sshpasswordauthentication']};
+  services.openssh.settings.PasswordAuthentication = \${ai['sshpasswordauthentication']};
 
   # Firewall
   networking.firewall = {
@@ -1451,13 +1451,15 @@ create_iso () {
   execute_command "cd ${options['workdir']} ; nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=${options['nixisoconfig']} --builders ''"
 #  execute_command "nixos-generate -f iso -c ${options['nixisoconfig']}"
   iso_dir="${options['workdir']}/result/iso"
-  iso_file=$( find "${iso_dir}" -name "*.iso" )
-  if [ "${options['preserve']}" = "true" ]; then
-    preserve_iso "${iso_file}"
-  fi
-  verbose_message "Generated ISO: ${iso_file}"
-  if [ "${options['preserve']}" = "true" ]; then
-    verbose_message "Preserved ISO: ${options['output']}"
+  if [ -d "${iso_dir}" ]; then
+    iso_file=$( find "${iso_dir}" -name "*.iso" )
+    if [ "${options['preserve']}" = "true" ]; then
+      preserve_iso "${iso_file}"
+    fi
+    verbose_message "Generated ISO: ${iso_file}"
+    if [ "${options['preserve']}" = "true" ]; then
+      verbose_message "Preserved ISO: ${options['output']}"
+    fi
   fi
 }
 

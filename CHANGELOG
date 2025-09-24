@@ -188,3 +188,5 @@
 # Updated documentation
 # 0.9.4: Wed 24 Sep 2025 18:11:54 AEST
 # Security updates
+# 0.9.5: Wed 24 Sep 2025 19:36:51 AEST
+# Updated OpenSSH PasswordAuthentication
