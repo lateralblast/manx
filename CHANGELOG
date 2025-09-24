@@ -170,3 +170,19 @@
 # Improved VM creation
 # 0.8.5: Tue 23 Sep 2025 23:17:10 AEST
 # Updated documentation
+# 0.8.6: Wed 24 Sep 2025 09:59:43 AEST
+# Added kernel parameter
+# 0.8.7: Wed 24 Sep 2025 10:26:06 AEST
+# Added sshpasswordauthentication parameter
+# 0.8.8: Wed 24 Sep 2025 10:57:25 AEST
+# Added allowtcpports and allowudpports parameters
+# 0.8.9: Wed 24 Sep 2025 12:27:38 AEST
+# Added import switch to load external Nix configuration file for system build
+# 0.9.0: Wed 24 Sep 2025 12:43:00 AEST
+# Added security packages to default package list
+# 0.9.1: Wed 24 Sep 2025 12:50:57 AEST
+# Added isoimport to load external Nix configuration file for ISO build
+# 0.9.2: Wed 24 Sep 2025 13:12:04 AEST
+# Added example security config as importable nix file
+# 0.9.3: Wed 24 Sep 2025 13:27:05 AEST
+# Updated documentation

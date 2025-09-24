@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      0.8.5
+# Version:      0.9.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -47,19 +47,19 @@ script['user']=$( id -u -n )
 # Set defaults
 
 set_defaults () {
-  options['zfsoptions']="-O mountpoint=none -O atime=off -O compression=lz4 -O xattr=sa -O acltype=posixacl -o ashift=12" # option: ZFS pool options
+  options['zfsoptions']="-O mountpoint=none -O atime=off -O compression=lz4 -O xattr=sa -O acltype=posixacl -o ashift=12"   # option: ZFS pool options
   # Packages
-  packages="ansible curl dmidecode efibootmgr file lsb-release lshw pciutils vim wget"
+  packages="aide ansible curl dmidecode efibootmgr file kernel-hardening-checker lsb-release lshw lynis pciutils vim wget"  # Package list
   # Imports
-  imports['hardware']="<nixpkgs/nixos/modules/profiles/all-hardware.nix>"                                         # import : NixOS hardware profile
-  imports['base']="<nixpkgs/nixos/modules/profiles/base.nix>"                                                     # import : NixOS base profile
-  imports['minimal']="<nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal-combined.nix>"              # import : NixOS CD minimal profile
-  imports['channel']="<nixpkgs/nixos/modules/installer/cd-dvd/channel.nix>"                                       # import : NixOS CD channel profile
-  imports['grub']="<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>"                                      # import : NixOS grub profile
-  imports['kernel']="<nixpkgs/nixos/modules/system/boot/kernel.nix>"                                              # import : NixOS kernel profile
-  options['isoimports']="${imports['minimal']} ${imports['channel']} ${imports['grub']} ${imports['kernel']}"     # option : ISO imports
-  options['imports']="${imports['grub']} ${imports['kernel']}"                                                    # option : System imports
-  options['hwimports']=""                                                                                         # option : System hardware configuration imports
+  imports['hardware']="<nixpkgs/nixos/modules/profiles/all-hardware.nix>"                                                   # imports : NixOS hardware profile
+  imports['base']="<nixpkgs/nixos/modules/profiles/base.nix>"                                                               # imports : NixOS base profile
+  imports['minimal']="<nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal-combined.nix>"                        # imports : NixOS CD minimal profile
+  imports['channel']="<nixpkgs/nixos/modules/installer/cd-dvd/channel.nix>"                                                 # imports : NixOS CD channel profile
+  imports['grub']="<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>"                                                # imports : NixOS grub profile
+  imports['kernel']="<nixpkgs/nixos/modules/system/boot/kernel.nix>"                                                        # imports : NixOS kernel profile
+  options['isoimports']="${imports['minimal']} ${imports['channel']} ${imports['grub']} ${imports['kernel']}"               # option : ISO imports
+  options['imports']="${imports['grub']} ${imports['kernel']}"                                                              # option : System imports
+  options['hwimports']=""                                                                                                   # option : System hardware configuration imports
   # Options
   options['prefix']="ai"                                                      # option : Install directory prefix
   options['verbose']="false"                                                  # option : Verbose mode
@@ -177,6 +177,13 @@ set_defaults () {
   options['bootmods']=''                                                      # option : Available system boot modules 
   options['oneshot']="true"                                                   # option : Enable oneshot service
   options['serial']="true"                                                    # option : Enable serial
+  options['kernel']=""                                                        # option : Kernel
+  options['sshpasswordauthentication']="false"                                # option : SSH Password Authentication
+  options['firewall']="true"                                                  # option : Enable firewall
+  options['allowedtcpports']="22"                                             # option : Allowed TCP ports
+  options['allowedudpports']=""                                               # option : Allowed UDP ports
+  options['import']=""                                                        # option : Import Nix config to add to system build
+  options['isoimport']=""                                                     # option : Import Nix config to add to ISO build
   # VM defaults
   vm['name']="nixos"                                                          # vm : VM name
   vm['vcpus']="2"                                                             # vm : VM vCPUs
@@ -379,6 +386,35 @@ reset_defaults () {
       options['extraargs']="serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}terminal_input serial${spacer}terminal_output serial"
     else
       options['extraargs']="${spacer}${options['extraargs']}${spacer}serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}terminal_input serial${spacer}terminal_output serial"
+    fi
+  fi
+  if [[ ${options['kernel']} =~ latest ]] && [[ ${options['kernel']} =~ hardened ]]; then
+    options['kernel']="_latest_hardened"
+  else
+    if [[ ${options['kernel']} =~ latest ]]; then
+      options['kernel']="_latest"
+    else
+      if [[ ${options['kernel']} =~ hardened ]]; then
+        options['kernel']="_hardened"
+      fi
+    fi
+  fi
+  if [ ! "${options['import']}" = "" ]; then
+    if [ ! -f "${options['import']}" ]; then
+      warning_message "Nix configuration file ${options['import']} does not exist"
+      do_exit
+    else
+      import=$( basename "${options['import']}" )
+      execute_command "cp ${options['import']} ${options['source']}"
+    fi
+    options['imports']="${options['import']} ./${import}"
+  fi
+  if [ ! "${options['isoimport']}" = "" ]; then
+    if [ ! -f "${options['isoimport']}" ]; then
+      warning_message "Nix configuration file ${options['isoimport']} does not exist"
+      do_exit
+    else
+      options['isoimports']="${options['isoimport']} ${import}"
     fi
   fi
 }
@@ -680,11 +716,12 @@ get_ssh_key () {
 populate_iso_kernel_params () {
   for param in oneshot attended swap lvm zsh dhcp bridge sshserver bridgenic \
     poweroff reboot nixinstall rootfs bootfs rootdisk mbrpart rootpart efipart \
-    swappart swapsize rootsize bootsize rootpool swapvolname rootvolname \
+    swappart kernel swapsize rootsize bootsize rootpool swapvolname rootvolname \
     bootpolname installdir mbrpartname locale devnodes logdir logfile timezone \
     usershell username extragroups usergecos normaluser sudocommand sudooptions \
     rootpassword userpassword stateversion hostname unfree gfxmode gfxpatload \
-    nic dns ip gateway cidr zfsoptions sshkey imports hwimports; do
+    nic dns ip gateway cidr zfsoptions sshkey imports hwimports firewall \
+    sshpasswordauthentication allowedtcpports allowedudpports; do
     if [ "${param}" = "zfsoptions" ] || [ "${param}" = "sshkey" ] || [ "${param}" = "imports" ]; then
       value="\\\"${options[${param}]}\\\""
     else
@@ -745,6 +782,7 @@ NIXISOCONFIG
   boot.loader.grub.gfxmodeBios = "${options['gfxmode']}";
   boot.loader.grub.gfxpayloadBios = "${options['gfxpayload']}";
   boot.kernelParams = [ ${options['isokernelparams']} ];
+  boot.kernelPackages = pkgs.linuxPackages${options['kernel']};
   boot.loader.grub.extraConfig = "
     ${options['isoextraargs']} 
   ";
@@ -766,8 +804,16 @@ NIXISOCONFIG
     LC_TIME = "${options['locale']}";
   };
 
+  # Firewall
+  networking.firewall = {
+    enable = ${options['firewall']};
+    allowedTCPPorts = [ ${options['allowedtcpports']} ];
+    allowedUDPPorts = [ ${options['allowedudpports']} ];
+  };
+
   # OpenSSH
   services.openssh.enable = ${options['sshserver']};
+  services.openssh.passwordAuthentication = ${options['sshpasswordauthentication']};
 
   # Enable SSH in the boot process.
   systemd.services.sshd.wantedBy = pkgs.lib.mkForce [ "multi-user.target" ];
@@ -922,6 +968,12 @@ ai['oneshot']="${options['oneshot']}"
 ai['kernelparams']="${options['kernelparams']}"
 ai['extraargs']="${options['extraargs']}"
 ai['imports']="${options['imports']}"
+ai['kernel']="${options['kernel']}"
+ai['sshpasswordauthentication']="${options['sshpasswordauthentication']}"
+ai['allowedtcpports']="${options['allowedtcpports']}"
+ai['allowedudpports']="${options['allowedudpports']}"
+ai['isomount']="${options['isomount']}"
+ai['prefix']="${options['prefix']}"
 
 # Parse parameters
 echo "Processing parameters"
@@ -1120,6 +1172,7 @@ mkdir \${ai['installdir']}/boot
 mount \${ai['bootvol']} \${ai['installdir']}/boot
 mkdir -p \${ai['nixdir']}
 rm \${ai['nixdir']}/*
+cp \${ai['isomount']}/\${ai['prefix']}/*.nix \${ai['nixdir']}
 
 # Create configuration.nix
 echo "Creating \${ai['nixcfg']}"
@@ -1138,6 +1191,7 @@ tee \${ai['nixcfg']} << NIX_CFG
   boot.supportedFilesystems = [ "\${ai['rootfs']}" ];
   boot.zfs.devNodes = "\${ai['devnodes']}";
   services.lvm.boot.thin.enable = \${ai['lvm']};
+  boot.kernelPackages = pkgs.linuxPackages\${ai['kernel']};
 
   # HostID and Hostname
   networking.hostId = "\${ai['hostid']}";
@@ -1145,6 +1199,14 @@ tee \${ai['nixcfg']} << NIX_CFG
 
   # Services
   services.openssh.enable = \${ai['sshserver']};
+  services.openssh.passwordAuthentication = \${ai['sshpasswordauthentication']};
+
+  # Firewall
+  networking.firewall = {
+    enable = \${ai['firewall']};
+    allowedTCPPorts = [ \${ai['allowedtcpports']} ];
+    allowedUDPPorts = [ \${ai['allowedudpports']} ];
+  };
 
   # Additional Nix options
   nix.settings.experimental-features = "\${ai['experimental-features']}";
@@ -1556,576 +1618,617 @@ fi
 
 while test $# -gt 0; do
   case $1 in
-    --action*)                  # switch : Action(s) to perform
+    --action*)                      # switch : Action(s) to perform
       check_value "$1" "$2"
       actions_list+=("$2")
       shift 2
       ;;
-    --availmod*)                # switch : Available system kernel modules
+    --allowedtcpports)              # switch : Allowed TCP ports
+      check_value "$1" "$2"
+      options['allowedtcpports']="$2"
+      shift 2
+      ;;
+    --allowedudpports)              # switch : Allowed UDP ports
+      check_value "$1" "$2"
+      options['allowedudpports']="$2"
+      shift 2
+      ;;
+    --availmod*)                    # switch : Available system kernel modules
       check_value "$1" "$2"
       options['availmods']="$2"
       shift 2
       ;;
-    --bootmod*)                 # switch : Available system boot modules
+    --bootmod*)                     # switch : Available system boot modules
       check_value "$1" "$2"
       options['bootmods']="$2"
       shift 2
       ;;
-    --bootsize)                 # switch : Boot partition size
+    --bootsize)                     # switch : Boot partition size
       check_value "$1" "$2"
       options['bootsize']="$2"
       shift 2
       ;;
-    --bridge)                   # switch : Enable bridge
+    --bridge)                       # switch : Enable bridge
       options['bridge']="true"
       shift
       ;;
-    --bridgenic)                # switch : Bridge NIC
+    --bridgenic)                    # switch : Bridge NIC
       check_value "$1" "$2"
       options['bridgenic']="$2"
       options['bridge']="true"
       options['dhcp']="false"
       shift 2
       ;;
-    --bootf*)                   # switch : Boot Filesystem
+    --bootf*)                       # switch : Boot Filesystem
       check_value "$1" "$2"
       options['bootfs']="$2"
       shift 2
       ;;
-    --bootvol*)                 # switch : Boot volume name
+    --bootvol*)                     # switch : Boot volume name
       check_value "$1" "$2"
       options['bootvolname']="$2"
       shift 2
       ;;
-    --cidr)                     # switch : CIDR
+    --cidr)                         # switch : CIDR
       check_value "$1" "$2"
       options['cidr']="$2"
       options['dhcp']="false"
       shift 2
       ;;
-    --createinstall*)           # switch : Create install script
+    --createinstall*)               # switch : Create install script
       actions_list+=("createinstall")
       shift
       ;;
-    --createiso)                # switch : Create ISO
+    --createiso)                    # switch : Create ISO
       actions_list+=("createiso")
       shift
       ;;
-    --createnix*)               # switch : Create NixOS ISO config
+    --createnix*)                   # switch : Create NixOS ISO config
       actions_list+=("createnix")
       shift
       ;;
-    --createoneshot*)           # switch : Create oneshot script
+    --createoneshot*)               # switch : Create oneshot script
       actions_list+=("createoneshot")
       shift
       ;;
-    --createvm)                 # switch : Create oneshot script
+    --createvm)                     # switch : Create oneshot script
       actions_list+=("createvm")
       shift
       ;;
-    --usercrypt|--crypt)        # switch : User Password Crypt 
+    --usercrypt|--crypt)            # switch : User Password Crypt 
       check_value "$1" "$2"
       options['usercrypt']="$2"
       shift 2
       ;;
-    --debug)                    # switch : Enable debug mode
+    --debug)                        # switch : Enable debug mode
       options['debug']="true"
       shift
       ;;
-    --deletevm)                 # switch : Delete VM
+    --deletevm)                     # switch : Delete VM
       actions_list+=("deletevm")
       shift
       ;;
-    --dhcp)                     # switch : Enable DHCP
+    --dhcp)                         # switch : Enable DHCP
       options['dhcp']="true"
       shift
       ;;
-    --disk|rootdisk)            # switch : Root disk
+    --disk|rootdisk)                # switch : Root disk
       check_value "$1" "$2"
       options['rootdisk']="$2"
       shift 2
       ;;
-    --dns|--nameserver)         # switch : DNS/Nameserver address
+    --dns|--nameserver)             # switch : DNS/Nameserver address
       check_value "$1" "$2"
       options['dns']="$2"
       options['dhcp']="false"
       shift 2
       ;;
-    --dryrun)                   # switch : Enable debug mode
+    --dryrun)                       # switch : Enable debug mode
       options['dryrun']="true"
       shift
       ;;
-    --experimental*)            # switch : SSH key
+    --experimental*)                # switch : SSH key
       check_value "$1" "$2"
       options['experimental-features']="$2"
       shift 2
       ;;
-    --extraargs)                # switch : ISO Kernel extra args
+    --extraargs)                    # switch : ISO Kernel extra args
       check_value "$1" "$2"
       options['extraargs']="$2"
       shift 2
       ;;
-    --extragroup*)              # switch : Extra groups
+    --extragroup*)                  # switch : Extra groups
       check_value "$1" "$2"
       options['extragroups']="$2"
       shift 2
       ;;
-    --firmware)                 # switch : Boot firmware type
+    --firewall)                     # switch : Enable firewall
+      options['firewall']="true"
+      shift
+      ;;
+    --nofirewall)                   # switch : Disable firewall
+      options['firewall']="false"
+      shift
+      ;;
+    --firmware)                     # switch : Boot firmware type
       check_value "$1" "$2"
       options['firmware']="$2"
       shift 2
       ;;
-    --force)                    # switch : Enable force mode
+    --force)                        # switch : Enable force mode
       options['force']="true"
       shift
       ;;
-    --gateway)                  # switch : Gateway address
+    --gateway)                      # switch : Gateway address
       check_value "$1" "$2"
       options['gateway']="$2"
       options['dhcp']="false"
       shift 2
       ;;
-    --gecos|--usergecos)        # switch : GECOS field
+    --gecos|--usergecos)            # switch : GECOS field
       check_value "$1" "$2"
       options['usergecos']="$2"
       shift 2
       ;;
-    --gfxmode)                  # switch : Bios text mode
+    --gfxmode)                      # switch : Bios text mode
       check_value "$1" "$2"
       options['gfxmode']="$2"
       shift 2
       ;;
-    --gfxpayload)               # switch : Bios text mode
+    --gfxpayload)                   # switch : Bios text mode
       check_value "$1" "$2"
       options['gfxpayload']="$2"
       shift 2
       ;;
-    --help|-h)                  # switch : Print help information
+    --help|-h)                      # switch : Print help information
       print_help
       shift
       exit
       ;;
-    --hostname)                 # switch : Hostname
+    --hostname)                     # switch : Hostname
       check_value "$1" "$2"
       options['hostname']="$2"
       shift 2
       ;;
-    --hwimports)                # switch : Imports for system hardware configuration
+    --hwimports)                    # switch : Imports for system hardware configuration
       check_value "$1" "$2"
       options['hwimports']="$2"
       shift 2
       ;;
-    --imports)                  # switch : Imports for system configuration
+    --import)                       # switch : Import a Nix configuration
+      check_value "$1" "$2"
+      options['import']="$2"
+      shift 2
+      ;;
+    --imports)                      # switch : Imports for system configuration
       check_value "$1" "$2"
       options['imports']="$2"
       shift 2
       ;;
-    --initmod*)                 # switch : Available system init modules
+    --initmod*)                     # switch : Available system init modules
       check_value "$1" "$2"
       options['initmods']="$2"
       shift 2
       ;;
-    --install)                  # switch : Install script
+    --install)                      # switch : Install script
       check_value "$1" "$2"
       options['install']="$2"
       shift 2
       ;;
-    --installdir)               # switch : Install directory where destination disk is mounted
+    --installdir)                   # switch : Install directory where destination disk is mounted
       check_value "$1" "$2"
       options['installdir']="$2"
       shift 2
       ;;
-    --ip)                       # switch : IP address
+    --ip)                           # switch : IP address
       check_value "$1" "$2"
       options['ip']="$2"
       options['dhcp']="false"
       shift 2
       ;;
-    --isoextra*)                # switch : ISO Kernel extra args
+    --isoextra*)                    # switch : ISO Kernel extra args
       check_value "$1" "$2"
       options['isoextraargs']="$2"
       shift 2
       ;;
-    --isoimports)               # switch : NixOS imports for ISO build
+    --isoimport)                    # switch : Import additional Nix configuration file into ISO configuration
+      check_value "$1" "$2"
+      options['isoimport']="$2"
+      shift 2
+      ;;
+    --isoimports)                   # switch : NixOS imports for ISO build
       check_value "$1" "$2"
       options['isoimports']="$2"
       shift 2
       ;;
-    --isokernelparam*)          # switch : Extra kernel parameters to add to ISO grub commands
+    --isokernelparam*)              # switch : Extra kernel parameters to add to ISO grub commands
       check_value "$1" "$2"
       options['isokernelparams']="$2"
       shift 2
       ;;
-    --isomount)                 # switch : Install ISO mount directory
+    --isomount)                     # switch : Install ISO mount directory
       check_value "$1" "$2"
       options['isomount']="$2"
       shift 2
       ;;
-    --keymap)                   # switch : Keymap
+    --keymap)                       # switch : Keymap
       check_value "$1" "$2"
       options['keymap']="$2"
       shift 2
       ;;
-    --kernelparam*)             # switch : Extra kernel parameters to add to systembuild
+    --kernelparam*)                 # switch : Extra kernel parameters to add to systembuild
       check_value "$1" "$2"
       options['kernelparams']="$2"
       shift 2
       ;;
-    --locale)                   # switch : Locale
+    --kernel)                       # switch : Kernel
+      check_value "$1" "$2"
+      options['kernel']="$2"
+      shift 2
+      ;;
+    --locale)                       # switch : Locale
       check_value "$1" "$2"
       options['locale']="$2"
       shift 2
       ;;
-    --logfile)                  # switch : Locale
+    --logfile)                      # switch : Locale
       check_value "$1" "$2"
       options['logfile']="$2"
       shift 2
       ;;
-    --lvm)                      # switch : Enable LVM
+    --lvm)                          # switch : Enable LVM
       options['lvm']="true"
       shift
       ;;
-    --mask*)                    # switch : Enable LVM
+    --mask*)                        # switch : Enable LVM
       options['mask']="true"
       shift
       ;;
-    --mbrpartname)              # switch : MBR partition name
+    --mbrpartname)                  # switch : MBR partition name
       check_value "$1" "$2"
       options['mbrpartname']="$2"
       shift 2
       ;;
-    --nic)                      # switch : NIC
+    --nic)                          # switch : NIC
       check_value "$1" "$2"
       options['nic']="$2"
       shift 2
       ;;
-    --nixconfig)                # switch : NixOS configuration file
+    --nixconfig)                    # switch : NixOS configuration file
       check_value "$1" "$2"
       options['nixconfig']="$2"
       shift 2
       ;;
-    --nixdir)                   # switch : Set NixOS directory
+    --nixdir)                       # switch : Set NixOS directory
       check_value "$1" "$2"
       options['nixdir']="$2"
       shift 2
       ;;
-    --nixhwconfig)              # switch : NixOS hardware configuration file
+    --nixhwconfig)                  # switch : NixOS hardware configuration file
       check_value "$1" "$2"
       options['nixhwconfig']="$2"
       shift 2
       ;;
-    --nixinstall)               # switch : Run NixOS install script automatically on ISO
+    --nixinstall)                   # switch : Run NixOS install script automatically on ISO
       options['nixinstall']="true"
       shift
       ;;
-    --nixisoconfig)             # switch : NixOS ISO configuration file
+    --nixisoconfig)                 # switch : NixOS ISO configuration file
       check_value "$1" "$2"
       options['nixisoconfig']="$2"
       shift 2
       ;;
-    --nooneshot)                # switch : Disable oneshot service
-      options['oneshot']="false"
-      shift
-      ;;
-    --oneshot)                  # switch : Enable oneshot service
+    --oneshot)                      # switch : Enable oneshot service
       options['oneshot']="true"
       shift
       ;;
-    --option*)                  # switch : Option(s) to set
+    --nooneshot)                    # switch : Disable oneshot service
+      options['oneshot']="false"
+      shift
+      ;;
+    --option*)                      # switch : Option(s) to set
       check_value "$1" "$2"
       options_list+=("$2")
       shift 2
       ;;
-    --output*)                  # switch : Output file
+    --output*)                      # switch : Output file
       check_value "$1" "$2"
       options['output']="$2"
       options['preserve']="true"
       shift 2
       ;;
-    --password|--userpassword)  # switch : User password
+    --password|--userpassword)      # switch : User password
       check_value "$1" "$2"
       options['userpassword']="$2"
       shift 2
       ;;
-    --poweroff)                 # switch : Enable poweroff after install
+    --sshpasswordauthentication)    # switch : Eanble SSH password authentication
+      options['sshpasswordauthentication']="true"
+      shift
+      ;;
+    --nosshpasswordauthentication)  # switch : Disable SSH password authentication
+      options['sshpasswordauthentication']="false"
+      shift
+      ;;
+    --poweroff)                     # switch : Enable poweroff after install
       options['poweroff']="true"
       shift
       ;;
-    --prefix)                   # switch : Install prefix
+    --prefix)                       # switch : Install prefix
       check_value "$1" "$2"
       options['prefix']="$2"
       shift 2
       ;;
-    --preserve)                 # switch : Preserve output file
+    --preserve)                     # switch : Preserve output file
       options['preserve']="true"
       shift
       ;;
-    --reboot)                   # switch : Enable reboot after install
+    --reboot)                       # switch : Enable reboot after install
       options['reboot']="true"
       shift
       ;;
-    --rootcrypt)                # switch : Root password crypt
+    --rootcrypt)                    # switch : Root password crypt
       check_value "$1" "$2"
       options['rootcrypt']="$2"
       shift 2
       ;;
-    --rootf*|--filesystem)      # switch : Root Filesystem
+    --rootf*|--filesystem)          # switch : Root Filesystem
       check_value "$1" "$2"
       options['rootfs']="$2"
       shift 2
       ;;
-    --rootpassword)             # switch : Root password
+    --rootpassword)                 # switch : Root password
       check_value "$1" "$2"
       options['rootpassword']="$2"
       shift 2
       ;;
-    --rootpool)                 # switch : Root pool name
+    --rootpool)                     # switch : Root pool name
       check_value "$1" "$2"
       options['rootpool']="$2"
       shift 2
       ;;
-    --rootsize)                 # switch : Root partition size
+    --rootsize)                     # switch : Root partition size
       check_value "$1" "$2"
       options['rootsize']="$2"
       shift 2
       ;;
-    --rootvol*)                 # switch : Root volume name
+    --rootvol*)                     # switch : Root volume name
       check_value "$1" "$2"
       options['rootvolname']="$2"
       shift 2
       ;;
-    --runsize)                  # switch : Run size
+    --runsize)                      # switch : Run size
       check_value "$1" "$2"
       options['runsize']="$2"
       shift 2
       ;;
-    --serial)                   # switch : Enable serial
+    --serial)                       # switch : Enable serial
       options['serial']="true"
       shift
       ;;
-    --shell|usershell)          # switch : User Shell
+    --shell|usershell)              # switch : User Shell
       check_value "$1" "$2"
       options['usershell']="$2"
       shift 2
       ;;
-    --shellcheck)               # switch : Run shellcheck
+    --shellcheck)                   # switch : Run shellcheck
       actions_list+=("shellcheck")
       shift
       ;;
-    --source)                   # switch : Source directory for ISO additions
+    --source)                       # switch : Source directory for ISO additions
       check_value "$1" "$2"
       options['source']="$2"
       shift 2
       ;;
-    --sshkey)                   # switch : SSH key
+    --sshkey)                       # switch : SSH key
       check_value "$1" "$2"
       options['sshkey']="$2"
       shift 2
       ;;
-    --sshkeyfile)               # switch : SSH key file
+    --sshkeyfile)                   # switch : SSH key file
       check_value "$1" "$2"
       options['sshkeyfile']="$2"
       shift 2
       ;;
-    --sshserver)                # switch : Enable strict mode
+    --sshserver)                    # switch : Enable strict mode
       options['sshserver']="true"
       shift
       ;;
-    --standalone)               # switch : Create a standalone ISO
+    --standalone)                   # switch : Create a standalone ISO
       options['standalone']="true"
       shift
       ;;
-    --stateversion)             # switch : NixOS state version
+    --stateversion)                 # switch : NixOS state version
       check_value "$1" "$2"
       options['stateversion']="$2"
       shift 2
       ;;
-    --strict)                   # switch : Enable strict mode
+    --strict)                       # switch : Enable strict mode
       options['strict']="true"
       shift
       ;;
-    --sudocommand*)             # switch : Sudo commands
+    --sudocommand*)                 # switch : Sudo commands
       check_value "$1" "$2"
       options['sudocommand']="$2"
       shift 2
       ;;
-    --sudooption*)              # switch : Sudo options
+    --sudooption*)                  # switch : Sudo options
       check_value "$1" "$2"
       options['sudooptions']="$2"
       shift 2
       ;;
-    --sudouser*)                # switch : Sudo users
+    --sudouser*)                    # switch : Sudo users
       check_value "$1" "$2"
       options['sudousers']="$2"
       shift 2
       ;;
-    --systempackages)           # switch : NixOS state version
+    --systempackages)               # switch : NixOS state version
       check_value "$1" "$2"
       options['systempackages']="$2"
       shift 2
       ;;
-    --swap)                     # switch : Enable swap
+    --swap)                         # switch : Enable swap
       options['swap']="true"
       shift
       ;;
-    --swapsize)                 # switch : Swap partition size
+    --swapsize)                     # switch : Swap partition size
       check_value "$1" "$2"
       options['swapsize']="$2"
       options['swap']="true"
       shift 2
       ;;
-    --swapvol*)                 # switch : Swap volume name
+    --swapvol*)                     # switch : Swap volume name
       check_value "$1" "$2"
       options['swapvolname']="$2"
       options['swap']="true"
       shift 2
       ;;
-    --target*)                  # switch : Target directory for ISO additions
+    --target*)                      # switch : Target directory for ISO additions
       check_value "$1" "$2"
       options['target']="$2"
       shift 2
       ;;
-    --temp*)                    # switch : Target directory
+    --temp*)                        # switch : Target directory
       check_value "$1" "$2"
       options['tempdir']="$2"
       shift 2
       ;;
-    --testmode)                 # switch : Enable swap
+    --testmode)                     # switch : Enable swap
       options['testmode']="true"
       shift
       ;;
-    --usage)                    # switch : Action to perform
+    --usage)                        # switch : Action to perform
       check_value "$1" "$2"
       usage="$2"
       print_usage "${usage}"
       shift 2
       exit
       ;;
-    --username)                 # switch : User username
+    --username)                     # switch : User username
       check_value "$1" "$2"
       options['username']="$2"
       shift 2
       ;;
-    --verbose)                  # switch : Enable verbose mode
+    --verbose)                      # switch : Enable verbose mode
       options['verbose']="true"
       shift
       ;;
-    --version|-V)               # switch : Print version information
+    --version|-V)                   # switch : Print version information
       print_version
       exit
       ;;
-    --videodriver)              # switch : Video Driver
+    --videodriver)                  # switch : Video Driver
       check_value "$1" "$2"
       options['videodriver']="$2"
       shift 2
       ;;
-    --vmautoconsole)            # switch : VM Autoconsole
+    --vmautoconsole)                # switch : VM Autoconsole
       vm['noautoconsole']="false"
       shift
       ;;
-    --vmboot)                   # switch : VM Boot type
+    --vmboot)                       # switch : VM Boot type
       check_value "$1" "$2"
       vm['boot']="$2"
       shift 2
       ;;
-    --vmcpu)                    # switch : VM CPU
+    --vmcpu)                        # switch : VM CPU
       check_value "$1" "$2"
       vm['cpu']="$2"
       shift 2
       ;;
-    --vmdir)                    # switch : VM Directory
+    --vmdir)                        # switch : VM Directory
       check_value "$1" "$2"
       vm['dir']="$2"
       shift 2
       ;;
-    --vmfeatures)               # switch : VM Features
+    --vmfeatures)                   # switch : VM Features
       check_value "$1" "$2"
       vm['features']="$2"
       shift 2
       ;;
-    --vmhostdevice)             # switch : VM Host device
+    --vmhostdevice)                 # switch : VM Host device
       check_value "$1" "$2"
       vm['host-device']="$2"
       shift 2
       ;;
-    --vmgraphics)               # switch : VM Graphics
+    --vmgraphics)                   # switch : VM Graphics
       check_value "$1" "$2"
       vm['graphics']="$2"
       shift 2
       ;;
-    --vmiso|--vmcdrom)          # switch : VM ISO
+    --vmiso|--vmcdrom)              # switch : VM ISO
       check_value "$1" "$2"
       vm['cdrom']="$2"
       shift 2
       ;;
-    --vmmachine)                # switch : VM Machine
+    --vmmachine)                    # switch : VM Machine
       check_value "$1" "$2"
       vm['machine']="$2"
       shift 2
       ;;
-    --vmmemory)                 # switch : VM Memory
+    --vmmemory)                     # switch : VM Memory
       check_value "$1" "$2"
       vm['memory']="$2"
       shift 2
       ;;
-    --vmname)                   # switch : VM Name
+    --vmname)                       # switch : VM Name
       check_value "$1" "$2"
       vm['name']="$2"
       shift 2
       ;;
-    --vmnetwork)                # switch : VM Network
+    --vmnetwork)                    # switch : VM Network
       check_value "$1" "$2"
       vm['network']="$2"
       shift 2
       ;;
-    --vmnoautoconsole)          # switch : VM No autoconsole
+    --vmnoautoconsole)              # switch : VM No autoconsole
       vm['noautoconsole']="true"
       shift
       ;;
-    --vmnoreboot)               # switch : VM Do not reboot VM after creation
+    --vmnoreboot)                   # switch : VM Do not reboot VM after creation
       vm['noreboot']="true"
       shift
       ;;
-    --vmreboot)                 # switch : VM Reboot VM after creation
+    --vmreboot)                     # switch : VM Reboot VM after creation
       vm['noreboot']="false"
       shift
       ;;
-    --vmsize)                   # switch : VM Size
+    --vmsize)                       # switch : VM Size
       check_value "$1" "$2"
       vm['size']="$2"
       shift 2
       ;;
-    --vmosvariant)              # switch : VM OS variant
+    --vmosvariant)                  # switch : VM OS variant
       check_value "$1" "$2"
       vm['os-variant']="$2"
       shift 2
       ;;
-    --vmvirttype)               # switch : VM Virtualisation type
+    --vmvirttype)                   # switch : VM Virtualisation type
       check_value "$1" "$2"
       vm['virt-type']="$2"
       shift 2
       ;;
-    --vmvcpus)                  # switch : VM vCPUs
+    --vmvcpus)                      # switch : VM vCPUs
       check_value "$1" "$2"
       vm['vcpus']="$2"
       shift 2
       ;;
-    --vmwait)                   # switch : VM number of seconds to wait before starting
+    --vmwait)                       # switch : VM number of seconds to wait before starting
       check_value "$1" "$2"
       vm['wait']="$2"
       shift 2
       ;;
-    --workdir)                  # switch : Set script work directory
+    --workdir)                      # switch : Set script work directory
       check_value "$1" "$2"
       options['workdir']="$2"
       shift 2
       ;;
-    --zfsinstall)               # switch : ZFS install script
+    --zfsinstall)                   # switch : ZFS install script
       check_value "$1" "$2"
       options['zfsinstall']="$2"
       shift 2
       ;;
-    --zsh)                      # switch : Enable zsh
+    --zsh)                          # switch : Enable zsh
       options['zsh']="true"
       shift
       ;;

@@ -9,7 +9,7 @@ Make Automated NixOS (ISO)
 Version
 -------
 
-Current version: 0.8.5
+Current version: 0.9.3
 
 License
 -------
@@ -54,6 +54,7 @@ This script has the following capabilities:
     - Timezone
     - Keymap
     - etc
+  - Import external addition Nix configuration file
   - Add additional packages
   - Specify static IP or use DHCP
   - Configure bridge devices
@@ -123,9 +124,9 @@ Background
 A standalone version of the script that was created for testing purposed,
 and then folded back into the script is located here:
 
-[Original Standalone Install Script](configs/install.sh)
+[Original Standalone Install Script](configs/scripts/install.sh)
 
-[Updated Standalone Install Script](configs/updated_install.sh)
+[Updated Standalone Install Script](configs/scripts/updated_install.sh)
 
 By setting the options in the script it can be used to install one of:
 
