@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      0.9.5
+# Version:      0.9.6
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -184,6 +184,8 @@ set_defaults () {
   options['allowedudpports']=""                                               # option : Allowed UDP ports
   options['import']=""                                                        # option : Import Nix config to add to system build
   options['isoimport']=""                                                     # option : Import Nix config to add to ISO build
+  options['dockerarch']=$( uname -m |sed 's/x86_/amd/g' )                     # option : Docker architecture
+  options['targetarch']=$( uname -m )                                         # option : Target architecture
   # VM defaults
   vm['name']="nixos"                                                          # vm : VM name
   vm['vcpus']="2"                                                             # vm : VM vCPUs
@@ -243,7 +245,7 @@ print_message () {
             fi
           else
             if [[ "${format}" =~ e$ ]]; then
-              if [[ ! "${format}" =~ otice ]]; then
+              if ! [[ "${format}" =~ otice ]]; then
                 format="${format::-1}"
                 format="${format^}ing"
               fi
@@ -339,7 +341,7 @@ reset_defaults () {
   if [ "${options['zsh']}" = "true" ]; then
     options['usershell']="zsh"
   fi
-  if [ ! "${options['usershell']}" = "zsh" ]; then
+  if ! [ "${options['usershell']}" = "zsh" ]; then
     options['zsh']="false"
   fi
   if [ "${options['lvm']}" = "true" ]; then
@@ -399,8 +401,8 @@ reset_defaults () {
       fi
     fi
   fi
-  if [ ! "${options['import']}" = "" ]; then
-    if [ ! -f "${options['import']}" ]; then
+  if ! [ "${options['import']}" = "" ]; then
+    if ! [ -f "${options['import']}" ]; then
       warning_message "Nix configuration file ${options['import']} does not exist"
       do_exit
     else
@@ -409,8 +411,8 @@ reset_defaults () {
     fi
     options['imports']="${options['import']} ./${import}"
   fi
-  if [ ! "${options['isoimport']}" = "" ]; then
-    if [ ! -f "${options['isoimport']}" ]; then
+  if ! [ "${options['isoimport']}" = "" ]; then
+    if ! [ -f "${options['isoimport']}" ]; then
       warning_message "Nix configuration file ${options['isoimport']} does not exist"
       do_exit
     else
@@ -587,7 +589,7 @@ print_version () {
 
 check_shellcheck () {
   bin_test=$( command -v shellcheck | grep -c shellcheck )
-  if [ ! "$bin_test" = "0" ]; then
+  if ! [ "$bin_test" = "0" ]; then
     shellcheck "${script['file']}"
   fi
 }
@@ -645,10 +647,10 @@ print_defaults () {
 # Check NIX config
 
 check_nix_config () {
-  if [ ! -d "${options['workdir']}" ]; then
+  if ! [ -d "${options['workdir']}" ]; then
     execute_command "mkdir -p ${options['workdir']}"
   fi
-  if [ ! -d "${options['workdir']}/ai" ]; then
+  if ! [ -d "${options['workdir']}/ai" ]; then
     execute_command "mkdir -p ${options['workdir']}/ai"
   fi
   if [ "${os['name']}" = "Linux" ]; then
@@ -669,12 +671,12 @@ check_nix_config () {
 # Get Password Crypt
 
 get_password_crypt () {
-  if [ ! "${options['userpassword']}" = "" ]; then
+  if ! [ "${options['userpassword']}" = "" ]; then
     if [ "${options['usercrypt']}" = "" ]; then
       options['usercrypt']=$( mkpasswd --method=sha-512 "${options['userpassword']}" )
     fi
   fi
-  if [ ! "${options['rootpassword']}" = "" ]; then
+  if ! [ "${options['rootpassword']}" = "" ]; then
     if [ "${options['rootcrypt']}" = "" ]; then
       options['rootcrypt']=$( mkpasswd --method=sha-512 "${options['rootpassword']}" )
     fi
@@ -1416,13 +1418,13 @@ preserve_iso () {
     done
     for param in rootdisk nic ; do
       value="${options[${param}]}"
-      if [ ! "${value}" = "first" ]; then
+      if ! [ "${value}" = "first" ]; then
         temp_name="${temp_name}-${value}"
       fi
     done
     for param in ip username; do
       value="${options[${param}]}"
-      if [ ! "${value}" = "" ]; then
+      if ! [ "${value}" = "" ]; then
         temp_name="${temp_name}-${value}"
       fi
     done
@@ -1430,7 +1432,7 @@ preserve_iso () {
     options['output']="${output_dir}/${temp_name}"
   fi
   output_dir=$( dirname "${options['output']}" )
-  if [ ! -d "${output_dir}" ]; then
+  if ! [ -d "${output_dir}" ]; then
     execute_command "mkdir -p ${output_dir}"
   fi
   if [ -f "${options['output']}" ]; then
@@ -1511,7 +1513,7 @@ create_kvm_vm () {
       exit
     fi
   fi
-  if [ ! -f "${vm['cdrom']}" ]; then
+  if ! [ -f "${vm['cdrom']}" ]; then
     warning_message "File ${vm['cdrom']} does not exist"
     do_exit
   fi
@@ -1524,7 +1526,7 @@ create_kvm_vm () {
   fi
   if [ "${vm['status']}" = "0" ]; then
     for param in name machine vcpus cpu os-variant host-device graphics virt-type network memory cdrom boot disk features wait; do
-      if [ ! "${vm[${param}]}" = "" ]; then
+      if ! [ "${vm[${param}]}" = "" ]; then
         value="${vm[${param}]}"
         command="${command} --${param} ${value}"
       fi
@@ -1536,7 +1538,7 @@ create_kvm_vm () {
       fi
     done
     vm_dir="${options['workdir']}/vms"
-    if [ ! -d "${vm_dir}" ]; then
+    if ! [ -d "${vm_dir}" ]; then
       execute_command "mkdir ${vm_dir}"
     fi
     vm_file="${vm_dir}/${vm['name']}.xml"
@@ -1552,6 +1554,48 @@ create_kvm_vm () {
   fi
 }
 
+# Function: check_docker
+#
+# Check docker config
+
+check_docker () {
+  if ! [ -f "/.dockerenv" ]; then
+    docker_test=$( command -v docker )
+    if [ -z "${docker_test}" ]; then
+      warning_message "Docker not installed"
+      do_exit
+    fi
+    arch_dir="${options['workdir']}/${options['dockerarch']}"
+    if ! [ -d "${arch_dir}" ]; then
+      execute_command "mkdir -p ${arch_dir}"
+    fi
+    docker_image="${script['name']}-latest-${options['dockerarch']}"
+    image_check=$( docker images | grep "^${docker_image}" | awk '{ print $1 }' )
+    if ! [ "${image_check}" = "${docker_image}" ]; then
+      compose_file="${arch_dir}/docker-compose.yml"
+      docker_file="${arch_dir}/Dockerfile"
+      tee "${compose_file}" << COMPOSE_FILE
+version "3"
+services:
+  ${docker_image}:
+    build:
+      contect: .
+      dockerfile: Dockerfile
+    image: ${docker_image}
+    container_name: ${docker_image}
+    entrypoint: /run/current-system/sw/bin/bash
+    working_dir: /root
+    platform: linux/${options['dockerarch']}
+COMPOSE_FILE
+        tee "${docker_file}" << DOCKER_FILE
+FROM nixos/nix
+RUN nix-channel --update
+DOCKER_FILE
+        docker build ${arch_dir} --tag ${docker_image} --platform linux/${options['dockerarch']}
+    fi
+  fi
+}
+
 # Function: process_actions
 #
 # Handle actions
@@ -1561,6 +1605,14 @@ process_actions () {
   case $actions in
     createinstall*)         # action : Create install script
       create_install_script
+      exit
+      ;;
+    checkdocker*)           # action : Check docker config
+      check_docker
+      exit
+      ;;
+    createdockeriso)        # action : Create docker ISO
+      create_docker_iso
       exit
       ;;
     createiso)              # action : Create ISO
@@ -1671,6 +1723,10 @@ while test $# -gt 0; do
       options['bootvolname']="$2"
       shift 2
       ;;
+    --checkdocker*)                 # switch : Check docker config
+      actions_list+=("checkdocker")
+      shift
+      ;;
     --cidr)                         # switch : CIDR
       check_value "$1" "$2"
       options['cidr']="$2"
@@ -1723,6 +1779,11 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       options['dns']="$2"
       options['dhcp']="false"
+      shift 2
+      ;;
+    --dockerarch)                   # switch : Docker architecture
+      check_value "$1" "$2"
+      options['dockerarch']="$2"
       shift 2
       ;;
     --dryrun)                       # switch : Enable debug mode
@@ -2085,9 +2146,14 @@ while test $# -gt 0; do
       options['swap']="true"
       shift 2
       ;;
-    --target*)                      # switch : Target directory for ISO additions
+    --target)                       # switch : Target directory for ISO additions
       check_value "$1" "$2"
       options['target']="$2"
+      shift 2
+      ;;
+    --targetarch)                   # switch : Target architecture
+      check_value "$1" "$2"
+      options['targetarch']="$2"
       shift 2
       ;;
     --temp*)                        # switch : Target directory

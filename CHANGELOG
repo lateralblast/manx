@@ -190,3 +190,5 @@
 # Security updates
 # 0.9.5: Wed 24 Sep 2025 19:36:51 AEST
 # Updated OpenSSH PasswordAuthentication
+# 0.9.6: Wed 24 Sep 2025 22:34:49 AEST
+# Added code to check docker image
