@@ -27,8 +27,18 @@ A script to an make an automated NixOS installation.
 By default this script creates an unattended install ISO
 with a ZFS root filesystem.
 
-Currently a NixOS installation is required to to create the ISO,
-I will be adding support for nix/docker based creation.
+On NixOS, this script can be run directly, e.g.:
+
+```
+./manx.sh
+```
+
+On other versions of linux of the same architecture, the script can be run under nix-shell.
+
+```
+nix-shell -p bash
+bash ./manx.sh
+```
 
 Features
 --------
