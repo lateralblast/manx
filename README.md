@@ -9,7 +9,7 @@ Make Automated NixOS (ISO)
 Version
 -------
 
-Current version: 0.9.3
+Current version: 0.9.4
 
 License
 -------
@@ -200,7 +200,6 @@ After creating an ISO, you can test it by creating a VM:
 ```
 ./manx.sh --createvm --vmname test
 ```
-
 
 Help
 ----

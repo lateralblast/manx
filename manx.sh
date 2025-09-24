@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      0.9.3
+# Version:      0.9.4
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -132,7 +132,7 @@ set_defaults () {
   options['reboot']="true"                                                    # option : Reboot after install
   options['poweroff']="true"                                                  # option : Poweroff after install
   options['nixinstall']="true"                                                # option : Run Nix installer on ISO
-  options['gfxmode']="text"                                                   # option : Grub graphics mode
+  options['gfxmode']="auto"                                                   # option : Grub graphics mode
   options['gfxpayload']="text"                                                # option : Grub graphics payload
   options['networkmanager']="true"                                            # option : Enable NetworkManager
   options['xserver']="false"                                                  # option : Enable Xserver
