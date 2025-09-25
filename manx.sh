@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.0.1
+# Version:      1.0.2
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -28,8 +28,8 @@
 declare -A os
 declare -A vm
 declare -A script
-declare -A imports 
-declare -A options 
+declare -A imports
+declare -A options
 declare -a options_list
 declare -a actions_list
 
@@ -88,7 +88,7 @@ set_defaults () {
   options['username']=""                                                      # option : Username
   options['userpassword']="nixos"                                             # option : User Password
   options['usercrypt']=""                                                     # option : User Password Crypt
-  options['hostname']="nixos"                                                 # option : Hostname 
+  options['hostname']="nixos"                                                 # option : Hostname
   options['sshkeyfile']=""                                                    # option : SSH key file
   options['bootfs']="vfat"                                                    # option : Boot filesystem
   options['rootfs']="zfs"                                                     # option : Root filesystem
@@ -174,9 +174,9 @@ set_defaults () {
   options['kernelparams']=""                                                  # option : Additional kernel parameters to add to system grub commands
   options['isoextraargs']=""                                                  # option : Additional kernel config to add to ISO grub commands
   options['extraargs']=""                                                     # option : Additional kernel config to add to system grub commands
-  options['availmods']='"ahci" "xhci_pci" "virtio_pci" "sr_mod" "virtio_blk"' # option : Available system kernel modules 
-  options['initmods']=''                                                      # option : Available system init modules 
-  options['bootmods']=''                                                      # option : Available system boot modules 
+  options['availmods']='"ahci" "xhci_pci" "virtio_pci" "sr_mod" "virtio_blk"' # option : Available system kernel modules
+  options['initmods']=''                                                      # option : Available system init modules
+  options['bootmods']=''                                                      # option : Available system boot modules
   options['oneshot']="true"                                                   # option : Enable oneshot service
   options['serial']="true"                                                    # option : Enable serial
   options['kernel']=""                                                        # option : Kernel
@@ -204,20 +204,24 @@ set_defaults () {
   vm['disk']=""                                                               # vm : VM Disk
   vm['features']="kvm_hidden=on"                                              # vm : VM Features
   vm['size']="20G"                                                            # vm : VM Disk size
-  vm['machine']="q35"                                                         # vm : VM Machine
-  vm['dir']="/var/lib/libvirt/images"                                         # vm : VM Directory
+  vm['dir']="${options['workdir']}/vms"                                       # vm : VM Directory
   vm['noautoconsole']="true"                                                  # vm : VM Autoconsole
   vm['noreboot']="true"                                                       # vm : VM Reboot
   vm['wait']=""                                                               # vm : VM Wait before starting
+  vm['machine']="q35"                                                         # vm : VM Machine
 
   os['name']=$( uname -s )
   if [ "${os['name']}" = "Linux" ]; then
     lsb_check=$( command -v lsb_release )
-    if [ -n "${lsb_check}" ]; then 
+    if [ -n "${lsb_check}" ]; then
       os['distro']=$( lsb_release -i -s 2 | sed 's/"//g' 2>&1 /dev/null )
     else
       os['distro']=$( hostnamectl | grep "Operating System" | awk '{print $3}' )
     fi
+  fi
+  if [ "${os['name']}" = "Darwin" ]; then
+    vm['cpu']="cortex-a57"
+    vm['network']="default,model=virtio"
   fi
 }
 
@@ -254,7 +258,7 @@ print_message () {
               fi
             fi
           fi
-        fi 
+        fi
         format="${format^}"
         length="${#format}"
         if [ "${length}" -lt 7 ]; then
@@ -788,7 +792,7 @@ NIXISOCONFIG
   boot.kernelParams = [ ${options['isokernelparams']} ];
 #  boot.kernelPackages = pkgs.linuxPackages${options['kernel']};
   boot.loader.grub.extraConfig = "
-    ${options['isoextraargs']} 
+    ${options['isoextraargs']}
   ";
 
   # Set your time zone
@@ -854,7 +858,7 @@ NIXISOCONFIG
     restartIfChanged = false;
     script = ''
       export PATH="/run/wrappers/bin:/root/.nix-profile/bin:/nix/profile/bin:/root/.local/state/nix/profile/bin:/etc/profiles/per-user/root/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin"
-      sudo ${options['isomount']}/${options['prefix']}/oneshot.sh 
+      sudo ${options['isomount']}/${options['prefix']}/oneshot.sh
     '';
   };
 
@@ -1007,7 +1011,7 @@ for item in "\${items[@]}"; do
       if [ ! "\${ai[\${param}]}" = "\${value}" ]; then
         ai[\${param}]="\${value}"
         echo "Setting \${param} to \${value}"
-      fi  
+      fi
     fi
   fi
 done
@@ -1017,7 +1021,7 @@ echo "Setting zfsoptions to \${ai['zfsoptions']}"
 # If oneshot is disabled exit
 if [ "\${ai['oneshot']}" = "false" ]; then
   exit
-fi 
+fi
 
 # Set up non DHCP environment
 if [ "\${ai['dhcp']}" = "false" ]; then
@@ -1115,7 +1119,7 @@ if [ "\${ai['lvm']}" = "true" ]; then
   ai['swapvol']="/dev/\${ai['rootpool']}/\${ai['swapvolname']}"
   ai['bootvol']="/dev/\${ai['rootpool']}/\${ai['bootvolname']}"
   ai['rootvol']="/dev/\${ai['rootpool']}/\${ai['rootvolname']}"
-  lvextend -l +100%FREE \${ai['rootvol']} 
+  lvextend -l +100%FREE \${ai['rootvol']}
   if [ "\${ai[initmods]}" = "" ]; then
     ai['initmods']="\"dm-snapshot\" \"dm-raid\" \"dm-cache-default\""
   else
@@ -1235,7 +1239,7 @@ tee \${ai['nixcfg']} << NIX_CFG
     LC_TIME = "\${ai['locale']}";
   };
 
-  # Define a user account. 
+  # Define a user account.
   users.users.\${ai['username']} = {
     shell = pkgs.\${ai['usershell']};
     isNormalUser = \${ai['normaluser']};
@@ -1285,7 +1289,7 @@ NIX_CFG
     }];
     defaultGateway = "\${ai['gateway']}";
     nameservers = [ "\${ai['dns']}" ];
-  };    
+  };
 NIX_CFG
   fi
 fi
@@ -1325,7 +1329,7 @@ tee \${ai['hwcfg']} << HW_CFG
   boot.kernelModules = [ \${ai['bootmods']} ];
   boot.kernelParams = [ \${ai['kernelparams']} ];
   boot.loader.grub.extraConfig = "
-    \${ai['extraargs']} 
+    \${ai['extraargs']}
   ";
   boot.extraModulePackages = [ ];
 HW_CFG
@@ -1496,11 +1500,14 @@ delete_kvm_vm () {
 # Create a KVM VM for testing an ISO
 
 create_kvm_vm () {
+  if ! [ -d "${vm['dir']}" ]; then
+    execute_command "mkdir -p ${vm['dir']}"
+  fi
   if [ "${vm['disk']}" = "" ]; then
     vm['size']=${vm['size']//G/}
     vm['disk']="path=${vm['dir']}/${vm['name']},size=${vm['size']}"
   fi
-  if [[ ${vm['memory']} =~ G$ ]]; then 
+  if [[ ${vm['memory']} =~ G$ ]]; then
     ram="${vm['memory']}"
     ram=${ram//G/}
     ram=$(( 1024 * ${ram} ))
@@ -1527,12 +1534,21 @@ create_kvm_vm () {
     vm['status']=$( sudo virsh list --all | grep "${vm['name']} " | grep -c "${vm['name']}" )
   fi
   if [ "${vm['status']}" = "0" ]; then
-    for param in name machine vcpus cpu os-variant host-device graphics virt-type network memory cdrom boot disk features wait; do
-      if ! [ "${vm[${param}]}" = "" ]; then
-        value="${vm[${param}]}"
-        command="${command} --${param} ${value}"
-      fi
-    done
+    if [ "${os['name']}" = "Darwin" ]; then
+      for param in name vcpus cpu graphics network memory cdrom boot disk wait; do
+        if ! [ "${vm[${param}]}" = "" ]; then
+          value="${vm[${param}]}"
+          command="${command} --${param} ${value}"
+        fi
+      done
+    else
+      for param in name machine vcpus cpu os-variant host-device graphics virt-type network memory cdrom boot disk features wait; do
+        if ! [ "${vm[${param}]}" = "" ]; then
+          value="${vm[${param}]}"
+          command="${command} --${param} ${value}"
+        fi
+      done
+    fi
     for param in noautoconsole noreboot; do
       value="${vm[${param}]}"
       if [ "${value}" = "true" ]; then
@@ -1544,12 +1560,20 @@ create_kvm_vm () {
       execute_command "mkdir ${vm_dir}"
     fi
     vm_file="${vm_dir}/${vm['name']}.xml"
-    ${command} --print-xml 1 > "${vm_file}"
-    sudo virsh define "${vm_file}"
-    verbose_message "" 
+    execute_command "${command} --print-xml 1 > ${vm_file}"
+    if [ "${os['name']}" = "Darwin" ]; then
+      execute_command "virsh define ${vm_file}"
+    else
+      execute_command "sudo virsh define ${vm_file}"
+    fi
+    verbose_message ""
     verbose_message "To start the VM and connect to console run the following command:"
-    verbose_message "" 
-    verbose_message "sudo virsh start ${vm['name']} ; sudo virsh console ${vm['name']}"
+    verbose_message ""
+    if [ "${os['name']}" = "Darwin" ]; then
+      verbose_message "virsh start ${vm['name']} ; virsh console ${vm['name']}"
+    else
+      verbose_message "sudo virsh start ${vm['name']} ; sudo virsh console ${vm['name']}"
+    fi
   else
     warning_message "KVM VM ${vm['name']} already exists"
     do_exit
@@ -1800,7 +1824,7 @@ while test $# -gt 0; do
       actions_list+=("createvm")
       shift
       ;;
-    --usercrypt|--crypt)            # switch : User Password Crypt 
+    --usercrypt|--crypt)            # switch : User Password Crypt
       check_value "$1" "$2"
       options['usercrypt']="$2"
       shift 2
