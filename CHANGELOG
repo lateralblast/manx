@@ -192,3 +192,13 @@
 # Updated OpenSSH PasswordAuthentication
 # 0.9.6: Wed 24 Sep 2025 22:34:49 AEST
 # Added code to check docker image
+# 0.9.7: Thu 25 Sep 2025 14:48:32 AEST
+# Fixed nix check
+# 0.9.8: Thu 25 Sep 2025 15:02:25 AEST
+# Fixed ISO config file creation for docker
+# 0.9.9: Thu 25 Sep 2025 15:11:59 AEST
+# Added code to create ISO using docker 
+# 1.0.0: Thu 25 Sep 2025 16:28:43 AEST
+# Fixes based on shellcheck
+# 1.0.1: Thu 25 Sep 2025 16:32:12 AEST
+# Updated documentation

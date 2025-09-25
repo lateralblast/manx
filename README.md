@@ -9,7 +9,7 @@ Make Automated NixOS (ISO)
 Version
 -------
 
-Current version: 0.9.6
+Current version: 1.0.1
 
 License
 -------
@@ -211,6 +211,12 @@ After creating an ISO, you can test it by creating a VM:
 ./manx.sh --createvm --vmname test
 ```
 
+Create an ISO using docker on MacOS:
+
+```
+./manx.sh --createdockeriso
+```
+
 Help
 ----
 
@@ -225,225 +231,269 @@ switch(es):
 ----------
 witch(es):
 ---------
---action*)                  
+--action*)
     Action(s) to perform
---availmod*)                
+--allowedtcpports)
+    Allowed TCP ports
+--allowedudpports)
+    Allowed UDP ports
+--availmod*)
     Available system kernel modules
---bootmod*)                 
+--bootmod*)
     Available system boot modules
---bootsize)                 
+--bootsize)
     Boot partition size
---bridge)                   
+--bridge)
     Enable bridge
---bridgenic)                
+--bridgenic)
     Bridge NIC
---bootf*)                   
+--bootf*)
     Boot Filesystem
---bootvol*)                 
+--bootvol*)
     Boot volume name
---cidr)                     
+--checkdocker*)
+    Check docker config
+--cidr)
     CIDR
---createinstall*)           
+--createinstall*)
     Create install script
---createiso)                
+--createiso)
     Create ISO
---createnix*)               
+--createdockeriso)
+    Create ISO
+--createnix*)
     Create NixOS ISO config
---createoneshot*)           
+--createoneshot*)
     Create oneshot script
---createvm)                 
+--createvm)
     Create oneshot script
---usercrypt|--crypt)        
+--usercrypt|--crypt)
     User Password Crypt
---debug)                    
+--debug)
     Enable debug mode
---deletevm)                 
+--deletevm)
     Delete VM
---dhcp)                     
+--dhcp)
     Enable DHCP
---disk|rootdisk)            
+--disk|rootdisk)
     Root disk
---dns|--nameserver)         
+--dns|--nameserver)
     DNS/Nameserver address
---dryrun)                   
+--dockerarch)
+    Docker architecture
+--dryrun)
     Enable debug mode
---experimental*)            
+--experimental*)
     SSH key
---extragroup*)              
+--extraargs)
+    ISO Kernel extra args
+--extragroup*)
     Extra groups
---firmware)                 
+--firewall)
+    Enable firewall
+--nofirewall)
+    Disable firewall
+--firmware)
     Boot firmware type
---force)                    
+--force)
     Enable force mode
---gateway)                  
+--gateway)
     Gateway address
---gecos|--usergecos)        
+--gecos|--usergecos)
     GECOS field
---gfxmode)                  
+--gfxmode)
     Bios text mode
---gfxpayload)               
+--gfxpayload)
     Bios text mode
---help|-h)                  
+--help|-h)
     Print help information
---hostname)                 
+--hostname)
     Hostname
---hwimports)                
+--hwimports)
     Imports for system hardware configuration
---imports)                  
+--import)
+    Import a Nix configuration
+--imports)
     Imports for system configuration
---initmod*)                 
+--initmod*)
     Available system init modules
---install)                  
+--install)
     Install script
---installdir)               
+--installdir)
     Install directory where destination disk is mounted
---ip)                       
+--ip)
     IP address
---isoimports)               
+--isoextra*)
+    ISO Kernel extra args
+--isoimport)
+    Import additional Nix configuration file into ISO configuration
+--isoimports)
     NixOS imports for ISO build
---isokernelparam*)          
+--isokernelparam*)
     Extra kernel parameters to add to ISO grub commands
---isomount)                 
+--isomount)
     Install ISO mount directory
---keymap)                   
+--keymap)
     Keymap
---kernelparam*)             
+--kernelparam*)
     Extra kernel parameters to add to systembuild
---locale)                   
+--kernel)
+    Kernel
+--locale)
     Locale
---logfile)                  
+--logfile)
     Locale
---lvm)                      
+--lvm)
     Enable LVM
---mbrpartname)              
+--mask*)
+    Enable LVM
+--mbrpartname)
     MBR partition name
---nic)                      
+--nic)
     NIC
---nixconfig)                
+--nixconfig)
     NixOS configuration file
---nixdir)                   
+--nixdir)
     Set NixOS directory
---nixhwconfig)              
+--nixhwconfig)
     NixOS hardware configuration file
---nixinstall)               
+--nixinstall)
     Run NixOS install script automatically on ISO
---nixisoconfig)             
+--nixisoconfig)
     NixOS ISO configuration file
---nooneshot)                
-    Disable oneshot service
---oneshot)                  
+--oneshot)
     Enable oneshot service
---option*)                  
+--nooneshot)
+    Disable oneshot service
+--option*)
     Option(s) to set
---output*)                  
+--output*)
     Output file
---password|--userpassword)  
+--password|--userpassword)
     User password
---poweroff)                 
+--sshpasswordauthentication)
+    Eanble SSH password authentication
+--nosshpasswordauthentication)
+    Disable SSH password authentication
+--poweroff)
     Enable poweroff after install
---prefix)                   
+--prefix)
     Install prefix
---preserve)                 
+--preserve)
     Preserve output file
---reboot)                   
+--reboot)
     Enable reboot after install
---rootcrypt)                
+--rootcrypt)
     Root password crypt
---rootf*|--filesystem)      
+--rootf*|--filesystem)
     Root Filesystem
---rootpassword)             
+--rootpassword)
     Root password
---rootpool)                 
+--rootpool)
     Root pool name
---rootsize)                 
+--rootsize)
     Root partition size
---rootvol*)                 
+--rootvol*)
     Root volume name
---runsize)                  
+--runsize)
     Run size
---shell|usershell)          
+--serial)
+    Enable serial
+--shell|usershell)
     User Shell
---shellcheck)               
+--shellcheck)
     Run shellcheck
---source)                   
+--source)
     Source directory for ISO additions
---sshkey)                   
+--sshkey)
     SSH key
---sshkeyfile)               
+--sshkeyfile)
     SSH key file
---sshserver)                
+--sshserver)
     Enable strict mode
---standalone)               
+--standalone)
     Create a standalone ISO
---stateversion)             
+--stateversion)
     NixOS state version
---strict)                   
+--strict)
     Enable strict mode
---sudocommand*)             
+--sudocommand*)
     Sudo commands
---sudooption*)              
+--sudooption*)
     Sudo options
---sudouser*)                
+--sudouser*)
     Sudo users
---systempackages)           
+--systempackages)
     NixOS state version
---swap)                     
+--swap)
     Enable swap
---swapsize)                 
+--swapsize)
     Swap partition size
---swapvol*)                 
+--swapvol*)
     Swap volume name
---target*)                  
+--target)
     Target directory for ISO additions
---temp*)                    
+--targetarch)
+    Target architecture
+--temp*)
     Target directory
---testmode)                 
+--testmode)
     Enable swap
---usage)                    
+--usage)
     Action to perform
---username)                 
+--username)
     User username
---verbose)                  
+--verbose)
     Enable verbose mode
---version|-V)               
+--version|-V)
     Print version information
---videodriver)              
+--videodriver)
     Video Driver
---vmboot)                   
+--vmautoconsole)
+    VM Autoconsole
+--vmboot)
     VM Boot type
---vmcpu)                    
+--vmcpu)
     VM CPU
---vmdir)                    
+--vmdir)
     VM Directory
---vmfeatures)               
+--vmfeatures)
     VM Features
---vmhostdevice)             
+--vmhostdevice)
     VM Host device
---vmgraphics)               
+--vmgraphics)
     VM Graphics
---vmiso|--vmcdrom)          
+--vmiso|--vmcdrom)
     VM ISO
---vmmachine)                
+--vmmachine)
     VM Machine
---vmmemory)                 
+--vmmemory)
     VM Memory
---vmname)                   
+--vmname)
     VM Name
---vmnetwork)                
+--vmnetwork)
     VM Network
---vmsize)                   
+--vmnoautoconsole)
+    VM No autoconsole
+--vmnoreboot)
+    VM Do not reboot VM after creation
+--vmreboot)
+    VM Reboot VM after creation
+--vmsize)
     VM Size
---vmosvariant)              
+--vmosvariant)
     VM OS variant
---vmvirttype)               
+--vmvirttype)
     VM Virtualisation type
---vmvcpus)                  
+--vmvcpus)
     VM vCPUs
---workdir)                  
+--vmwait)
+    VM number of seconds to wait before starting
+--workdir)
     Set script work directory
---zfsinstall)               
+--zfsinstall)
     ZFS install script
---zsh)                      
+--zsh)
     Enable zsh
 ```
 
@@ -458,8 +508,12 @@ option(s):
 ---------
 zfsoptions (default = -O mountpoint=none -O atime=off -O compression=lz4 -O xattr=sa -O acltype=posixacl -o ashift=12)
    ZFS pool options
-isoimports (default = <nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal-combined.nix> <nixpkgs/nixos/modules/installer/cd-dvd/channel.nix> <nixpkgs/nixos/modules/system/boot/kernel.nix>)
+isoimports (default = <nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal-combined.nix> <nixpkgs/nixos/modules/installer/cd-dvd/channel.nix> <nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix> <nixpkgs/nixos/modules/system/boot/kernel.nix>)
    ISO imports
+imports (default = <nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix> <nixpkgs/nixos/modules/system/boot/kernel.nix>)
+   System imports
+hwimports (default = )
+   System hardware configuration imports
 prefix (default = ai)
    Install directory prefix
 verbose (default = false)
@@ -488,7 +542,7 @@ zsh (default = true)
    Enable zsh
 preserve (default = false)
    Preserve ISO
-workdir (default = /home/user/manx)
+workdir (default = /Users/user/manx)
    Script work directory
 sshkey (default = )
    SSH key
@@ -528,17 +582,17 @@ isomount (default = /iso)
    ISO mount directory
 oneshot (default = true)
    Oneshot script
-install (default = /home/user/manx/ai/install.sh)
+install (default = /Users/user/manx/ai/install.sh)
    Install script
-nixisoconfig (default = /home/user/manx/iso.nix)
+nixisoconfig (default = /Users/user/manx/iso.nix)
    NixOS ISO config
-zfsinstall (default = /home/user/manx//zfs.sh)
+zfsinstall (default = /Users/user/manx//zfs.sh)
    ZFS install script
-extinstall (default = /home/user/manx//ext4.sh)
+extinstall (default = /Users/user/manx//ext4.sh)
    EXT4 install script
 runsize (default = 50%)
    Run size
-source (default = /home/user/manx/ai)
+source (default = /Users/user/manx/ai)
    Source directory for ISO additions
 target (default = /ai)
    Target directory for ISO additions
@@ -584,7 +638,7 @@ sudocommand (default = ALL)
    Sudo Command
 sudooptions (default = NOPASSWD)
    Sudo Options
-systempackages (default = ansible curl dmidecode efibootmgr file lsb-release lshw pciutils vim wget)
+systempackages (default = aide ansible curl dmidecode efibootmgr file kernel-hardening-checker lsb-release lshw lynis pciutils vim wget)
    System Packages
 experimental-features (default = nix-command flakes)
    Experimental Features
@@ -602,7 +656,7 @@ poweroff (default = true)
    Poweroff after install
 nixinstall (default = true)
    Run Nix installer on ISO
-gfxmode (default = text)
+gfxmode (default = auto)
    Grub graphics mode
 gfxpayload (default = text)
    Grub graphics payload
@@ -678,16 +732,38 @@ isokernelparams (default = )
    Additional kernel parameters to add to ISO grub commands
 kernelparams (default = )
    Additional kernel parameters to add to system grub commands
+isoextraargs (default = )
+   Additional kernel config to add to ISO grub commands
+extraargs (default = )
+   Additional kernel config to add to system grub commands
 availmods (default = "ahci" "xhci_pci" "virtio_pci" "sr_mod" "virtio_blk")
    Available system kernel modules
 initmods (default = )
    Available system init modules
 bootmods (default = )
    Available system boot modules
-imports (default = )
-   System configuration imports
-hwimports (default = )
-   System hardware configuration imports
 oneshot (default = true)
    Enable oneshot service
+serial (default = true)
+   Enable serial
+kernel (default = )
+   Kernel
+sshpasswordauthentication (default = false)
+   SSH Password Authentication
+firewall (default = true)
+   Enable firewall
+allowedtcpports (default = 22)
+   Allowed TCP ports
+allowedudpports (default = )
+   Allowed UDP ports
+import (default = )
+   Import Nix config to add to system build
+isoimport (default = )
+   Import Nix config to add to ISO build
+dockerarch (default = arm64)
+   Docker architecture
+targetarch (default = arm64)
+   Target architecture
+createdockeriso (default = false)
+   Create ISO using docker
 ```

@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      0.9.6
+# Version:      1.0.1
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -15,6 +15,8 @@
 
 # Insert some shellcheck disables
 # Depending on your requirements, you may want to add/remove disables
+# shellcheck disable=SC2004
+# shellcheck disable=SC2089
 # shellcheck disable=SC2034
 # shellcheck disable=SC1090
 # shellcheck disable=SC2129
@@ -186,6 +188,7 @@ set_defaults () {
   options['isoimport']=""                                                     # option : Import Nix config to add to ISO build
   options['dockerarch']=$( uname -m |sed 's/x86_/amd/g' )                     # option : Docker architecture
   options['targetarch']=$( uname -m )                                         # option : Target architecture
+  options['createdockeriso']="false"                                          # option : Create ISO using docker
   # VM defaults
   vm['name']="nixos"                                                          # vm : VM name
   vm['vcpus']="2"                                                             # vm : VM vCPUs
@@ -211,7 +214,7 @@ set_defaults () {
   if [ "${os['name']}" = "Linux" ]; then
     lsb_check=$( command -v lsb_release )
     if [ -n "${lsb_check}" ]; then 
-      os['distro']=$( lsb_release -i -s 2 | sed 's/"//g' > /dev/null )
+      os['distro']=$( lsb_release -i -s 2 | sed 's/"//g' 2>&1 /dev/null )
     else
       os['distro']=$( hostnamectl | grep "Operating System" | awk '{print $3}' )
     fi
@@ -653,14 +656,8 @@ check_nix_config () {
   if ! [ -d "${options['workdir']}/ai" ]; then
     execute_command "mkdir -p ${options['workdir']}/ai"
   fi
-  if [ "${os['name']}" = "Linux" ]; then
-    nix_test=$( command -v nix )
-    if [ -z "${nix_test}" ]; then
-      if [ "${os['distro']}" = "Ubuntu" ]; then
-        execute_command "apt install nix-bin" "sudo"
-      fi
-    fi
-  else
+  nix_test=$( command -v nix )
+  if [ "${nix_test}" = "" ]; then
     sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install) --no-daemon
   fi
 }
@@ -746,6 +743,11 @@ create_nix_iso_config () {
   get_ssh_key
   populate_iso_kernel_params
   verbose_message "Creating ${options['nixisoconfig']}"
+  if [ "${options['createdockeriso']}" = "true" ]; then
+    source_dir="/root/${script['name']}/ai"
+  else
+    source_dir="${options['source']}"
+  fi
   tee "${options['nixisoconfig']}" << NIXISOCONFIG
 # ISO build config
 { config, pkgs, ... }:
@@ -755,7 +757,7 @@ create_nix_iso_config () {
   # Add contents to ISO
   isoImage = {
     contents = [
-      { source = ${options['source']} ;
+      { source = ${source_dir} ;
         target = "${options['target']}";
       }
     ];
@@ -1507,7 +1509,7 @@ create_kvm_vm () {
   if [ "${vm['cdrom']}" = "" ]; then
     iso_dir="${options['workdir']}/result/iso"
     if [ -d "${iso_dir}" ]; then
-      vm['cdrom']=$( find ${iso_dir} -name "*.iso" )
+      vm['cdrom']=$( find "${iso_dir}" -name "*.iso" )
     else
       warning_message "Could not find an ISO to use"
       exit
@@ -1542,8 +1544,8 @@ create_kvm_vm () {
       execute_command "mkdir ${vm_dir}"
     fi
     vm_file="${vm_dir}/${vm['name']}.xml"
-    ${command} --print-xml 1 > ${vm_file}
-    sudo virsh define ${vm_file}
+    ${command} --print-xml 1 > "${vm_file}"
+    sudo virsh define "${vm_file}"
     verbose_message "" 
     verbose_message "To start the VM and connect to console run the following command:"
     verbose_message "" 
@@ -1591,10 +1593,50 @@ COMPOSE_FILE
 FROM nixos/nix
 RUN nix-channel --update
 DOCKER_FILE
-        docker build ${arch_dir} --tag ${docker_image} --platform linux/${options['dockerarch']}
+        docker build "${arch_dir}" --tag "${docker_image}" --platform "linux/${options['dockerarch']}"
     fi
   fi
 }
+
+# Function: create_docker_iso
+#
+# Create ISO using docker
+
+create_docker_iso () {
+  check_nix_config
+  create_nix_iso_config
+  create_oneshot_script
+  create_install_script
+  check_docker
+  platform="linux/${options['dockerarch']}"
+  docker_image="${script['name']}-latest-${options['dockerarch']}"
+  target_dir="/root/${script['name']}"
+  target_script="${target_dir}/create_docker_iso.sh"
+  iso_dir="${target_dir}/result/iso"
+  save_dir="${target_dir}/isos"
+  config_file="${target_dir}/iso.nix"
+  docker_script="${options['workdir']}/create_docker_iso.sh"
+  if ! [ -d "${options['workdir']}/isos" ]; then
+    execute_command "mkdir ${options['workdir']}/isos"
+  fi
+  tee "${docker_script}" << CREATE_DOCKER_ISO
+cd ${target_dir} ; nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=${config_file} --builders ''
+if [ -d "${iso_dir}" ]; then
+  iso_file=\$( find ${iso_dir} -name "*.iso" )
+  cp \${iso_file} ${save_dir}
+fi
+CREATE_DOCKER_ISO
+  execute_command "chmod +x ${docker_script}"
+  command="exec docker run --privileged=true --cap-add=CAP_MKNOD --device-cgroup-rule=\"b 7:* rmw\" --platform ${platform} --mount type=bind,source=${options['workdir']},target=${target_dir} ${docker_image} bash ${target_script}"
+  if [ "${options['dryrun']}" = "false" ]; then
+    execute_command "${command}"
+    iso_file=$( find "${options['workdir']}/isos" -name "*.iso" )
+    notice_message "Preserved ISO: ${iso_file}"
+  else
+    "Command: ${command}"
+  fi
+}
+
 
 # Function: process_actions
 #
@@ -1739,6 +1781,11 @@ while test $# -gt 0; do
       ;;
     --createiso)                    # switch : Create ISO
       actions_list+=("createiso")
+      shift
+      ;;
+    --createdockeriso)              # switch : Create ISO
+      actions_list+=("createdockeriso")
+      options['createdockeriso']="true"
       shift
       ;;
     --createnix*)                   # switch : Create NixOS ISO config
