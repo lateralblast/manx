@@ -204,3 +204,25 @@
 # Updated documentation
 # 1.0.2: Thu 25 Sep 2025 20:03:01 AEST
 # Added support for creating VMs on MacOS
+# 1.0.3: Thu 25 Sep 2025 21:17:54 AEST
+# Added support for other host platform architectures
+# 1.0.4: Thu 25 Sep 2025 21:41:43 AEST
+# Updated grub config in Nix configs
+# 1.0.5: Fri 26 Sep 2025 09:13:03 AEST
+# Improved output file naming for docker ISO creation
+# 1.0.6: Fri 26 Sep 2025 11:40:38 AEST
+# Added code to add/remove ISO from VM
+# 1.0.7: Fri 26 Sep 2025 14:29:02 AEST
+# Added code to set boot device
+# 1.0.8: Fri 26 Sep 2025 14:30:05 AEST
+# Added code to stop/start and console to VM
+# 1.0.9: Fri 26 Sep 2025 19:19:20 AEST
+# Revised code to alter boot device and add/remove CDROM due to issues with libvirt
+# 1.1.0: Fri 26 Sep 2025 21:17:41 AEST
+# Added system packages config to system build
+# 1.1.1: Sat 27 Sep 2025 05:48:43 AEST
+# Updated docker ISO creation script
+# 1.1.2: Sat 27 Sep 2025 12:20:49 AEST
+# Updated ISO file determination for MacOS
+# 1.1.3: Sat 27 Sep 2025 22:44:24 AEST
+# Cleaned up formatting of parameters

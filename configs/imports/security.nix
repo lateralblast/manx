@@ -1,5 +1,11 @@
 { config, lib, pkgs, ... }:
 {
+  # Firewall
+  networking.firewall = {
+    enable = true;
+    allowedTCPPorts = [ 22 ];
+    allowedUDPPorts = [ ];
+  };
   # Security
 	security = {
     # Auditing

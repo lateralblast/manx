@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.0.2
+# Version:      1.1.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -49,19 +49,84 @@ script['user']=$( id -u -n )
 # Set defaults
 
 set_defaults () {
-  options['zfsoptions']="-O mountpoint=none -O atime=off -O compression=lz4 -O xattr=sa -O acltype=posixacl -o ashift=12"   # option: ZFS pool options
+  # ZFS options
+  options['zfsoptions']=""                                                    # option : Blacklisted kernel modules
+  options['zfsoptions']="\
+  -O mountpoint=none\
+  -O atime=off\
+  -O compression=lz4\
+  -O xattr=sa\
+  -O acltype=posixacl\
+  -o ashift=12\
+  "
   # Packages
-  packages="aide ansible curl dmidecode efibootmgr file kernel-hardening-checker lsb-release lshw lynis pciutils vim wget"  # Package list
+  options['systempackages']=""                                                # option : System packages
+  options['systempackages']="\
+  aide\
+  ansible\
+  curl\
+  dmidecode\
+  efibootmgr\
+  file\
+  kernel-hardening-checker\
+  lsb-release\
+  lshw\
+  lynis\
+  pciutils\
+  vim\
+  wget\
+  "
+  # Blacklist
+  options['blacklist']=""                                                     # option : Blacklisted kernel modules
+  options['blacklist']="\
+  \\\"dccp\\\"\
+  \\\"sctp\\\"\
+  \\\"rds\\\"\
+  \\\"tipc\\\"\
+  \\\"n-hdlc\\\"\
+  \\\"ax25\\\"\
+  \\\"netrom\\\"\
+  \\\"x25\\\"\
+  \\\"rose\\\"\
+  \\\"decnet\\\"\
+  \\\"econet\\\"\
+  \\\"af_802154\\\"\
+  \\\"ipx\\\"\
+  \\\"appletalk\\\"\
+  \\\"psnap\\\"\
+  \\\"p8023\\\"\
+  \\\"p8022\\\"\
+  \\\"can\\\"\
+  \\\"atm\\\"\
+  \\\"cramfs\\\"\
+  \\\"freevxfs\\\"\
+  \\\"jffs2\\\"\
+  \\\"hfs\\\"\
+  \\\"hfsplus\\\"\
+  \\\"udf\\\"\
+  "
+  # Available kernel modules
+  options['availmods']=""                                                     # option : Available kernel modules
+  options['availmods']="\
+  \\\"ahci\\\"\
+  \\\"xhci_pci\\\"\
+  \\\"virtio_pci\\\"\
+  \\\"sr_mod\\\"\
+  \\\"virtio_blk\\\"\
+  "
   # Imports
-  imports['hardware']="<nixpkgs/nixos/modules/profiles/all-hardware.nix>"                                                   # imports : NixOS hardware profile
-  imports['base']="<nixpkgs/nixos/modules/profiles/base.nix>"                                                               # imports : NixOS base profile
-  imports['minimal']="<nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal-combined.nix>"                        # imports : NixOS CD minimal profile
-  imports['channel']="<nixpkgs/nixos/modules/installer/cd-dvd/channel.nix>"                                                 # imports : NixOS CD channel profile
-  imports['grub']="<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>"                                                # imports : NixOS grub profile
-  imports['kernel']="<nixpkgs/nixos/modules/system/boot/kernel.nix>"                                                        # imports : NixOS kernel profile
-  options['isoimports']="${imports['minimal']} ${imports['channel']} ${imports['grub']} ${imports['kernel']}"               # option : ISO imports
-  options['imports']="${imports['grub']} ${imports['kernel']}"                                                              # option : System imports
-  options['hwimports']=""                                                                                                   # option : System hardware configuration imports
+  options['isoimports']=""                                                    # option : Available kernel modules
+  options['isoimports']="\
+  <nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal-combined.nix>\
+  <nixpkgs/nixos/modules/installer/cd-dvd/channel.nix>\
+  <nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>\
+  <nixpkgs/nixos/modules/system/boot/kernel.nix>\
+  "
+  options['imports']=""                                                       # option : Available kernel modules
+  options['imports']="\
+  <nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>\
+  <nixpkgs/nixos/modules/system/boot/kernel.nix>\
+  "
   # Options
   options['prefix']="ai"                                                      # option : Install directory prefix
   options['verbose']="false"                                                  # option : Verbose mode
@@ -125,7 +190,6 @@ set_defaults () {
   options['sudousers']="${options['username']}"                               # option : Sudo Users
   options['sudocommand']="ALL"                                                # option : Sudo Command
   options['sudooptions']="NOPASSWD"                                           # option : Sudo Options
-  options['systempackages']="${packages}"                                     # option : System Packages
   options['experimental-features']="nix-command flakes"                       # option : Experimental Features
   options['unfree']="false"                                                   # option : Allow Non Free Packages
   options['stateversion']="25.05"                                             # option : State version
@@ -174,14 +238,13 @@ set_defaults () {
   options['kernelparams']=""                                                  # option : Additional kernel parameters to add to system grub commands
   options['isoextraargs']=""                                                  # option : Additional kernel config to add to ISO grub commands
   options['extraargs']=""                                                     # option : Additional kernel config to add to system grub commands
-  options['availmods']='"ahci" "xhci_pci" "virtio_pci" "sr_mod" "virtio_blk"' # option : Available system kernel modules
   options['initmods']=''                                                      # option : Available system init modules
   options['bootmods']=''                                                      # option : Available system boot modules
   options['oneshot']="true"                                                   # option : Enable oneshot service
   options['serial']="true"                                                    # option : Enable serial
   options['kernel']=""                                                        # option : Kernel
   options['sshpasswordauthentication']="false"                                # option : SSH Password Authentication
-  options['firewall']="true"                                                  # option : Enable firewall
+  options['firewall']="false"                                                 # option : Enable firewall
   options['allowedtcpports']="22"                                             # option : Allowed TCP ports
   options['allowedudpports']=""                                               # option : Allowed UDP ports
   options['import']=""                                                        # option : Import Nix config to add to system build
@@ -189,8 +252,11 @@ set_defaults () {
   options['dockerarch']=$( uname -m |sed 's/x86_/amd/g' )                     # option : Docker architecture
   options['targetarch']=$( uname -m )                                         # option : Target architecture
   options['createdockeriso']="false"                                          # option : Create ISO using docker
+  options['console']="false"                                                  # option : Enable console in actions
+  options['suffix']=""                                                        # option : Output file suffix
+
   # VM defaults
-  vm['name']="nixos"                                                          # vm : VM name
+  vm['name']="${script['name']}"                                              # vm : VM name
   vm['vcpus']="2"                                                             # vm : VM vCPUs
   vm['cpu']="host-passthrough"                                                # vm : VM CPU
   vm['os-variant']="nixos-unknown"                                            # vm : VM OS variant
@@ -376,25 +442,61 @@ reset_defaults () {
   fi
   if [ "${options['serial']}" = "true" ]; then
     if [ "${options['isokernelparams']}" = "" ]; then
-      options['isokernelparams']="\"console=tty1\" \"console=ttyS0,115200n8\" \"console=ttyS1,115200n8\""
+      options['isokernelparams']="\
+  \"console=tty1\"\
+  \"console=ttyS0,115200n8\"\
+  \"console=ttyS1,115200n8\"\
+  "
     else
-      options['isokernelparams']="${options['isokernelparams']} \"console=tty1\" \"console=ttyS0,115200n8\" \"console=ttyS1,115200n8\""
+      options['isokernelparams']="\
+  ${options['isokernelparams']}\
+  \"console=tty1\"\
+  \"console=ttyS0,115200n8\"\
+  \"console=ttyS1,115200n8\"\
+  "
     fi
     if [ "${options['kernelparams']}" = "" ]; then
-      options['kernelparams']="\\\"console=tty1\\\" \\\"console=ttyS0,115200n8\\\" \\\"console=ttyS1,115200n8\\\""
+      options['kernelparams']="\
+  \"console=tty1\"\
+  \"console=ttyS0,115200n8\"\
+  \"console=ttyS1,115200n8\"\
+  "
     else
-      options['kernelparams']="${options['kernelparams']} \\\"console=tty1\\\" \\\"console=ttyS0,115200n8\\\" \\\"console=ttyS1,115200n8\\\""
+      options['kernelparams']="\
+  ${options['kernelparams']}\
+  \"console=tty1\"\
+  \"console=ttyS0,115200n8\"\
+  \"console=ttyS1,115200n8\"\
+  "
     fi
     spacer=$'\n    '
     if [ "${options['isoextraargs']}" = "" ]; then
-      options['isoextraargs']="serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}terminal_input serial${spacer}terminal_output serial"
+      options['isoextraargs']="\
+  serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}\
+  terminal_input serial${spacer}\
+  terminal_output serial\
+  "
     else
-      options['isoextraargs']="${spacer}${options['isoextraargs']}${spacer}serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}terminal_input serial${spacer}terminal_output serial"
+      options['isoextraargs']="\
+  ${options['isoextraargs']}${spacer}\n
+  serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}\n
+  terminal_input serial${spacer}\
+  terminal_output serial\
+  "
     fi
     if [ "${options['extraargs']}" = "" ]; then
-      options['extraargs']="serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}terminal_input serial${spacer}terminal_output serial"
+      options['extraargs']="\
+  serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}\
+  terminal_input serial${spacer}\
+  terminal_output serial\
+  "
     else
-      options['extraargs']="${spacer}${options['extraargs']}${spacer}serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}terminal_input serial${spacer}terminal_output serial"
+      options['extraargs']="\
+  ${options['extraargs']}${spacer}\
+  serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}\
+  terminal_input serial${spacer}\
+  terminal_output serial\
+"
     fi
   fi
   if [[ ${options['kernel']} =~ latest ]] && [[ ${options['kernel']} =~ hardened ]]; then
@@ -445,7 +547,7 @@ do_exit () {
 check_value () {
   param="$1"
   value="$2"
-  if [[ "${value}" =~ "--" ]]; then
+  if [[ ${value} =~ ^-- ]]; then
     print_message "Value '$value' for parameter '$param' looks like a parameter" "verbose"
     echo ""
     if [ "${options['force']}" = "false" ]; then
@@ -498,10 +600,11 @@ print_info () {
   echo ""
   if [[ ${info} =~ switch ]]; then
     echo "${info}(es):"
+    echo "-----------"
   else
     echo "${info}(s):"
+    echo "----------"
   fi
-  echo "---------"
   while read -r line; do
     if [[ "${line}" =~ .*"# ${info}".* ]]; then
       if [[ "${info}" =~ option ]]; then
@@ -674,12 +777,20 @@ check_nix_config () {
 get_password_crypt () {
   if ! [ "${options['userpassword']}" = "" ]; then
     if [ "${options['usercrypt']}" = "" ]; then
-      options['usercrypt']=$( mkpasswd --method=sha-512 "${options['userpassword']}" )
+      if [ "${os['name']}" = "Darwin" ]; then
+        options['usercrypt']=$( echo "${options['userpassword']}" | openssl passwd -6 --stdin )
+      else
+        options['usercrypt']=$( mkpasswd --method=sha-512 "${options['userpassword']}" )
+      fi
     fi
   fi
   if ! [ "${options['rootpassword']}" = "" ]; then
     if [ "${options['rootcrypt']}" = "" ]; then
-      options['rootcrypt']=$( mkpasswd --method=sha-512 "${options['rootpassword']}" )
+      if [ "${os['name']}" = "Darwin" ]; then
+        options['rootcrypt']=$( echo "${options['rootpassword']}" | openssl passwd -6 --stdin )
+      else
+        options['rootcrypt']=$( mkpasswd --method=sha-512 "${options['rootpassword']}" )
+      fi
     fi
   fi
 }
@@ -723,9 +834,10 @@ populate_iso_kernel_params () {
     bootpolname installdir mbrpartname locale devnodes logdir logfile timezone \
     usershell username extragroups usergecos normaluser sudocommand sudooptions \
     rootpassword userpassword stateversion hostname unfree gfxmode gfxpatload \
-    nic dns ip gateway cidr zfsoptions sshkey imports hwimports firewall \
-    sshpasswordauthentication allowedtcpports allowedudpports; do
-    if [ "${param}" = "zfsoptions" ] || [ "${param}" = "sshkey" ] || [ "${param}" = "imports" ]; then
+    nic dns ip gateway cidr zfsoptions systempackages imports hwimports firewall \
+    sshpasswordauthentication allowedtcpports allowedudpports targetarch sshkey \
+    blacklist; do
+    if [ "${param}" = "zfsoptions" ] || [ "${param}" = "sshkey" ] || [ "${param}" = "imports" ] || [ "${param}" = "systempackages" ] || [ "${param}" = "blacklist" ]; then
       value="\\\"${options[${param}]}\\\""
     else
       value="${options[${param}]}"
@@ -785,15 +897,24 @@ NIXISOCONFIG
 
   # Set boot params
   boot.runSize = "${options['runsize']}";
-  boot.loader.grub.gfxmodeEfi = "${options['gfxmode']}";
-  boot.loader.grub.gfxpayloadEfi = "${options['gfxpayload']}";
-  boot.loader.grub.gfxmodeBios = "${options['gfxmode']}";
-  boot.loader.grub.gfxpayloadBios = "${options['gfxpayload']}";
+  boot.loader = {
+    grub = {
+      gfxmodeEfi = "${options['gfxmode']}";
+      gfxpayloadEfi = "${options['gfxpayload']}";
+      gfxmodeBios = "${options['gfxmode']}";
+      gfxpayloadBios = "${options['gfxpayload']}";
+      extraConfig = "
+        ${options['isoextraargs']}
+      ";
+      extraEntries = ''
+        menuentry "Boot from next volume" {
+          exit 1
+        }
+      '';
+    };
+  };
   boot.kernelParams = [ ${options['isokernelparams']} ];
 #  boot.kernelPackages = pkgs.linuxPackages${options['kernel']};
-  boot.loader.grub.extraConfig = "
-    ${options['isoextraargs']}
-  ";
 
   # Set your time zone
   time.timeZone = "${options['timezone']}";
@@ -959,9 +1080,9 @@ ai['nixdir']="\${ai['installdir']}/etc/nixos"
 ai['nixcfg']="\${ai['nixdir']}/configuration.nix"
 ai['hwcfg']="\${ai['nixdir']}/hardware-configuration.nix"
 ai['zfsoptions']="${options['zfsoptions']}"
-ai['availmods']='${options['availmods']}'
-ai['initmods']='${options['initmods']}'
-ai['bootmods']='${options['bootmods']}'
+ai['availmods']="${options['availmods']}"
+ai['initmods']="${options['initmods']}"
+ai['bootmods']="${options['bootmods']}"
 ai['experimental-features']="${options['experimental-features']}"
 ai['unfree']="${options['unfree']}"
 ai['gfxmode']="${options['gfxmode']}"
@@ -982,6 +1103,9 @@ ai['allowedtcpports']="${options['allowedtcpports']}"
 ai['allowedudpports']="${options['allowedudpports']}"
 ai['isomount']="${options['isomount']}"
 ai['prefix']="${options['prefix']}"
+ai['targetarch']="${options['targetarch']}"
+ai['systempackages']="${options['systempackages']}"
+ai['blacklist']="${options['blacklist']}"
 
 # Parse parameters
 echo "Processing parameters"
@@ -1200,6 +1324,7 @@ tee \${ai['nixcfg']} << NIX_CFG
   boot.zfs.devNodes = "\${ai['devnodes']}";
   services.lvm.boot.thin.enable = \${ai['lvm']};
 #  boot.kernelPackages = pkgs.linuxPackages\${ai['kernel']};
+  boot.blacklistedKernelModules = [ \$ai['blacklist'] ];
 
   # HostID and Hostname
   networking.hostId = "\${ai['hostid']}";
@@ -1218,6 +1343,9 @@ tee \${ai['nixcfg']} << NIX_CFG
 
   # Additional Nix options
   nix.settings.experimental-features = "\${ai['experimental-features']}";
+
+  # System packages
+  environment.systemPackages = with pkgs; [ \${ai['systempackages']} ];
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = \${ai['unfree']};
@@ -1295,7 +1423,7 @@ NIX_CFG
 fi
 tee -a \${ai['nixcfg']} << NIX_CFG
   users.users.root.initialHashedPassword = "\${ai['rootcrypt']}";
-  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
+  nixpkgs.hostPlatform = lib.mkDefault "\${ai['targetarch']}-linux";
   system.stateVersion = "\${ai['stateversion']}";
 }
 NIX_CFG
@@ -1407,36 +1535,62 @@ INSTALL
 chmod +x "${options['install']}"
 }
 
+# Function: get_output_file_suffix
+#
+# Determine output ISO file name suffix
+
+get_output_file_suffix () {
+  if [ "${options['suffix']}" = "${script['name']}" ]; then
+    suffix="${script['name']}"
+  else
+    if [ "${options['suffix']}" = "" ]; then
+      suffix="${script['name']}"
+    else
+      suffix="${script['name']}-${options['suffix']}"
+    fi
+  fi
+  for param in rootdisk nic ; do
+    value="${options[${param}]}"
+    if ! [ "${value}" = "first" ]; then
+      suffix="${suffix}-${value}"
+    fi
+  done
+  for param in ip username; do
+    value="${options[${param}]}"
+    if ! [ "${value}" = "" ]; then
+      suffix="${suffix}-${value}"
+    fi
+  done
+  for param in unattended noreboot standalone lvm; do
+    value="${options[${param}]}"
+    if [ "${value}" = "true" ]; then
+      suffix="${suffix}-${param}"
+    fi
+  done
+  suffix="${suffix}-${options['rootfs']}.iso"
+  options['suffix']="${suffix}"
+}
+
+# Function: update_output_file_name
+#
+# Update output ISO file name based on options
+
+update_output_file_name () {
+  if [ "${options['output']}" = "" ]; then
+    output_dir="${options['workdir']}/isos"
+    temp_name=$( basename -s ".iso" "${iso_file}" )
+    get_output_file_suffix
+    options['output']="${output_dir}/${options['suffix']}"
+  fi 
+}
+
 # Function: preserve_iso
 #
 # Preserve ISO
 
 preserve_iso () {
   iso_file="$1"
-  if [ "${options['output']}" = "" ]; then
-    output_dir="${options['workdir']}/isos"
-    temp_name=$( basename -s ".iso" "${iso_file}" )
-    for param in unattended noreboot standalone lvm; do
-      value="${options[${param}]}"
-      if [ "${value}" = "true" ]; then
-        temp_name="${temp_name}-${param}"
-      fi
-    done
-    for param in rootdisk nic ; do
-      value="${options[${param}]}"
-      if ! [ "${value}" = "first" ]; then
-        temp_name="${temp_name}-${value}"
-      fi
-    done
-    for param in ip username; do
-      value="${options[${param}]}"
-      if ! [ "${value}" = "" ]; then
-        temp_name="${temp_name}-${value}"
-      fi
-    done
-    temp_name="${temp_name}-${options['rootfs']}.iso"
-    options['output']="${output_dir}/${temp_name}"
-  fi
+  update_output_file_name
   output_dir=$( dirname "${options['output']}" )
   if ! [ -d "${output_dir}" ]; then
     execute_command "mkdir -p ${output_dir}"
@@ -1471,28 +1625,178 @@ create_iso () {
   fi
 }
 
+# Function: check_kvm_vm_exists
+#
+# Check KVM VM exists
+
+check_kvm_vm_exists () {
+  if [ "${os['name']}" = "Darwin" ]; then
+    status=$( virsh list --all | grep "${vm['name']} " | grep -c "${vm['name']}" )
+  else
+    status=$( sudo virsh list --all | grep "${vm['name']}" | grep -c "${vm['name']}" )
+  fi
+  if [ "${status}" = "0" ]; then
+    vm['exists']="false"
+  else
+    vm['exists']="true"
+  fi
+}
+
+# Function: control_kvm_vm
+#
+# Control KVM VM
+
+control_kvm_vm () {
+  check_kvm_vm_exists
+  case ${vm['action']} in
+    start)
+      action_test="Starting"
+      ;;
+    stop)
+      action_test="Stopping"
+      ;;
+    console)
+      action_test="Consoling to"
+      ;;
+  esac
+  if [ "${vm['exists']}" = "true" ]; then
+    if [ "${os['name']}" = "Darwin" ]; then
+      vm_check=$( virsh list --all | grep "${vm['name']} " | grep -c "${vm['status']}" )
+      if [ "${vm_check}" = "0" ]; then
+        information_message "${actions_text} KVM VM ${vm['name']}"
+        execute_command "virsh -c \"qemu:///session\" ${vm['action']} ${vm['name']} 2> /dev/null"
+      fi
+    else
+      vm_check=$( sudo virsh list --all | grep "${vm['name']}" | grep -c "${vm['status']}" )
+      if [ "${vm_check}" = "0" ]; then
+        information_message "${actions_text} KVM VM ${vm['name']}"
+        execute_command "sudo virsh ${vm['action']} ${vm['name']} 2> /dev/null"
+      fi
+    fi
+  fi
+}
+
+# Function: stop_kvm_vm
+#
+# Stop KVM VM
+
+stop_kvm_vm () {
+  vm['action']="destroy"
+  vm['status']="shut off"
+  control_kvm_vm
+}
+
+# Function: start_kvm_vm
+#
+# Start KVM VM
+
+start_kvm_vm () {
+  vm['action']="start"
+  vm['status']="running"
+  control_kvm_vm
+  if [ "${options['console']}" = "true" ]; then
+    vm['action']="console"
+    vm['status']="shut off"
+    control_kvm_vm
+  fi
+}
+
 # Function: delete_kvm_vm
 #
 # Delete a KVM VM
 
 delete_kvm_vm () {
-  if [ "${os['name']}" = "Darwin" ]; then
-    vm['status']=$( virsh list --all | grep "${vm['name']} " | grep -c "shut off" )
-    if [ "${vm['status']}" = "0" ]; then
-      information_message "Stopping KVM VM ${vm['name']}"
-      execute_command "virsh -c \"qemu:///session\" destroy ${vm['name']} 2> /dev/null"
+  check_kvm_vm_exists
+  stop_kvm_vm
+  if [ "${vm['exists']}" = "true" ]; then
+    if [ "${os['name']}" = "Darwin" ]; then
+      information_message "Deleting VM ${vm['name']}"
+      execute_command "virsh -c \"qemu:///session\" undefine ${vm['name']} --nvram 2> /dev/null"
+    else
+      information_message "Deleting VM ${vm['name']}"
+      execute_command "sudo virsh undefine ${vm['name']} --nvram 2> /dev/null"
     fi
-    information_message "Deleting VM ${vm['name']}"
-    execute_command "virsh -c \"qemu:///session\" undefine ${vm['name']} --nvram 2> /dev/null"
-  else
-    vm['status']=$( sudo virsh list --all | grep "${vm['name']}" | grep -c "shut off" )
-    if [ "${vm['status']}" = "0" ]; then
-      information_message "Stopping KVM VM ${vm['name']}"
-      execute_command "sudo virsh destroy ${vm['name']} 2> /dev/null"
-    fi
-    information_message "Deleting VM ${vm['name']}"
-    execute_command "sudo virsh undefine ${vm['name']} --nvram 2> /dev/null"
   fi
+}
+
+# Function: add_iso_to_kvm_vm
+#
+# Add ISO to KVM VM
+
+add_iso_to_kvm_vm () {
+  stop_kvm_vm
+  if [ "${vm['exists']}" = "true" ]; then
+    if [ "${vm['cdrom']}" = "" ]; then
+      add_cdrom_device
+    else
+      if [ -f "${vm['cdrom']}" ]; then
+        set_cdrom_device
+      else
+        verbose_message "ISO file ${vm['cdrom']} does not exist"
+        do_exit
+      fi
+    fi
+  fi
+}
+
+# Function: set_cdrom_device
+#
+# Set cdrom device
+
+set_cdrom_device () {
+  stop_kvm_vm
+  cdrom_device="/tmp/${vm['name']}_cdrom.xml"
+  if [ "${vm['exists']}" = "true" ]; then
+    tee "${cdrom_device}" << CDROM_DEVICE
+    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <source file='${vm['cdrom']}'/>
+      <target dev='sda' bus='scsi'/>
+      <readonly/>
+      <address type='drive' controller='0' bus='0' target='0' unit='0'/>
+    </disk>
+CDROM_DEVICE
+    if [ -f "${cdrom_device}" ]; then
+      execute_command "virsh update-device ${vm['name']} ${cdrom_device}"
+    fi
+  fi
+}
+
+# Function: boot_from_iso
+#
+# Boot from ISO
+
+boot_from_disk () {
+  vm['cdrom']=""
+  set_cdrom_device
+  start_kvm_vm
+}
+
+# Function: boot_from_iso
+#
+# Boot from ISO
+
+boot_from_cdrom () {
+  if [ "${vm['cdrom']}" = "" ]; then
+    verbose_message "No ISO file specified"
+    do_exit
+  else
+    if ! [ -f "${vm['cdrom']}" ]; then
+      verbose_message "ISO file ${vm['cdrom']} does not exist"
+      do_exit
+    fi
+  fi
+  add_iso_to_kvm_vm
+  start_kvm_vm
+}
+
+# Function: console_to_kvm_vm
+#
+# Connect to KVM console
+
+console_to_kvm_vm () {
+  options['console']="true"
+  start_kvm_vm
 }
 
 # Function: create_kvm_vm
@@ -1514,9 +1818,13 @@ create_kvm_vm () {
     vm['memory']="${ram}"
   fi
   if [ "${vm['cdrom']}" = "" ]; then
-    iso_dir="${options['workdir']}/result/iso"
+    if [ "${os['name']}" = "Darwin" ]; then
+      iso_dir="${options['workdir']}/isos"
+    else
+      iso_dir="${options['workdir']}/result/iso"
+    fi
     if [ -d "${iso_dir}" ]; then
-      vm['cdrom']=$( find "${iso_dir}" -name "*.iso" )
+      vm['cdrom']=$( ls -rt "${iso_dir}"/nixos*.iso |tail -1 )
     else
       warning_message "Could not find an ISO to use"
       exit
@@ -1632,10 +1940,12 @@ create_docker_iso () {
   create_oneshot_script
   create_install_script
   check_docker
+  get_output_file_suffix
   platform="linux/${options['dockerarch']}"
   docker_image="${script['name']}-latest-${options['dockerarch']}"
   target_dir="/root/${script['name']}"
   target_script="${target_dir}/create_docker_iso.sh"
+  output_dir="${options['workdir']}/isos"
   iso_dir="${target_dir}/result/iso"
   save_dir="${target_dir}/isos"
   config_file="${target_dir}/iso.nix"
@@ -1647,20 +1957,26 @@ create_docker_iso () {
 cd ${target_dir} ; nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=${config_file} --builders ''
 if [ -d "${iso_dir}" ]; then
   iso_file=\$( find ${iso_dir} -name "*.iso" )
-  cp \${iso_file} ${save_dir}
+  temp_name=\$( basename -s ".iso" "\${iso_file}" )
+  save_file="\${temp_name}-${options['suffix']}"
+  if [ -f "${save_dir}/\${save_file}" ]; then
+    rm -f ${save_dir}/\${save_file}
+  fi
+  cp \${iso_file} ${save_dir}/\${save_file}
+  output_file="${output_dir}/\${save_file}"
+  echo "Source: \${iso_file}"
+  echo "Output: ${save_dir}/\${save_file}"
+  echo "Output: \${output_file}"
 fi
 CREATE_DOCKER_ISO
   execute_command "chmod +x ${docker_script}"
   command="exec docker run --privileged=true --cap-add=CAP_MKNOD --device-cgroup-rule=\"b 7:* rmw\" --platform ${platform} --mount type=bind,source=${options['workdir']},target=${target_dir} ${docker_image} bash ${target_script}"
   if [ "${options['dryrun']}" = "false" ]; then
     execute_command "${command}"
-    iso_file=$( find "${options['workdir']}/isos" -name "*.iso" )
-    notice_message "Preserved ISO: ${iso_file}"
   else
     "Command: ${command}"
   fi
 }
-
 
 # Function: process_actions
 #
@@ -1669,6 +1985,18 @@ CREATE_DOCKER_ISO
 process_actions () {
   actions="$1"
   case $actions in
+    addiso)                 # action : Add ISO to VM
+      add_iso_to_kvm_vm
+      exit
+      ;;
+    bootfromcdrom)          # action : Set boot device to CDROM and boot VM
+      boot_from_cdrom
+      exit
+      ;;
+    bootfromdisk)           # action : Set boot device to disk and boot VM
+      boot_from_disk
+      exit
+      ;;
     createinstall*)         # action : Create install script
       create_install_script
       exit
@@ -1693,11 +2021,15 @@ process_actions () {
       create_oneshot_script
       exit
       ;;
-    createvm)   # action : Create install script
+    createvm)               # action : Create install script
       create_kvm_vm
       exit
       ;;
-    deletevm)   # action : Create install script
+    consolevm)              # action : Create install script
+      console_to_kvm_vm
+      exit
+      ;;
+    deletevm)               # action : Create install script
       delete_kvm_vm
       exit
       ;;
@@ -1711,6 +2043,18 @@ process_actions () {
       ;;
     printdefaults)          # action : Print defaults
       print_defaults
+      exit
+      ;;
+    setboot*)               # action : Print defaults
+      set_boot_device
+      exit
+      ;;
+    start*)                 # action : Start KVM VM
+      start_kvm_vm
+      exit
+      ;;
+    stop*)                  # action : Start KVM VM
+      stop_kvm_vm
       exit
       ;;
     shellcheck)             # action : Shellcheck script
@@ -1743,6 +2087,14 @@ while test $# -gt 0; do
       actions_list+=("$2")
       shift 2
       ;;
+    --addiso|--addcdrom)            # switch : Add cdrom to VM
+      actions_list+=("addiso")
+      shift
+      ;;
+    --removeiso|--removecdrom)      # switch : Remove cdrom from VM
+      actions_list+=("removeiso")
+      shift
+      ;;
     --allowedtcpports)              # switch : Allowed TCP ports
       check_value "$1" "$2"
       options['allowedtcpports']="$2"
@@ -1758,6 +2110,19 @@ while test $# -gt 0; do
       options['availmods']="$2"
       shift 2
       ;;
+    --blacklist)                    # switch : Blacklist modules
+      check_value "$1" "$2"
+      options['blacklist']="$2"
+      shift 2
+      ;;
+    --bootfromdisk)                 # switch : Boot VM from disk
+      actions_list+=("bootfromdisk")
+      shift
+      ;;
+    --bootfromiso|--bootfromcdrom)  # switch : Boot VM from CDROM
+      actions_list+=("bootfromcdrom")
+      shift
+      ;;
     --bootmod*)                     # switch : Available system boot modules
       check_value "$1" "$2"
       options['bootmods']="$2"
@@ -1767,6 +2132,14 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       options['bootsize']="$2"
       shift 2
+      ;;
+    --bootvm|--startvm)             # switch : Boot VM
+      actions_list+=("startkvmvm")
+      shift
+      ;;
+    --stopvm)                       # switch : Stop VM
+      actions_list+=("stopkvmvm")
+      shift
       ;;
     --bridge)                       # switch : Enable bridge
       options['bridge']="true"
@@ -1822,6 +2195,10 @@ while test $# -gt 0; do
       ;;
     --createvm)                     # switch : Create oneshot script
       actions_list+=("createvm")
+      shift
+      ;;
+    --console*)                     # switch : Create oneshot script
+      actions_list+=("consolevm")
       shift
       ;;
     --usercrypt|--crypt)            # switch : User Password Crypt
@@ -2065,7 +2442,7 @@ while test $# -gt 0; do
       options_list+=("$2")
       shift 2
       ;;
-    --output*)                      # switch : Output file
+    --output*|--iso)                # switch : Output file
       check_value "$1" "$2"
       options['output']="$2"
       options['preserve']="true"
@@ -2140,6 +2517,10 @@ while test $# -gt 0; do
       options['serial']="true"
       shift
       ;;
+    --setboot*)                     # switch : Set boot device
+      actions_list+=("setboot")
+      shift
+      ;;
     --shell|usershell)              # switch : User Shell
       check_value "$1" "$2"
       options['usershell']="$2"
@@ -2194,6 +2575,11 @@ while test $# -gt 0; do
     --sudouser*)                    # switch : Sudo users
       check_value "$1" "$2"
       options['sudousers']="$2"
+      shift 2
+      ;;
+    --suffix|--outputsuffix)        # switch : Sudo users
+      check_value "$1" "$2"
+      options['suffix']="$2"
       shift 2
       ;;
     --systempackages)               # switch : NixOS state version
