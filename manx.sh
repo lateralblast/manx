@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.1.3
+# Version:      1.1.5
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -50,231 +50,276 @@ script['user']=$( id -u -n )
 
 set_defaults () {
   # ZFS options
-  options['zfsoptions']=""                                                    # option : Blacklisted kernel modules
-  options['zfsoptions']="\
-  -O mountpoint=none\
-  -O atime=off\
-  -O compression=lz4\
-  -O xattr=sa\
-  -O acltype=posixacl\
-  -o ashift=12\
-  "
+  options['zfsoptions']=""                                                          # option : Blacklisted kernel modules
+  zfsoptions=(
+    "-O mountpoint=none"
+    "-O atime=off"
+    "-O compression=lz4"
+    "-O xattr=sa"
+    "-O acltype=posixacl"
+    "-o ashift=12"
+  )
+  for item in "${zfsoptions[@]}"; do
+    options['zfsoptions']+=" ${item} "
+  done
   # Packages
-  options['systempackages']=""                                                # option : System packages
-  options['systempackages']="\
-  aide\
-  ansible\
-  curl\
-  dmidecode\
-  efibootmgr\
-  file\
-  kernel-hardening-checker\
-  lsb-release\
-  lshw\
-  lynis\
-  pciutils\
-  vim\
-  wget\
-  "
+  options['systempackages']=""                                                      # option : System packages
+  systempackages=(
+    "aide"
+    "ansible"
+    "curl"
+    "dmidecode"
+    "efibootmgr"
+    "file"
+    "kernel-hardening-checker"
+    "lsb-release"
+    "lshw"
+    "lynis"
+    "pciutils"
+    "vim"
+    "wget"
+  )
+  for item in "${systempackages[@]}"; do
+    options['systempackages']+=" ${item} "
+  done
   # Blacklist
-  options['blacklist']=""                                                     # option : Blacklisted kernel modules
-  options['blacklist']="\
-  \\\"dccp\\\"\
-  \\\"sctp\\\"\
-  \\\"rds\\\"\
-  \\\"tipc\\\"\
-  \\\"n-hdlc\\\"\
-  \\\"ax25\\\"\
-  \\\"netrom\\\"\
-  \\\"x25\\\"\
-  \\\"rose\\\"\
-  \\\"decnet\\\"\
-  \\\"econet\\\"\
-  \\\"af_802154\\\"\
-  \\\"ipx\\\"\
-  \\\"appletalk\\\"\
-  \\\"psnap\\\"\
-  \\\"p8023\\\"\
-  \\\"p8022\\\"\
-  \\\"can\\\"\
-  \\\"atm\\\"\
-  \\\"cramfs\\\"\
-  \\\"freevxfs\\\"\
-  \\\"jffs2\\\"\
-  \\\"hfs\\\"\
-  \\\"hfsplus\\\"\
-  \\\"udf\\\"\
-  "
+  options['blacklist']=""                                                           # option : Blacklisted kernel modules
+  blacklist=(
+    "dccp"
+    "sctp"
+    "rds"
+    "tipc"
+    "n-hdlc"
+    "ax25"
+    "netrom"
+    "x25"
+    "rose"
+    "decnet"
+    "econet"
+    "af_802154"
+    "ipx"
+    "appletalk"
+    "psnap"
+    "p8023"
+    "p8022"
+    "can"
+    "atm"
+    "cramfs"
+    "freevxfs"
+    "jffs2"
+    "hfs"
+    "hfsplus"
+    "udf"
+  )
+  for item in "${blacklist[@]}"; do
+    options['blacklist']+=" \\\"${item}\\\" "
+  done
   # Available kernel modules
-  options['availmods']=""                                                     # option : Available kernel modules
-  options['availmods']="\
-  \\\"ahci\\\"\
-  \\\"xhci_pci\\\"\
-  \\\"virtio_pci\\\"\
-  \\\"sr_mod\\\"\
-  \\\"virtio_blk\\\"\
-  "
+  options['availmods']=""                                                           # option : Available kernel modules
+  availmods=(
+    "ahci"
+    "xhci_pci"
+    "virtio_pci"
+    "sr_mod"
+    "virtio_blk"
+  )
+  for item in "${availmods[@]}"; do
+    options['availmods']+=" \\\"${item}\\\" "
+  done
+  # Kernel parameters
+  options['isokernelparams']=""                                                     # option : Additional kernel parameters to add to ISO grub commands
+  options['kernelparams']=""                                                        # option : Additional kernel parameters to add to system grub commands
+  options['serialkernelparams']=""                                                  # option : Serial kernel params
+  serialkernelparams=(
+    "console=tty1"
+    "console=ttyS0,115200n8"
+    "console=ttyS1,115200n8"
+  )
+  for item in "${serialkernelparams[@]}"; do
+    options['isoserialkernelparams']+=" \"${item}\" "
+  done
+  for item in "${serialkernelparams[@]}"; do
+    options['serialkernelparams']+=" \\\"${item}\\\" "
+  done
+  options['serialextraargs']=""                                                     # option : Serial extra args
+  serialextraargs=(
+    "serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1"
+    "terminal_input serial"
+    "terminal_output serial"
+  )
+  spacer=$'\n        '
+  for item in "${serialextraargs[@]}"; do
+    if [ "${options['serialextraargs']}" = "" ]; then
+      options['serialextraargs']="${item}"
+    else
+      options['serialextraargs']+="${spacer}${item}"
+    fi
+  done
   # Imports
-  options['isoimports']=""                                                    # option : Available kernel modules
-  options['isoimports']="\
-  <nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal-combined.nix>\
-  <nixpkgs/nixos/modules/installer/cd-dvd/channel.nix>\
-  <nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>\
-  <nixpkgs/nixos/modules/system/boot/kernel.nix>\
-  "
-  options['imports']=""                                                       # option : Available kernel modules
-  options['imports']="\
-  <nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>\
-  <nixpkgs/nixos/modules/system/boot/kernel.nix>\
-  "
+  options['isoimports']=""                                                          # option : ISO imports
+  isoimports=(
+    "<nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal-combined.nix>"
+    "<nixpkgs/nixos/modules/installer/cd-dvd/channel.nix>"
+    "<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>"
+    "<nixpkgs/nixos/modules/system/boot/kernel.nix>"
+  )
+  for item in "${isoimports[@]}"; do
+    options['isoimports']+=" ${item} "
+  done
+  options['imports']=""                                                             # option : System imports
+  imports=(
+    "<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>"
+    "<nixpkgs/nixos/modules/system/boot/kernel.nix>"
+  )
+  for item in "${imports[@]}"; do
+    options['imports']+=" ${item} "
+  done
   # Options
-  options['prefix']="ai"                                                      # option : Install directory prefix
-  options['verbose']="false"                                                  # option : Verbose mode
-  options['testmode']="false"                                                 # option : Test mode
-  options['strict']="false"                                                   # option : Strict mode
-  options['dryrun']="false"                                                   # option : Dryrun mode
-  options['debug']="false"                                                    # option : Debug mode
-  options['force']="false"                                                    # option : Force actions
-  options['mask']="false"                                                     # option : Mask identifiers
-  options['yes']="false"                                                      # option : Answer yes to questions
-  options['dhcp']="true"                                                      # option : DHCP network
-  options['swap']="true"                                                      # option : Use swap
-  options['lvm']="false"                                                      # option : Use LVM
-  options['zsh']="true"                                                       # option : Enable zsh
-  options['preserve']="false"                                                 # option : Preserve ISO
-  options['workdir']="${HOME}/${script['name']}"                              # option : Script work directory
-  options['sshkey']=""                                                        # option : SSH key
-  options['rootdisk']="first"                                                 # option : Disk
-  options['nic']="first"                                                      # option : NIC
-  options['zfs']="true"                                                       # option : ZFS filesystem
-  options['ext4']="false"                                                     # option : EXT4 filesystem
-  options['locale']="en_AU.UTF-8"                                             # option : Locale
-  options['timezone']="Australia/Melbourne"                                   # option : Timezone
-  options['username']=""                                                      # option : Username
-  options['userpassword']="nixos"                                             # option : User Password
-  options['usercrypt']=""                                                     # option : User Password Crypt
-  options['hostname']="nixos"                                                 # option : Hostname
-  options['sshkeyfile']=""                                                    # option : SSH key file
-  options['bootfs']="vfat"                                                    # option : Boot filesystem
-  options['rootfs']="zfs"                                                     # option : Root filesystem
-  options['firmware']="bios"                                                  # option : Boot firmware type
-  options['bios']="true"                                                      # option : BIOS Boot firmware
-  options['uefi']="false"                                                     # option : UEFI Boot firmware
-  options['isomount']="/iso"                                                  # option : ISO mount directory
-  options['oneshot']="${options['workdir']}/${options['prefix']}/oneshot.sh"  # option : Oneshot script
-  options['install']="${options['workdir']}/${options['prefix']}/install.sh"  # option : Install script
-  options['nixisoconfig']="${options['workdir']}/iso.nix"                     # option : NixOS ISO config
-  options['zfsinstall']="${options['workdir']}/${options['prefis']}/zfs.sh"   # option : ZFS install script
-  options['extinstall']="${options['workdir']}/${options['prefis']}/ext4.sh"  # option : EXT4 install script
-  options['runsize']="50%"                                                    # option : Run size
-  options['source']="${options['workdir']}/${options['prefix']}"              # option : Source directory for ISO additions
-  options['target']="/${options['prefix']}"                                   # option : Target directory for ISO additions
-  options['installdir']="/mnt"                                                # option : Install directory
-  options['nixdir']="${options['installdir']}/etc/nixos"                      # option : NixOS directory for configs
-  options['nixconfig']="${options['nixdir']}/configuration.nix"               # option : NixOS install config file
-  options['nixhwconfig']="${options['nixdir']}/hardware-configuration.nix"    # option : NixOS install hardware config file
-  options['nixzfsconfig']="${options['nixdir']}/zfs.nix"                      # option : NixOS install ZFS config file
-  options['systemd-boot']="true"                                              # option : systemd-boot
-  options['touchefi']="true"                                                  # option : Touch EFI
-  options['sshserver']="true"                                                 # option : Enable SSH server
-  options['swapsize']="2G"                                                    # option : Swap partition size
-  options['rootsize']="100%"                                                  # option : Root partition size
-  options['rootpool']="rpool"                                                 # option : Root pool name
-  options['rootpassword']="nixos"                                             # option : Root password
-  options['rootcrypt']=""                                                     # option : Root password crypt
-  options['username']="nixos"                                                 # option : User Username
-  options['usergecos']="nixos"                                                # option : User GECOS
-  options['usershell']="zsh"                                                  # option : User Shell
-  options['normaluser']="true"                                                # option : Normal User
-  options['extragroups']="wheel"                                              # option : Extra Groups
-  options['sudousers']="${options['username']}"                               # option : Sudo Users
-  options['sudocommand']="ALL"                                                # option : Sudo Command
-  options['sudooptions']="NOPASSWD"                                           # option : Sudo Options
-  options['experimental-features']="nix-command flakes"                       # option : Experimental Features
-  options['unfree']="false"                                                   # option : Allow Non Free Packages
-  options['stateversion']="25.05"                                             # option : State version
-  options['unattended']="true"                                                # option : Execute install script
-  options['attended']="false"                                                 # option : Don't execute install script
-  options['reboot']="true"                                                    # option : Reboot after install
-  options['poweroff']="true"                                                  # option : Poweroff after install
-  options['nixinstall']="true"                                                # option : Run Nix installer on ISO
-  options['gfxmode']="auto"                                                   # option : Grub graphics mode
-  options['gfxpayload']="text"                                                # option : Grub graphics payload
-  options['networkmanager']="true"                                            # option : Enable NetworkManager
-  options['xserver']="false"                                                  # option : Enable Xserver
-  options['keymap']="au"                                                      # option : Keymap
-  options['videodriver']=""                                                   # option : Video Driver
-  options['sddm']="false"                                                     # option : KDE Plasma Login Manager
-  options['plasma6']="false"                                                  # option : KDE Plasma
-  options['gdm']="false"                                                      # option : Gnome Login Manager
-  options['gnome']="false"                                                    # option : Gnome
-  options['rootkit']="false"                                                  # option : Enable rootkit protection
-  options['bridge']="false"                                                   # option : Enable bridge
-  options['bridgenic']="br0"                                                  # option : Bridge NIC
-  options['ip']=""                                                            # option : IP Address
-  options['cidr']="24"                                                        # option : CIDR
-  options['dns']="8.8.8.8"                                                    # option : DNS/Nameserver address
-  options['gateway']=""                                                       # option : Gateway address
-  options['standalone']="false"                                               # option : Package all requirements on ISO
-  options['rootvolname']="nixos"                                              # option : Root volume name
-  options['bootvolname']="boot"                                               # option : Boot volume name
-  options['mbrvolname']="bootcode"                                            # option : Boot volume name
-  options['swapvolname']="swap"                                               # option : Swap volume name
-  options['uefivolname']="uefi"                                               # option : UEFI volume name
-  options['homevolname']="home"                                               # option : Home volume name
-  options['nixvolname']="nix"                                                 # option : Nix volume name
-  options['usrvolname']="usr"                                                 # option : Usr volume name
-  options['varvolname']="var"                                                 # option : Var volume name
-  options['tempdir']="/tmp"                                                   # option : Temp directory
-  options['mbrpart']="1"                                                      # option : MBR partition
-  options['rootpart']="2"                                                     # option : Root partition
-  options['efipart']="3"                                                      # option : UEFI/Boot partition
-  options['swappart']="4"                                                     # option : Swap partition
-  options['devnodes']="/dev/disk/by-uuid"                                     # option : Device nodesDevice nodes
-  options['logdir']="/var/log"                                                # option : Install log dir
-  options['logfile']="${options['logdir']}/install.log"                       # option : Install log file
-  options['bootsize']="512M"                                                  # option : Boot partition size
-  options['isokernelparams']=""                                               # option : Additional kernel parameters to add to ISO grub commands
-  options['kernelparams']=""                                                  # option : Additional kernel parameters to add to system grub commands
-  options['isoextraargs']=""                                                  # option : Additional kernel config to add to ISO grub commands
-  options['extraargs']=""                                                     # option : Additional kernel config to add to system grub commands
-  options['initmods']=''                                                      # option : Available system init modules
-  options['bootmods']=''                                                      # option : Available system boot modules
-  options['oneshot']="true"                                                   # option : Enable oneshot service
-  options['serial']="true"                                                    # option : Enable serial
-  options['kernel']=""                                                        # option : Kernel
-  options['sshpasswordauthentication']="false"                                # option : SSH Password Authentication
-  options['firewall']="false"                                                 # option : Enable firewall
-  options['allowedtcpports']="22"                                             # option : Allowed TCP ports
-  options['allowedudpports']=""                                               # option : Allowed UDP ports
-  options['import']=""                                                        # option : Import Nix config to add to system build
-  options['isoimport']=""                                                     # option : Import Nix config to add to ISO build
-  options['dockerarch']=$( uname -m |sed 's/x86_/amd/g' )                     # option : Docker architecture
-  options['targetarch']=$( uname -m )                                         # option : Target architecture
-  options['createdockeriso']="false"                                          # option : Create ISO using docker
-  options['console']="false"                                                  # option : Enable console in actions
-  options['suffix']=""                                                        # option : Output file suffix
+  options['prefix']="ai"                                                            # option : Install directory prefix
+  options['verbose']="false"                                                        # option : Verbose mode
+  options['testmode']="false"                                                       # option : Test mode
+  options['strict']="false"                                                         # option : Strict mode
+  options['dryrun']="false"                                                         # option : Dryrun mode
+  options['debug']="false"                                                          # option : Debug mode
+  options['force']="false"                                                          # option : Force actions
+  options['mask']="false"                                                           # option : Mask identifiers
+  options['yes']="false"                                                            # option : Answer yes to questions
+  options['dhcp']="true"                                                            # option : DHCP network
+  options['swap']="true"                                                            # option : Use swap
+  options['lvm']="false"                                                            # option : Use LVM
+  options['zsh']="true"                                                             # option : Enable zsh
+  options['preserve']="false"                                                       # option : Preserve ISO
+  options['workdir']="${HOME}/${script['name']}"                                    # option : Script work directory
+  options['sshkey']=""                                                              # option : SSH key
+  options['rootdisk']="first"                                                       # option : Disk
+  options['nic']="first"                                                            # option : NIC
+  options['zfs']="true"                                                             # option : ZFS filesystem
+  options['ext4']="false"                                                           # option : EXT4 filesystem
+  options['locale']="en_AU.UTF-8"                                                   # option : Locale
+  options['timezone']="Australia/Melbourne"                                         # option : Timezone
+  options['username']=""                                                            # option : Username
+  options['userpassword']="nixos"                                                   # option : User Password
+  options['usercrypt']=""                                                           # option : User Password Crypt
+  options['hostname']="nixos"                                                       # option : Hostname
+  options['sshkeyfile']=""                                                          # option : SSH key file
+  options['bootfs']="vfat"                                                          # option : Boot filesystem
+  options['rootfs']="zfs"                                                           # option : Root filesystem
+  options['firmware']="bios"                                                        # option : Boot firmware type
+  options['bios']="true"                                                            # option : BIOS Boot firmware
+  options['uefi']="false"                                                           # option : UEFI Boot firmware
+  options['isomount']="/iso"                                                        # option : ISO mount directory
+  options['oneshotscript']="${options['workdir']}/${options['prefix']}/oneshot.sh"  # option : Oneshot script
+  options['installscript']="${options['workdir']}/${options['prefix']}/install.sh"  # option : Install script
+  options['nixisoconfig']="${options['workdir']}/iso.nix"                           # option : NixOS ISO config
+  options['zfsinstall']="${options['workdir']}/${options['prefis']}/zfs.sh"         # option : ZFS install script
+  options['extinstall']="${options['workdir']}/${options['prefis']}/ext4.sh"        # option : EXT4 install script
+  options['runsize']="50%"                                                          # option : Run size
+  options['source']="${options['workdir']}/${options['prefix']}"                    # option : Source directory for ISO additions
+  options['target']="/${options['prefix']}"                                         # option : Target directory for ISO additions
+  options['installdir']="/mnt"                                                      # option : Install directory
+  options['nixdir']="${options['installdir']}/etc/nixos"                            # option : NixOS directory for configs
+  options['nixconfig']="${options['nixdir']}/configuration.nix"                     # option : NixOS install config file
+  options['nixhwconfig']="${options['nixdir']}/hardware-configuration.nix"          # option : NixOS install hardware config file
+  options['nixzfsconfig']="${options['nixdir']}/zfs.nix"                            # option : NixOS install ZFS config file
+  options['systemd-boot']="true"                                                    # option : systemd-boot
+  options['touchefi']="true"                                                        # option : Touch EFI
+  options['sshserver']="true"                                                       # option : Enable SSH server
+  options['swapsize']="2G"                                                          # option : Swap partition size
+  options['rootsize']="100%"                                                        # option : Root partition size
+  options['rootpool']="rpool"                                                       # option : Root pool name
+  options['rootpassword']="nixos"                                                   # option : Root password
+  options['rootcrypt']=""                                                           # option : Root password crypt
+  options['username']="nixos"                                                       # option : User Username
+  options['usergecos']="nixos"                                                      # option : User GECOS
+  options['usershell']="zsh"                                                        # option : User Shell
+  options['normaluser']="true"                                                      # option : Normal User
+  options['extragroups']="wheel"                                                    # option : Extra Groups
+  options['sudousers']="${options['username']}"                                     # option : Sudo Users
+  options['sudocommand']="ALL"                                                      # option : Sudo Command
+  options['sudooptions']="NOPASSWD"                                                 # option : Sudo Options
+  options['experimental-features']="nix-command flakes"                             # option : Experimental Features
+  options['unfree']="false"                                                         # option : Allow Non Free Packages
+  options['stateversion']="25.05"                                                   # option : State version
+  options['unattended']="true"                                                      # option : Execute install script
+  options['attended']="false"                                                       # option : Don't execute install script
+  options['reboot']="true"                                                          # option : Reboot after install
+  options['poweroff']="true"                                                        # option : Poweroff after install
+  options['nixinstall']="true"                                                      # option : Run Nix installer on ISO
+  options['gfxmode']="auto"                                                         # option : Grub graphics mode
+  options['gfxpayload']="text"                                                      # option : Grub graphics payload
+  options['networkmanager']="true"                                                  # option : Enable NetworkManager
+  options['xserver']="false"                                                        # option : Enable Xserver
+  options['keymap']="au"                                                            # option : Keymap
+  options['videodriver']=""                                                         # option : Video Driver
+  options['sddm']="false"                                                           # option : KDE Plasma Login Manager
+  options['plasma6']="false"                                                        # option : KDE Plasma
+  options['gdm']="false"                                                            # option : Gnome Login Manager
+  options['gnome']="false"                                                          # option : Gnome
+  options['rootkit']="false"                                                        # option : Enable rootkit protection
+  options['bridge']="false"                                                         # option : Enable bridge
+  options['bridgenic']="br0"                                                        # option : Bridge NIC
+  options['ip']=""                                                                  # option : IP Address
+  options['cidr']="24"                                                              # option : CIDR
+  options['dns']="8.8.8.8"                                                          # option : DNS/Nameserver address
+  options['gateway']=""                                                             # option : Gateway address
+  options['standalone']="false"                                                     # option : Package all requirements on ISO
+  options['rootvolname']="nixos"                                                    # option : Root volume name
+  options['bootvolname']="boot"                                                     # option : Boot volume name
+  options['mbrvolname']="bootcode"                                                  # option : Boot volume name
+  options['swapvolname']="swap"                                                     # option : Swap volume name
+  options['uefivolname']="uefi"                                                     # option : UEFI volume name
+  options['homevolname']="home"                                                     # option : Home volume name
+  options['nixvolname']="nix"                                                       # option : Nix volume name
+  options['usrvolname']="usr"                                                       # option : Usr volume name
+  options['varvolname']="var"                                                       # option : Var volume name
+  options['tempdir']="/tmp"                                                         # option : Temp directory
+  options['mbrpart']="1"                                                            # option : MBR partition
+  options['rootpart']="2"                                                           # option : Root partition
+  options['efipart']="3"                                                            # option : UEFI/Boot partition
+  options['swappart']="4"                                                           # option : Swap partition
+  options['devnodes']="/dev/disk/by-uuid"                                           # option : Device nodesDevice nodes
+  options['logdir']="/var/log"                                                      # option : Install log dir
+  options['logfile']="${options['logdir']}/install.log"                             # option : Install log file
+  options['bootsize']="512M"                                                        # option : Boot partition size
+  options['isoextraargs']=""                                                        # option : Additional kernel config to add to ISO grub commands
+  options['extraargs']=""                                                           # option : Additional kernel config to add to system grub commands
+  options['initmods']=''                                                            # option : Available system init modules
+  options['bootmods']=''                                                            # option : Available system boot modules
+  options['oneshot']="true"                                                         # option : Enable oneshot service
+  options['serial']="true"                                                          # option : Enable serial
+  options['kernel']=""                                                              # option : Kernel
+  options['sshpasswordauthentication']="false"                                      # option : SSH Password Authentication
+  options['firewall']="false"                                                       # option : Enable firewall
+  options['allowedtcpports']="22"                                                   # option : Allowed TCP ports
+  options['allowedudpports']=""                                                     # option : Allowed UDP ports
+  options['import']=""                                                              # option : Import Nix config to add to system build
+  options['isoimport']=""                                                           # option : Import Nix config to add to ISO build
+  options['dockerarch']=$( uname -m |sed 's/x86_/amd/g' )                           # option : Docker architecture
+  options['targetarch']=$( uname -m )                                               # option : Target architecture
+  options['createdockeriso']="false"                                                # option : Create ISO using docker
+  options['console']="false"                                                        # option : Enable console in actions
+  options['suffix']=""                                                              # option : Output file suffix
 
   # VM defaults
-  vm['name']="${script['name']}"                                              # vm : VM name
-  vm['vcpus']="2"                                                             # vm : VM vCPUs
-  vm['cpu']="host-passthrough"                                                # vm : VM CPU
-  vm['os-variant']="nixos-unknown"                                            # vm : VM OS variant
-  vm['host-device']=""                                                        # vm : VM Host-device for pass-through
-  vm['graphics']="none"                                                       # vm : VM Graphics
-  vm['virt-type']="kvm"                                                       # vm : VM Virtualisation type
-  vm['network']="bridge=br0,model=virtio"                                     # vm : VM NIC
-  vm['memory']="4G"                                                           # vm : VM RAM
-  vm['cdrom']=""                                                              # vm : VM ISO
-  vm['boot']="uefi"                                                           # vm : VM Boot type
-  vm['disk']=""                                                               # vm : VM Disk
-  vm['features']="kvm_hidden=on"                                              # vm : VM Features
-  vm['size']="20G"                                                            # vm : VM Disk size
-  vm['dir']="${options['workdir']}/vms"                                       # vm : VM Directory
-  vm['noautoconsole']="true"                                                  # vm : VM Autoconsole
-  vm['noreboot']="true"                                                       # vm : VM Reboot
-  vm['wait']=""                                                               # vm : VM Wait before starting
-  vm['machine']="q35"                                                         # vm : VM Machine
+  vm['name']="${script['name']}"                                                    # vm : VM name
+  vm['vcpus']="2"                                                                   # vm : VM vCPUs
+  vm['cpu']="host-passthrough"                                                      # vm : VM CPU
+  vm['os-variant']="nixos-unknown"                                                  # vm : VM OS variant
+  vm['host-device']=""                                                              # vm : VM Host-device for pass-through
+  vm['graphics']="none"                                                             # vm : VM Graphics
+  vm['virt-type']="kvm"                                                             # vm : VM Virtualisation type
+  vm['network']="bridge=br0,model=virtio"                                           # vm : VM NIC
+  vm['memory']="4G"                                                                 # vm : VM RAM
+  vm['cdrom']=""                                                                    # vm : VM ISO
+  vm['boot']="uefi"                                                                 # vm : VM Boot type
+  vm['disk']=""                                                                     # vm : VM Disk
+  vm['features']="kvm_hidden=on"                                                    # vm : VM Features
+  vm['size']="20G"                                                                  # vm : VM Disk size
+  vm['dir']="${options['workdir']}/vms"                                             # vm : VM Directory
+  vm['noautoconsole']="true"                                                        # vm : VM Autoconsole
+  vm['noreboot']="true"                                                             # vm : VM Reboot
+  vm['wait']=""                                                                     # vm : VM Wait before starting
+  vm['machine']="q35"                                                               # vm : VM Machine
 
   os['name']=$( uname -s )
   if [ "${os['name']}" = "Linux" ]; then
@@ -442,61 +487,25 @@ reset_defaults () {
   fi
   if [ "${options['serial']}" = "true" ]; then
     if [ "${options['isokernelparams']}" = "" ]; then
-      options['isokernelparams']="\
-  \"console=tty1\"\
-  \"console=ttyS0,115200n8\"\
-  \"console=ttyS1,115200n8\"\
-  "
+      options['isokernelparams']="${options['isoserialkernelparams']}"
     else
-      options['isokernelparams']="\
-  ${options['isokernelparams']}\
-  \"console=tty1\"\
-  \"console=ttyS0,115200n8\"\
-  \"console=ttyS1,115200n8\"\
-  "
+      options['isokernelparams']="${options['isokernelparams']} ${options['isoserialkernelparams']}"
     fi
     if [ "${options['kernelparams']}" = "" ]; then
-      options['kernelparams']="\
-  \"console=tty1\"\
-  \"console=ttyS0,115200n8\"\
-  \"console=ttyS1,115200n8\"\
-  "
+      options['kernelparams']="${options['serialkernelparams']}"
     else
-      options['kernelparams']="\
-  ${options['kernelparams']}\
-  \"console=tty1\"\
-  \"console=ttyS0,115200n8\"\
-  \"console=ttyS1,115200n8\"\
-  "
+      options['kernelparams']="${options['kernelparams']} ${options['serialkernelparams']}"
     fi
     spacer=$'\n    '
     if [ "${options['isoextraargs']}" = "" ]; then
-      options['isoextraargs']="\
-  serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}\
-  terminal_input serial${spacer}\
-  terminal_output serial\
-  "
+      options['isoextraargs']="${options['serialextraargs']}"
     else
-      options['isoextraargs']="\
-  ${options['isoextraargs']}${spacer}\n
-  serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}\n
-  terminal_input serial${spacer}\
-  terminal_output serial\
-  "
+      options['isoextraargs']="${options['isoextraargs']}${spacer}${options['serialextraargs']}"
     fi
     if [ "${options['extraargs']}" = "" ]; then
-      options['extraargs']="\
-  serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}\
-  terminal_input serial${spacer}\
-  terminal_output serial\
-  "
+      options['extraargs']="${options['serialextraargs']}"
     else
-      options['extraargs']="\
-  ${options['extraargs']}${spacer}\
-  serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1${spacer}\
-  terminal_input serial${spacer}\
-  terminal_output serial\
-"
+      options['extraargs']="${options['extraargs']}${spacer}${options['serialextraargs']}"
     fi
   fi
   if [[ ${options['kernel']} =~ latest ]] && [[ ${options['kernel']} =~ hardened ]]; then
@@ -837,16 +846,15 @@ populate_iso_kernel_params () {
     nic dns ip gateway cidr zfsoptions systempackages imports hwimports firewall \
     sshpasswordauthentication allowedtcpports allowedudpports targetarch sshkey \
     blacklist; do
-    if [ "${param}" = "zfsoptions" ] || [ "${param}" = "sshkey" ] || [ "${param}" = "imports" ] || [ "${param}" = "systempackages" ] || [ "${param}" = "blacklist" ]; then
-      value="\\\"${options[${param}]}\\\""
-    else
-      value="${options[${param}]}"
-    fi
-    if [ "${options['isokernelparams']}" = "" ]; then
-      options['isokernelparams']="\"ai.${param}=${value}\""
-    else
-      options['isokernelparams']="${options['isokernelparams']} \"ai.${param}=${value}\""
-    fi
+    value="${options[${param}]}"
+    if ! [ "${value}" = ""  ]; then
+      if [[ ${param} =~ zfsoptions|sshkey|blacklist|imports|packages ]]; then
+        item="\"ai.${param}=\\\"${value}\\\"\""
+      else
+        item="\"ai.${param}=${value}\""
+      fi
+    fi 
+    options['isokernelparams']+=" ${item} "
   done
 }
 
@@ -999,8 +1007,8 @@ NIXISOCONFIG
 create_oneshot_script () {
   check_nix_config
   get_ssh_key
-  verbose_message "Creating ${options['oneshot']}"
-  tee "${options['oneshot']}" << ONESHOT
+  verbose_message "Creating ${options['oneshotscript']}"
+  tee "${options['oneshotscript']}" << ONESHOT
 #!/run/current-system/sw/bin/bash
 set -x
 export PATH="/run/wrappers/bin:/root/.nix-profile/bin:/nix/profile/bin:/root/.local/state/nix/profile/bin:/etc/profiles/per-user/root/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin"
@@ -1009,7 +1017,8 @@ cp ${options['isomount']}/${options['prefix']}/*.sh ${options['tempdir']}/${opti
 chmod +x ${options['installdir']}/${options['prefix']}/*.sh
 sudo ${options['tempdir']}/${options['prefix']}/install.sh
 ONESHOT
-chmod +x "${options['oneshot']}"
+  chmod +x "${options['oneshotscript']}"
+  exit
 }
 
 
@@ -1021,8 +1030,8 @@ create_install_script () {
   check_nix_config
   get_ssh_key
   get_password_crypt
-  verbose_message "Creating ${options['install']}"
-  tee "${options['install']}" << INSTALL
+  verbose_message "Creating ${options['installscript']}"
+  tee "${options['installscript']}" << INSTALL
 #!/run/current-system/sw/bin/bash
 export PATH="/run/wrappers/bin:/root/.nix-profile/bin:/nix/profile/bin:/root/.local/state/nix/profile/bin:/etc/profiles/per-user/root/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin"
 
@@ -1324,7 +1333,7 @@ tee \${ai['nixcfg']} << NIX_CFG
   boot.zfs.devNodes = "\${ai['devnodes']}";
   services.lvm.boot.thin.enable = \${ai['lvm']};
 #  boot.kernelPackages = pkgs.linuxPackages\${ai['kernel']};
-  boot.blacklistedKernelModules = [ \$ai['blacklist'] ];
+  boot.blacklistedKernelModules = [ \${ai['blacklist']} ];
 
   # HostID and Hostname
   networking.hostId = "\${ai['hostid']}";
@@ -1520,9 +1529,18 @@ else
   echo "Logged to \${ai['installdir']}\${ai['logfile']}"
 fi
 
-umount -Rl \${ai['installdir']}
-zpool export -a
-swapoff -a
+# Check Installation finished
+install_check=\$( tail -1 "\${ai['installdir']}\${ai['logfile']}" | grep -c "installation finished" )
+
+# Exit if not finished
+if [ "\${install_check}" = "0" ]; then
+  echo "Installation did not finish"
+  exit
+else
+  umount -Rl \${ai['installdir']}
+  zpool export -a
+  swapoff -a
+fi
 
 if [ "\${ai['poweroff']}" = "true" ]; then
   poweroff
@@ -1532,7 +1550,7 @@ if [ "\${ai['reboot']}" = "true" ]; then
 fi
 
 INSTALL
-chmod +x "${options['install']}"
+chmod +x "${options['installscript']}"
 }
 
 # Function: get_output_file_suffix
@@ -2321,9 +2339,9 @@ while test $# -gt 0; do
       options['initmods']="$2"
       shift 2
       ;;
-    --install)                      # switch : Install script
+    --installscript)                # switch : Install script
       check_value "$1" "$2"
-      options['install']="$2"
+      options['installscript']="$2"
       shift 2
       ;;
     --installdir)                   # switch : Install directory where destination disk is mounted
