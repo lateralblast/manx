@@ -240,3 +240,7 @@
 # Fixed kernelparams escaping
 # 1.2.0: Tue 30 Sep 2025 17:48:10 AEST
 # Fixed virsh device update on Linux
+# 1.2.1: Tue 30 Sep 2025 18:32:15 AEST
+# Added auditing
+# 1.2.2: Tue 30 Sep 2025 20:58:16 AEST
+# Cleaned up formatting
