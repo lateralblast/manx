@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.1.9
+# Version:      1.2.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -1856,7 +1856,11 @@ set_cdrom_device () {
     </disk>
 CDROM_DEVICE
     if [ -f "${cdrom_device}" ]; then
-      execute_command "virsh update-device ${vm['name']} ${cdrom_device}"
+      if [ "${os['name']}" = "Darwin" ]; then
+        execute_command "virsh update-device ${vm['name']} ${cdrom_device}"
+      else
+        execute_command "sudo virsh update-device ${vm['name']} ${cdrom_device}"
+      fi
     fi
   fi
 }

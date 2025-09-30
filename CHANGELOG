@@ -238,3 +238,5 @@
 # Added secure switch
 # 1.1.9: Tue 30 Sep 2025 17:28:54 AEST
 # Fixed kernelparams escaping
+# 1.2.0: Tue 30 Sep 2025 17:48:10 AEST
+# Fixed virsh device update on Linux
