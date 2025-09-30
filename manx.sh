@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.1.5
+# Version:      1.1.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -49,6 +49,79 @@ script['user']=$( id -u -n )
 # Set defaults
 
 set_defaults () {
+  # System kernel parameters - Security related
+  options['kernelparams']=""                                                        # option : Additional kernel parameters to add to system grub commands
+  kernelparams=(
+    "audit=1"
+    "slab_nomerge"
+    "init_on_alloc=1"
+    "init_on_free=1"
+    "page_alloc.shuffel=1"
+    "pti=on"
+    "randomize_kstack_offset=on"
+    "vsyscall=none"
+    "debugfs=off"
+    "oops=panic"
+    "module.sig_enforce=1"
+    "lockdown=confidentiality"
+    "rd.udev.log_level=3"
+    "udev.log_priority=3"
+  )
+  for item in "${kernelparams[@]}"; do
+    options['kernelparams']+=" \"${item}\" "
+  done
+  # System sysctl parameters - Security related
+  options['sysctl']=""                                                              # option : System sysctl parameters
+  IFS='' read -r -d '' options['sysctl'] << SYSCTL
+    "kernel.exec-shield" = 1;
+    "net.ipv4.tcp_rfc1337" = 1;
+    "net.ipv6.conf.all.forwarding" = 0;
+    "net.ipv4.conf.all.accept_redirects" = 0;
+    "net.ipv4.conf.all.secure_redirects" = 0;
+    "kernel.dmesg_restrict" = 1;
+    "kernel.randomize_va_space" = 2;
+    "net.ipv4.conf.default.secure_redirects" = 0;
+    "net.ipv4.conf.all.rp_filter" = 1;
+    "net.ipv6.conf.default.accept_ra" = 0;
+    "net.ipv4.conf.default.accept_source_route" = 0;
+    "net.ipv4.icmp_ignore_bogus_error_responses" = 1;
+    "fs.protected_hardlinks" = 1;
+    "kernel.yama.ptrace_scope" = 2;
+    "dev.tty.ldisk_autoload" = 0;
+    "kernel.unprivileged_bpf_disabled" = 1;
+    "net.ipv4.conf.all.forwarding" = 0;
+    "fs.suid_dumpable" = 0;
+    "vm.mmap_rnd_compat_bits" = 16;
+    "net.ipv6.conf.all.accept_ra" = 0;
+    "net.ipv4.conf.default.rp_filter" = 1;
+    "fs.protected_regular" = 2;
+    "net.ipv4.conf.all.accept_source_route" = 0;
+    "net.ipv4.tcp_dsack" = 0;
+    "vm.unprivileged_userfaultfd" = 0;
+    "net.ipv4.conf.all.send_redirects" = 0;
+    "fs.protected_fifos" = 2;
+    "net.ipv4.tcp_fack" = 0;
+    "net.ipv4.tcp_syncookies" = 1;
+    "net.ipv4.icmp_echo_ignore_all" = 1;
+    "kernel.perf_event_paranoid" = 3;
+    "net.core.default_qdisc" = cake;
+    "net.ipv4.tcp_sack" = 0;
+    "net.ipv4.conf.default.send_redirects" = 0;
+    "net.ipv4.conf.default.accept_redirects" = 0;
+    "net.ipv4.tcp_congestion_control" = bbr;
+    "net.core.bpf_jit_harden" = 2;
+    "net.ipv6.conf.all.accept_source_route" = 0;
+    "kernel.kptr_restrict" = 2;
+    "fs.protected_symlinks" = 1;
+    "net.ipv6.conf.default.accept_source_route" = 0;
+    "kernel.sysrq" = 4;
+    "kernel.kexec_load_disabled" = 1;
+    "net.ipv6.conf.default.accept_redirects" = 0;
+    "vm.mmap_rnd_bits" = 32;
+    "net.ipv4.tcp_fastopen" = 3;
+    "net.ipv6.conf.all.accept_redirects" = 0;
+SYSCTL
+  options['sysctl']="${options['sysctl']//\"/\\\"}"
   # ZFS options
   options['zfsoptions']=""                                                          # option : Blacklisted kernel modules
   zfsoptions=(
@@ -128,7 +201,6 @@ set_defaults () {
   done
   # Kernel parameters
   options['isokernelparams']=""                                                     # option : Additional kernel parameters to add to ISO grub commands
-  options['kernelparams']=""                                                        # option : Additional kernel parameters to add to system grub commands
   options['serialkernelparams']=""                                                  # option : Serial kernel params
   serialkernelparams=(
     "console=tty1"
@@ -147,7 +219,7 @@ set_defaults () {
     "terminal_input serial"
     "terminal_output serial"
   )
-  spacer=$'\n        '
+  spacer=$'\n    '
   for item in "${serialextraargs[@]}"; do
     if [ "${options['serialextraargs']}" = "" ]; then
       options['serialextraargs']="${item}"
@@ -1018,7 +1090,6 @@ chmod +x ${options['installdir']}/${options['prefix']}/*.sh
 sudo ${options['tempdir']}/${options['prefix']}/install.sh
 ONESHOT
   chmod +x "${options['oneshotscript']}"
-  exit
 }
 
 
@@ -1115,6 +1186,7 @@ ai['prefix']="${options['prefix']}"
 ai['targetarch']="${options['targetarch']}"
 ai['systempackages']="${options['systempackages']}"
 ai['blacklist']="${options['blacklist']}"
+ai['sysctl']="${options['sysctl']}"
 
 # Parse parameters
 echo "Processing parameters"
@@ -1334,6 +1406,12 @@ tee \${ai['nixcfg']} << NIX_CFG
   services.lvm.boot.thin.enable = \${ai['lvm']};
 #  boot.kernelPackages = pkgs.linuxPackages\${ai['kernel']};
   boot.blacklistedKernelModules = [ \${ai['blacklist']} ];
+
+  # Sysctl Parameters
+  boot.kernel.sysctl = {
+    \${ai['sysctl']}
+  };
+
 
   # HostID and Hostname
   networking.hostId = "\${ai['hostid']}";

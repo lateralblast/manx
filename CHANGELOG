@@ -230,3 +230,7 @@
 # Improved how parameters are declared and passed to grub and install script
 # 1.1.5: Mon 29 Sep 2025 18:06:12 AEST
 # Fixed issue with creation of oneshot script
+# 1.1.6: Mon 29 Sep 2025 20:40:07 AEST
+# Added security kernel parameters
+# 1.1.7: Tue 30 Sep 2025 10:16:40 AEST
+# Added sysctl parameters
