@@ -9,7 +9,7 @@ Make Automated NixOS (ISO)
 Version
 -------
 
-Current version: 1.1.7
+Current version: 1.1.9
 
 License
 -------

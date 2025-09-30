@@ -234,3 +234,7 @@
 # Added security kernel parameters
 # 1.1.7: Tue 30 Sep 2025 10:16:40 AEST
 # Added sysctl parameters
+# 1.1.8: Tue 30 Sep 2025 17:16:43 AEST
+# Added secure switch
+# 1.1.9: Tue 30 Sep 2025 17:28:54 AEST
+# Fixed kernelparams escaping
