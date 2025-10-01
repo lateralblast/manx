@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.2.2
+# Version:      1.2.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -175,6 +175,45 @@ BLACKLIST
   for item in "${imports[@]}"; do
     options['imports']+=" ${item} "
   done
+  # SSH Kex Algorithms
+  options['kexalgorithms']=""                                                       # option : SSH Key Exchange Algorithms
+  IFS='' read -r -d '' options['kexalgorithms'] << CIPHERS
+    "curve25519-sha256@libssh.org"
+    "ecdh-sha2-nistp521"
+    "ecdh-sha2-nistp384"
+    "ecdh-sha2-nistp256"
+    "diffie-hellman-group-exchange-sha256"
+CIPHERS
+  options['kexalgorithms']="${options['kexalgorithms']//\"/\\\"}"
+  # SSH ciphers
+  options['ciphers']=""                                                             # option : SSH Ciphers
+  IFS='' read -r -d '' options['ciphers'] << CIPHERS
+    "chacha20-poly1305@openssh.com"
+    "aes256-gcm@openssh.com"
+    "aes128-gcm@openssh.com"
+    "aes256-ctr"
+    "aes192-ctr"
+    "aes128-ctr"
+CIPHERS
+  options['ciphers']="${options['ciphers']//\"/\\\"}"
+  # SSH Macs
+  options['macs']=""                                                                # option : SSH Macs
+  IFS='' read -r -d '' options['macs'] << MACS 
+    "hmac-sha2-512-etm@openssh.com"
+    "hmac-sha2-256-etm@openssh.com"
+    "umac-128-etm@openssh.com"
+    "hmac-sha2-512"
+    "hmac-sha2-256"
+    "umac-128@openssh.com"
+MACS
+  options['macs']="${options['macs']//\"/\\\"}"
+  # fail2pan ignore IPs
+  options['ignoreip']=""                                                            # option : fail2ban ignore ip
+  IFS='' read -r -d '' options['ignoreip'] << IGNOREIP 
+    "172.16.0.0/12"
+    "192.168.0.0/16"
+IGNOREIP
+  options['ignoreip']="${options['ignoreip']//\"/\\\"}"
   # Options
   options['secure']="true"                                                          # option : Enable secure parameters
   options['sysctl']=""                                                              # option : System sysctl parameters
@@ -291,10 +330,26 @@ BLACKLIST
   options['oneshot']="true"                                                         # option : Enable oneshot service
   options['serial']="true"                                                          # option : Enable serial
   options['kernel']=""                                                              # option : Kernel
-  options['sshpasswordauthentication']="false"                                      # option : SSH Password Authentication
+  options['passwordauthentication']="false"                                         # option : SSH Password Authentication
+  options['permitemptypasswords']="false"                                           # option : SSH permit empty passwords
+  options['permittunnel']="false"                                                   # option : SSH permit tunnel
+  options['usedns']="false"                                                         # option : SSH use DNS
+  options['kbdinteractiveauthentication']="false"                                   # option : SSH allow interactive kerboard authentication
+  options['x11forwarding']="false"                                                  # option : SSH allow X11 forwarding
+  options['maxauthtries']="3"                                                       # option : SSH max auth tries
+  options['maxsessions']="2"                                                        # option : SSH max sessions
+  options['clientaliveinterval']="300"                                              # option : SSH client alive interval
+  options['clientalivecountmax']="0"                                                # option : SSH client alive max count
   options['firewall']="false"                                                       # option : Enable firewall
   options['allowedtcpports']="22"                                                   # option : Allowed TCP ports
   options['allowedudpports']=""                                                     # option : Allowed UDP ports
+  options['allowusers']="${options['username']}"                                    # option : SSH allow user
+  options['allowtcpforwarding']="false"                                             # option : SSH allow TCP forwarding
+  options['allowagentforwarding']="false"                                           # option : SSH allow agent forwarding
+  options['permitrootlogin']="no"                                                   # option : SSH permit root login
+  options['loglevel']="VERBOSE"                                                     # option : SSH log level
+  options['hostkeystype']="ed25519"                                                 # option : SSH hosts keys type
+  options['hostkeyspath']="/etc/ssh/ssh_host_${options['hostkeystype']}_key"        # option : SSH hosts key type
   options['import']=""                                                              # option : Import Nix config to add to system build
   options['isoimport']=""                                                           # option : Import Nix config to add to ISO build
   options['dockerarch']=$( uname -m |sed 's/x86_/amd/g' )                           # option : Docker architecture
@@ -302,6 +357,13 @@ BLACKLIST
   options['createdockeriso']="false"                                                # option : Create ISO using docker
   options['console']="false"                                                        # option : Enable console in actions
   options['suffix']=""                                                              # option : Output file suffix
+  options['fail2ban']="true"                                                        # option : Enable fail2ban
+  options['maxretry']="5"                                                           # option : fail2ban max retry
+  options['bantime']="1h"                                                           # option : fail2ban ban time
+  options['bantimeincrement']="true"                                                # option : fail2ban ban time increment
+  options['multipliers']="1 2 4 8 16 32 64 128 256"                                 # option : fail2ban ban time multipliers
+  options['maxtime']="1h"                                                           # option : fail2ban max time
+  options['overalljails']="true"                                                    # option : Enable fail2ban overalljails
 
   # VM defaults
   vm['name']="${script['name']}"                                                    # vm : VM name
@@ -870,7 +932,7 @@ fi
 
 process_options () {
   option="$1"
-  if [[ "${option}" =~ ^no ]] || [[ "${option}" =~ ^un ]]; then
+  if [[ "${option}" =~ ^no|^un|^dont ]]; then
     options["${option}"]="true"
     option="${option:2}"
     value="false"
@@ -988,10 +1050,16 @@ populate_iso_kernel_params () {
     usershell username extragroups usergecos normaluser sudocommand sudooptions \
     rootpassword userpassword stateversion hostname unfree gfxmode gfxpatload \
     nic dns ip gateway cidr zfsoptions systempackages imports hwimports firewall \
-    sshpasswordauthentication allowedtcpports allowedudpports targetarch sshkey; do
+    passwordauthentication allowedtcpports allowedudpports targetarch sshkey \
+    permitemptypasswords permittunnel usedns kbdinteractiveauthentication \
+    x11forwarding maxauthtries maxsessions clientaliveinterval allowusers \
+    clientalivecountmax allowtcpforwarding allowagentforwarding loglevel \
+    permitrootlogin hostkeyspath hostkeystype kexalgorithms ciphers macs \
+    fail2ban maxretry bantime ignoreip bantimeincrement multipliers maxtime \
+    overalljails; do
     value="${options[${param}]}"
     if ! [ "${value}" = ""  ]; then
-      if [[ ${param} =~ zfsoptions|sshkey|blacklist|imports|packages ]]; then
+      if [[ ${param} =~ zfsoptions|sshkey|blacklist|imports|packages|kexalgorithms|ciphers|macs|ignoreip|multipliers ]]; then
         item="\"ai.${param}=\\\"${value}\\\"\""
       else
         item="\"ai.${param}=${value}\""
@@ -1017,7 +1085,7 @@ create_nix_iso_config () {
   fi
   tee "${options['nixisoconfig']}" << NIXISOCONFIG
 # ISO build config
-{ config, pkgs, ... }:
+{ config, pkgs, modules, ... }:
 {
   imports = [ ${options['isoimports']} ];
 
@@ -1093,7 +1161,30 @@ NIXISOCONFIG
 
   # OpenSSH
   services.openssh.enable = ${options['sshserver']};
-  services.openssh.settings.PasswordAuthentication = ${options['sshpasswordauthentication']};
+  services.openssh.settings.PasswordAuthentication = ${options['passwordauthentication']};
+  services.openssh.settings.PermitEmptyPasswords = ${options['permitemptypasswords']};
+  services.openssh.settings.KbdInteractiveAuthentication = ${options['kbdinteractiveauthentication']};
+  services.openssh.settings.PermitTunnel = ${options['permittunnel']};
+  services.openssh.settings.UseDns = ${options['usedns']};
+  services.openssh.settings.X11Forwarding = ${options['x11forwarding']};
+  services.openssh.settings.MaxAuthTries = ${options['maxauthtries']};
+  services.openssh.settings.MaxSessions = ${options['maxsessions']};
+  services.openssh.settings.AllowUsers = [ "${options['allowusers']}" ];
+  services.openssh.settings.LogLevel = "${options['loglevel']}";
+  services.openssh.settings.PermitRootLogin = "${options['permitrootlogin']}";
+  services.openssh.settings.AllowTcpForwarding = ${options['allowtcpforwarding']};
+  services.openssh.settings.AllowAgentForwarding = ${options['allowagentforwarding']};
+  services.openssh.settings.ClientAliveInterval = ${options['clientaliveinterval']};
+  services.openssh.settings.ClientAliveCountMax = ${options['clientalivecountmax']};
+  services.openssh.settings.KexAlgorithms = [
+${options['kexalgorithms']//\\/}
+  ];
+  services.openssh.settings.Ciphers = [
+${options['ciphers']//\\/}
+  ];
+  services.openssh.settings.Macs = [
+${options['macs']//\\/}
+  ];
 
   # Enable SSH in the boot process.
   systemd.services.sshd.wantedBy = pkgs.lib.mkForce [ "multi-user.target" ];
@@ -1249,9 +1340,28 @@ ai['kernelparams']="${options['kernelparams']}"
 ai['extraargs']="${options['extraargs']}"
 ai['imports']="${options['imports']}"
 ai['kernel']="${options['kernel']}"
-ai['sshpasswordauthentication']="${options['sshpasswordauthentication']}"
+ai['passwordauthentication']="${options['passwordauthentication']}"
+ai['permitemptypasswords']="${options['permitemptypasswords']}"
+ai['kbdinteractiveauthentication']="${options['kbdinteractiveauthentication']}"
+ai['usedns']="${options['usedns']}"
+ai['x11forwarding']="${options['x11forwarding']}"
+ai['maxauthtries']="${options['maxauthtries']}"
+ai['maxsessions']="${options['maxsessions']}"
+ai['permittunnel']="${options['permittunnel']}"
+ai['allowusers']="${options['allowusers']}"
+ai['loglevel']="${options['loglevel']}"
+ai['clientaliveinterval']="${options['clientaliveinterval']}"
+ai['clientalivecountmax']="${options['clientalivecountmax']}"
+ai['allowtcpforwarding']="${options['allowtcpforwarding']}"
+ai['allowagentforwarding']="${options['allowagentforwarding']}"
 ai['allowedtcpports']="${options['allowedtcpports']}"
 ai['allowedudpports']="${options['allowedudpports']}"
+ai['permitrootlogin']="${options['permitrootlogin']}"
+ai['hostkeyspath']="${options['hostkeyspath']}"
+ai['hostkeystype']="${options['hostkeystype']}"
+ai['kexalgorithms']="${options['kexalgorithms']}"
+ai['ciphers']="${options['ciphers']}"
+ai['macs']="${options['macs']}"
 ai['isomount']="${options['isomount']}"
 ai['prefix']="${options['prefix']}"
 ai['targetarch']="${options['targetarch']}"
@@ -1260,6 +1370,14 @@ ai['blacklist']="${options['blacklist']}"
 ai['sysctl']="${options['sysctl']}"
 ai['audit']="${options['audit']}"
 ai['auditrules']="${options['auditrules']}"
+ai['fail2ban']="${options['fail2ban']}"
+ai['maxretry']="${options['maxretry']}"
+ai['bantime']="${options['bantime']}"
+ai['ignoreip']="${options['ignoreip']}"
+ai['bantimeincrement']="${options['bantimeincrement']}"
+ai['multipliers']="${options['multipliers']}"
+ai['maxtime']="${options['maxtime']}"
+ai['overalljails']="${options['overalljails']}"
 
 # Parse parameters
 echo "Processing parameters"
@@ -1501,9 +1619,53 @@ tee \${ai['nixcfg']} << NIX_CFG
   networking.hostId = "\${ai['hostid']}";
   networking.hostName = "\${ai['hostname']}";
 
-  # Services
+  # fail2ban
+  services.fail2ban = {
+    enable = \${ai['fail2ban']};
+    maxretry = \${ai['maxretry']};
+    bantime = "\${ai['bantime']}";
+    ignoreIP = [
+      \${ai['ignoreip']}
+    ];
+    bantime-increment = {
+      enable = \${ai['bantimeincrement']};
+      multipliers = "\${ai['multipliers']}";
+      maxtime = "\${ai['maxtime']}";
+      overalljails = \${ai['overalljails']};
+    };
+  };
+
+  # OpenSSH
   services.openssh.enable = \${ai['sshserver']};
-  services.openssh.settings.PasswordAuthentication = \${ai['sshpasswordauthentication']};
+  services.openssh.settings.PasswordAuthentication = \${ai['passwordauthentication']};
+  services.openssh.settings.PermitEmptyPasswords = \${ai['permitemptypasswords']};
+  services.openssh.settings.KbdInteractiveAuthentication = \${ai['kbdinteractiveauthentication']};
+  services.openssh.settings.PermitTunnel = \${ai['permittunnel']};
+  services.openssh.settings.UseDns = \${ai['usedns']};
+  services.openssh.settings.X11Forwarding = \${ai['x11forwarding']};
+  services.openssh.settings.MaxAuthTries = \${ai['maxauthtries']};
+  services.openssh.settings.AllowUsers = [ "\${ai['allowusers']}" ];
+  services.openssh.settings.LogLevel = "\${ai['loglevel']}";
+  services.openssh.settings.PermitRootLogin = "\${ai['permitrootlogin']}";
+  services.openssh.settings.AllowTcpForwarding = \${ai['allowtcpforwarding']};
+  services.openssh.settings.AllowAgentForwarding = \${ai['allowagentforwarding']};
+  services.openssh.settings.ClientAliveInterval = \${ai['clientaliveinterval']};
+  services.openssh.settings.ClientAliveCountMax = \${ai['clientalivecountmax']};
+  services.openssh.settings.KexAlgorithms = [
+\${ai['kexalgorithms']}
+  ];
+  services.openssh.settings.Ciphers = [
+\${ai['ciphers']}
+  ];
+  services.openssh.settings.Macs = [
+\${ai['macs']}
+  ];
+  services.openssh.hostKeys = [
+    {
+      path = "\${ai['hostkeyspath']}";
+      type = "\${ai['hostkeystype']}";
+    };
+  ];
 
   # Firewall
   networking.firewall = {
@@ -2266,686 +2428,812 @@ fi
 
 while test $# -gt 0; do
   case $1 in
-    --action*)                      # switch : Action(s) to perform
+    --action*)                          # switch : Action(s) to perform
       check_value "$1" "$2"
       actions_list+=("$2")
       shift 2
       ;;
-    --addiso|--addcdrom)            # switch : Add cdrom to VM
+    --addiso|--addcdrom)                # switch : Add cdrom to VM
       actions_list+=("addiso")
       shift
       ;;
-    --audit)                        # switch : Enable auditing
+    --audit)                            # switch : Enable auditing
       options['audit']="true"
       shift
       ;;
-    --removeiso|--removecdrom)      # switch : Remove cdrom from VM
+    --removeiso|--removecdrom)          # switch : Remove cdrom from VM
       actions_list+=("removeiso")
       shift
       ;;
-    --allowedtcpports)              # switch : Allowed TCP ports
+    --allowedtcpports)                  # switch : Allowed TCP ports
       check_value "$1" "$2"
       options['allowedtcpports']="$2"
       shift 2
       ;;
-    --allowedudpports)              # switch : Allowed UDP ports
+    --allowedudpports)                  # switch : Allowed UDP ports
       check_value "$1" "$2"
       options['allowedudpports']="$2"
       shift 2
       ;;
-    --availmod*)                    # switch : Available system kernel modules
+    --allowagentforwarding)             # switch : SSH allow agent forwarding
+      options['allowagentforwarding']="true"
+      shift
+      ;;
+    --allowtcpforwarding)               # switch : SSH allow TCP forwarding
+      options['allowtcpforwarding']="true"
+      shift
+      ;;
+    --allowusers)                       # switch : SSH allow users
+      check_value "$1" "$2"
+      options['allowusers']="$2"
+      shift 2
+      ;;
+    --availmod*)                        # switch : Available system kernel modules
       check_value "$1" "$2"
       options['availmods']="$2"
       shift 2
       ;;
-    --blacklist)                    # switch : Blacklist modules
+    --bantime)                          # switch : fail2ban ban time
+      check_value "$1" "$2"
+      options['bantime']="$2"
+      shift 2
+      ;;
+    --bantimeincrement)                 # switch : Enable fail2ban ban time increment
+      options['bantimeincrement']="true"
+      shift
+      ;;
+    --nobantimeincrement)               # switch : Enable fail2ban ban time increment
+      options['bantimeincrement']="false"
+      shift
+      ;;
+    --blacklist)                        # switch : Blacklist modules
       check_value "$1" "$2"
       options['blacklist']="$2"
       shift 2
       ;;
-    --bootfromdisk)                 # switch : Boot VM from disk
+    --bootfromdisk)                     # switch : Boot VM from disk
       actions_list+=("bootfromdisk")
       shift
       ;;
-    --bootfromiso|--bootfromcdrom)  # switch : Boot VM from CDROM
+    --bootfromiso|--bootfromcdrom)      # switch : Boot VM from CDROM
       actions_list+=("bootfromcdrom")
       shift
       ;;
-    --bootmod*)                     # switch : Available system boot modules
+    --bootmod*)                         # switch : Available system boot modules
       check_value "$1" "$2"
       options['bootmods']="$2"
       shift 2
       ;;
-    --bootsize)                     # switch : Boot partition size
+    --bootsize)                         # switch : Boot partition size
       check_value "$1" "$2"
       options['bootsize']="$2"
       shift 2
       ;;
-    --bootvm|--startvm)             # switch : Boot VM
+    --bootvm|--startvm)                 # switch : Boot VM
       actions_list+=("startkvmvm")
       shift
       ;;
-    --stopvm)                       # switch : Stop VM
+    --stopvm)                           # switch : Stop VM
       actions_list+=("stopkvmvm")
       shift
       ;;
-    --bridge)                       # switch : Enable bridge
+    --bridge)                           # switch : Enable bridge
       options['bridge']="true"
       shift
       ;;
-    --bridgenic)                    # switch : Bridge NIC
+    --bridgenic)                        # switch : Bridge NIC
       check_value "$1" "$2"
       options['bridgenic']="$2"
       options['bridge']="true"
       options['dhcp']="false"
       shift 2
       ;;
-    --bootf*)                       # switch : Boot Filesystem
+    --bootf*)                           # switch : Boot Filesystem
       check_value "$1" "$2"
       options['bootfs']="$2"
       shift 2
       ;;
-    --bootvol*)                     # switch : Boot volume name
+    --bootvol*)                         # switch : Boot volume name
       check_value "$1" "$2"
       options['bootvolname']="$2"
       shift 2
       ;;
-    --checkdocker*)                 # switch : Check docker config
+    --checkdocker*)                     # switch : Check docker config
       actions_list+=("checkdocker")
       shift
       ;;
-    --cidr)                         # switch : CIDR
+    --cidr)                             # switch : CIDR
       check_value "$1" "$2"
       options['cidr']="$2"
       options['dhcp']="false"
       shift 2
       ;;
-    --createinstall*)               # switch : Create install script
+    --ciphers)                          # switch : SSH ciphers
+      check_value "$1" "$2"
+      options['ciphers']="$2"
+      shift 2
+      ;;
+    --clientaliveinterval)              # switch : SSH client alive interval
+      check_value "$1" "$2"
+      options['clientaliveinterval']="$2"
+      shift 2
+      ;;
+    --clientalivecountmax)              # switch : SSH client alive count max
+      check_value "$1" "$2"
+      options['clientalivecountmax']="$2"
+      shift 2
+      ;;
+    --createinstall*)                   # switch : Create install script
       actions_list+=("createinstall")
       shift
       ;;
-    --createiso)                    # switch : Create ISO
+    --createiso)                        # switch : Create ISO
       actions_list+=("createiso")
       shift
       ;;
-    --createdockeriso)              # switch : Create ISO
+    --createdockeriso)                  # switch : Create ISO
       actions_list+=("createdockeriso")
       options['createdockeriso']="true"
       shift
       ;;
-    --createnix*)                   # switch : Create NixOS ISO config
+    --createnix*)                       # switch : Create NixOS ISO config
       actions_list+=("createnix")
       shift
       ;;
-    --createoneshot*)               # switch : Create oneshot script
+    --createoneshot*)                   # switch : Create oneshot script
       actions_list+=("createoneshot")
       shift
       ;;
-    --createvm)                     # switch : Create oneshot script
+    --createvm)                         # switch : Create oneshot script
       actions_list+=("createvm")
       shift
       ;;
-    --console*)                     # switch : Create oneshot script
+    --console*)                         # switch : Create oneshot script
       actions_list+=("consolevm")
       shift
       ;;
-    --usercrypt|--crypt)            # switch : User Password Crypt
+    --usercrypt|--crypt)                # switch : User Password Crypt
       check_value "$1" "$2"
       options['usercrypt']="$2"
       shift 2
       ;;
-    --debug)                        # switch : Enable debug mode
+    --debug)                            # switch : Enable debug mode
       options['debug']="true"
       shift
       ;;
-    --deletevm)                     # switch : Delete VM
+    --deletevm)                         # switch : Delete VM
       actions_list+=("deletevm")
       shift
       ;;
-    --dhcp)                         # switch : Enable DHCP
+    --dhcp)                             # switch : Enable DHCP
       options['dhcp']="true"
       shift
       ;;
-    --disk|rootdisk)                # switch : Root disk
+    --disk|rootdisk)                    # switch : Root disk
       check_value "$1" "$2"
       options['rootdisk']="$2"
       shift 2
       ;;
-    --dns|--nameserver)             # switch : DNS/Nameserver address
+    --dns|--nameserver)                 # switch : DNS/Nameserver address
       check_value "$1" "$2"
       options['dns']="$2"
       options['dhcp']="false"
       shift 2
       ;;
-    --dockerarch)                   # switch : Docker architecture
+    --dockerarch)                       # switch : Docker architecture
       check_value "$1" "$2"
       options['dockerarch']="$2"
       shift 2
       ;;
-    --dryrun)                       # switch : Enable debug mode
+    --dryrun)                           # switch : Enable debug mode
       options['dryrun']="true"
       shift
       ;;
-    --experimental*)                # switch : SSH key
+    --experimental*)                    # switch : SSH key
       check_value "$1" "$2"
       options['experimental-features']="$2"
       shift 2
       ;;
-    --extraargs)                    # switch : ISO Kernel extra args
+    --extraargs)                        # switch : ISO Kernel extra args
       check_value "$1" "$2"
       options['extraargs']="$2"
       shift 2
       ;;
-    --extragroup*)                  # switch : Extra groups
+    --extragroup*)                      # switch : Extra groups
       check_value "$1" "$2"
       options['extragroups']="$2"
       shift 2
       ;;
-    --firewall)                     # switch : Enable firewall
+    --fail2ban)                         # switch : Enable fail2ban
+      options['fail2ban']="true"
+      shift
+      ;;
+    --nofail2ban)                       # switch : Disable fail2ban
+      options['fail2ban']="false"
+      shift
+      ;;
+    --firewall)                         # switch : Enable firewall
       options['firewall']="true"
       shift
       ;;
-    --nofirewall)                   # switch : Disable firewall
+    --nofirewall)                       # switch : Disable firewall
       options['firewall']="false"
       shift
       ;;
-    --firmware)                     # switch : Boot firmware type
+    --firmware)                         # switch : Boot firmware type
       check_value "$1" "$2"
       options['firmware']="$2"
       shift 2
       ;;
-    --force)                        # switch : Enable force mode
+    --force)                            # switch : Enable force mode
       options['force']="true"
       shift
       ;;
-    --gateway)                      # switch : Gateway address
+    --gateway)                          # switch : Gateway address
       check_value "$1" "$2"
       options['gateway']="$2"
       options['dhcp']="false"
       shift 2
       ;;
-    --gecos|--usergecos)            # switch : GECOS field
+    --gecos|--usergecos)                # switch : GECOS field
       check_value "$1" "$2"
       options['usergecos']="$2"
       shift 2
       ;;
-    --gfxmode)                      # switch : Bios text mode
+    --gfxmode)                          # switch : Bios text mode
       check_value "$1" "$2"
       options['gfxmode']="$2"
       shift 2
       ;;
-    --gfxpayload)                   # switch : Bios text mode
+    --gfxpayload)                       # switch : Bios text mode
       check_value "$1" "$2"
       options['gfxpayload']="$2"
       shift 2
       ;;
-    --help|-h)                      # switch : Print help information
+    --help|-h)                          # switch : Print help information
       print_help
       shift
       exit
       ;;
-    --hostname)                     # switch : Hostname
+    --hostkeyspath)                     # switch : SSH host keys path
+      check_value "$1" "$2"
+      options['hostkeyspath']="$2"
+      shift 2
+      ;;
+    --hostkeystype)                     # switch : SSH host keys type
+      check_value "$1" "$2"
+      options['hostkeystype']="$2"
+      shift 2
+      ;;
+    --hostname)                         # switch : Hostname
       check_value "$1" "$2"
       options['hostname']="$2"
       shift 2
       ;;
-    --hwimports)                    # switch : Imports for system hardware configuration
+    --hwimports)                        # switch : Imports for system hardware configuration
       check_value "$1" "$2"
       options['hwimports']="$2"
       shift 2
       ;;
-    --import)                       # switch : Import a Nix configuration
+    --import)                           # switch : Import a Nix configuration
       check_value "$1" "$2"
       options['import']="$2"
       shift 2
       ;;
-    --imports)                      # switch : Imports for system configuration
+    --imports)                          # switch : Imports for system configuration
       check_value "$1" "$2"
       options['imports']="$2"
       shift 2
       ;;
-    --initmod*)                     # switch : Available system init modules
+    --initmod*)                         # switch : Available system init modules
       check_value "$1" "$2"
       options['initmods']="$2"
       shift 2
       ;;
-    --installscript)                # switch : Install script
+    --installscript)                    # switch : Install script
       check_value "$1" "$2"
       options['installscript']="$2"
       shift 2
       ;;
-    --installdir)                   # switch : Install directory where destination disk is mounted
+    --installdir)                       # switch : Install directory where destination disk is mounted
       check_value "$1" "$2"
       options['installdir']="$2"
       shift 2
       ;;
-    --ip)                           # switch : IP address
+    --ip)                               # switch : IP address
       check_value "$1" "$2"
       options['ip']="$2"
       options['dhcp']="false"
       shift 2
       ;;
-    --isoextra*)                    # switch : ISO Kernel extra args
+    --isoextra*)                        # switch : ISO Kernel extra args
       check_value "$1" "$2"
       options['isoextraargs']="$2"
       shift 2
       ;;
-    --isoimport)                    # switch : Import additional Nix configuration file into ISO configuration
+    --isoimport)                        # switch : Import additional Nix configuration file into ISO configuration
       check_value "$1" "$2"
       options['isoimport']="$2"
       shift 2
       ;;
-    --isoimports)                   # switch : NixOS imports for ISO build
+    --isoimports)                       # switch : NixOS imports for ISO build
       check_value "$1" "$2"
       options['isoimports']="$2"
       shift 2
       ;;
-    --isokernelparam*)              # switch : Extra kernel parameters to add to ISO grub commands
+    --isokernelparam*)                  # switch : Extra kernel parameters to add to ISO grub commands
       check_value "$1" "$2"
       options['isokernelparams']="$2"
       shift 2
       ;;
-    --isomount)                     # switch : Install ISO mount directory
+    --isomount)                         # switch : Install ISO mount directory
       check_value "$1" "$2"
       options['isomount']="$2"
       shift 2
       ;;
-    --keymap)                       # switch : Keymap
+    --kbdinteractiveauthentication)     # switch : Enable SSH allow interactive kerboard authentication
+      options['kbdinteractiveauthentication']="true"
+      shift
+      ;;
+    --nokbdinteractiveauthentication)   # switch : Disable SSH allow interactive kerboard authentication
+      options['nokbdinteractiveauthentication']="true"
+      shift
+      ;;
+    --keymap)                           # switch : Keymap
       check_value "$1" "$2"
       options['keymap']="$2"
       shift 2
       ;;
-    --kernelparam*)                 # switch : Extra kernel parameters to add to systembuild
+    --kernelparam*)                     # switch : Extra kernel parameters to add to systembuild
       check_value "$1" "$2"
       options['kernelparams']="$2"
       shift 2
       ;;
-    --kernel)                       # switch : Kernel
+    --kernel)                           # switch : Kernel
       check_value "$1" "$2"
       options['kernel']="$2"
       shift 2
       ;;
-    --locale)                       # switch : Locale
+    --kexalgorithms)                    # switch : SSH key exchange algorithms
+      check_value "$1" "$2"
+      options['kexalgorithms']="$2"
+      shift 2
+      ;;
+    --locale)                           # switch : Locale
       check_value "$1" "$2"
       options['locale']="$2"
       shift 2
       ;;
-    --logfile)                      # switch : Locale
+    --logfile)                          # switch : Locale
       check_value "$1" "$2"
       options['logfile']="$2"
       shift 2
       ;;
-    --lvm)                          # switch : Enable LVM
+    --loglevel)                         # switch : SSH log level
+      check_value "$1" "$2"
+      options['loglevel']="$2"
+      shift 2
+      ;;
+    --lvm)                              # switch : Enable LVM
       options['lvm']="true"
       shift
       ;;
-    --mask*)                        # switch : Enable LVM
+    --macs)                             # switch : SSH macs
+      check_value "$1" "$2"
+      options['macs']="$2"
+      shift 2
+      ;;
+    --mask*)                            # switch : Enable LVM
       options['mask']="true"
       shift
       ;;
-    --mbrpartname)                  # switch : MBR partition name
+    --maxauthtries)                     # switch : SSH max auth tries
+      check_value "$1" "$2"
+      options['maxauthtries']="$2"
+      shift 2
+      ;;
+    --maxretry)                         # switch : fail2ban max retry
+      check_value "$1" "$2"
+      options['maxretry']="$2"
+      shift 2
+      ;;
+    --maxtime)                          # switch : fail2ban bantime maximum 
+      check_value "$1" "$2"
+      options['maxtime']="$2"
+      shift 2
+      ;;
+    --mbrpartname)                      # switch : MBR partition name
       check_value "$1" "$2"
       options['mbrpartname']="$2"
       shift 2
       ;;
-    --nic)                          # switch : NIC
+    --multipliers)                      # switch : fail2ban ban time multipliers
+      check_value "$1" "$2"
+      options['multipliers']="$2"
+      shift 2
+      ;;
+    --nic)                              # switch : NIC
       check_value "$1" "$2"
       options['nic']="$2"
       shift 2
       ;;
-    --nixconfig)                    # switch : NixOS configuration file
+    --nixconfig)                        # switch : NixOS configuration file
       check_value "$1" "$2"
       options['nixconfig']="$2"
       shift 2
       ;;
-    --nixdir)                       # switch : Set NixOS directory
+    --nixdir)                           # switch : Set NixOS directory
       check_value "$1" "$2"
       options['nixdir']="$2"
       shift 2
       ;;
-    --nixhwconfig)                  # switch : NixOS hardware configuration file
+    --nixhwconfig)                      # switch : NixOS hardware configuration file
       check_value "$1" "$2"
       options['nixhwconfig']="$2"
       shift 2
       ;;
-    --nixinstall)                   # switch : Run NixOS install script automatically on ISO
+    --nixinstall)                       # switch : Run NixOS install script automatically on ISO
       options['nixinstall']="true"
       shift
       ;;
-    --nixisoconfig)                 # switch : NixOS ISO configuration file
+    --nixisoconfig)                     # switch : NixOS ISO configuration file
       check_value "$1" "$2"
       options['nixisoconfig']="$2"
       shift 2
       ;;
-    --oneshot)                      # switch : Enable oneshot service
+    --oneshot)                          # switch : Enable oneshot service
       options['oneshot']="true"
       shift
       ;;
-    --nooneshot)                    # switch : Disable oneshot service
+    --nooneshot)                        # switch : Disable oneshot service
       options['oneshot']="false"
       shift
       ;;
-    --option*)                      # switch : Option(s) to set
+    --option*)                          # switch : Option(s) to set
       check_value "$1" "$2"
       options_list+=("$2")
       shift 2
       ;;
-    --output*|--iso)                # switch : Output file
+    --output*|--iso)                    # switch : Output file
       check_value "$1" "$2"
       options['output']="$2"
       options['preserve']="true"
       shift 2
       ;;
-    --password|--userpassword)      # switch : User password
+    --overalljails)                     # switch : fail2ban bantime overalljails
+      options['overalljails']="true"
+      shift
+      ;;
+    --password|--userpassword)          # switch : User password
       check_value "$1" "$2"
       options['userpassword']="$2"
       shift 2
       ;;
-    --sshpasswordauthentication)    # switch : Eanble SSH password authentication
-      options['sshpasswordauthentication']="true"
+    --passwordauthentication)           # switch : Enable SSH password authentication
+      options['passwordauthentication']="true"
       shift
       ;;
-    --nosshpasswordauthentication)  # switch : Disable SSH password authentication
-      options['sshpasswordauthentication']="false"
+    --nopasswordauthentication)         # switch : Disable SSH password authentication
+      options['passwordauthentication']="false"
       shift
       ;;
-    --poweroff)                     # switch : Enable poweroff after install
+    --permitemptypasswords)             # switch : Enable SSH empty passwords
+      options['permitemptypasswords']="true"
+      shift
+      ;;
+    --permitrootlogin)                  # switch : Enable SSH root login
+      options['permitrootlogin']="yes"
+      shift
+      ;;
+    --poweroff)                         # switch : Enable poweroff after install
       options['poweroff']="true"
       shift
       ;;
-    --prefix)                       # switch : Install prefix
+    --prefix)                           # switch : Install prefix
       check_value "$1" "$2"
       options['prefix']="$2"
       shift 2
       ;;
-    --preserve)                     # switch : Preserve output file
+    --preserve)                         # switch : Preserve output file
       options['preserve']="true"
       shift
       ;;
-    --reboot)                       # switch : Enable reboot after install
+    --reboot)                           # switch : Enable reboot after install
       options['reboot']="true"
       shift
       ;;
-    --rootcrypt)                    # switch : Root password crypt
+    --rootcrypt)                        # switch : Root password crypt
       check_value "$1" "$2"
       options['rootcrypt']="$2"
       shift 2
       ;;
-    --rootf*|--filesystem)          # switch : Root Filesystem
+    --rootf*|--filesystem)              # switch : Root Filesystem
       check_value "$1" "$2"
       options['rootfs']="$2"
       shift 2
       ;;
-    --rootpassword)                 # switch : Root password
+    --rootpassword)                     # switch : Root password
       check_value "$1" "$2"
       options['rootpassword']="$2"
       shift 2
       ;;
-    --rootpool)                     # switch : Root pool name
+    --rootpool)                         # switch : Root pool name
       check_value "$1" "$2"
       options['rootpool']="$2"
       shift 2
       ;;
-    --rootsize)                     # switch : Root partition size
+    --rootsize)                         # switch : Root partition size
       check_value "$1" "$2"
       options['rootsize']="$2"
       shift 2
       ;;
-    --rootvol*)                     # switch : Root volume name
+    --rootvol*)                         # switch : Root volume name
       check_value "$1" "$2"
       options['rootvolname']="$2"
       shift 2
       ;;
-    --runsize)                      # switch : Run size
+    --runsize)                          # switch : Run size
       check_value "$1" "$2"
       options['runsize']="$2"
       shift 2
       ;;
-    --secure)                       # switch : Enable secure parameters
+    --secure)                           # switch : Enable secure parameters
       options['secure']="true"
       shift
       ;;
-    --serial)                       # switch : Enable serial
+    --serial)                           # switch : Enable serial
       options['serial']="true"
       shift
       ;;
-    --setboot*)                     # switch : Set boot device
+    --setboot*)                         # switch : Set boot device
       actions_list+=("setboot")
       shift
       ;;
-    --shell|usershell)              # switch : User Shell
+    --shell|usershell)                  # switch : User Shell
       check_value "$1" "$2"
       options['usershell']="$2"
       shift 2
       ;;
-    --shellcheck)                   # switch : Run shellcheck
+    --shellcheck)                       # switch : Run shellcheck
       actions_list+=("shellcheck")
       shift
       ;;
-    --source)                       # switch : Source directory for ISO additions
+    --source)                           # switch : Source directory for ISO additions
       check_value "$1" "$2"
       options['source']="$2"
       shift 2
       ;;
-    --sshkey)                       # switch : SSH key
+    --sshkey)                           # switch : SSH key
       check_value "$1" "$2"
       options['sshkey']="$2"
       shift 2
       ;;
-    --sshkeyfile)                   # switch : SSH key file
+    --sshkeyfile)                       # switch : SSH key file
       check_value "$1" "$2"
       options['sshkeyfile']="$2"
       shift 2
       ;;
-    --sshserver)                    # switch : Enable strict mode
+    --sshserver)                        # switch : Enable strict mode
       options['sshserver']="true"
       shift
       ;;
-    --standalone)                   # switch : Create a standalone ISO
+    --standalone)                       # switch : Create a standalone ISO
       options['standalone']="true"
       shift
       ;;
-    --stateversion)                 # switch : NixOS state version
+    --stateversion)                     # switch : NixOS state version
       check_value "$1" "$2"
       options['stateversion']="$2"
       shift 2
       ;;
-    --strict)                       # switch : Enable strict mode
+    --strict)                           # switch : Enable strict mode
       options['strict']="true"
       shift
       ;;
-    --sudocommand*)                 # switch : Sudo commands
+    --sudocommand*)                     # switch : Sudo commands
       check_value "$1" "$2"
       options['sudocommand']="$2"
       shift 2
       ;;
-    --sudooption*)                  # switch : Sudo options
+    --sudooption*)                      # switch : Sudo options
       check_value "$1" "$2"
       options['sudooptions']="$2"
       shift 2
       ;;
-    --sudouser*)                    # switch : Sudo users
+    --sudouser*)                        # switch : Sudo users
       check_value "$1" "$2"
       options['sudousers']="$2"
       shift 2
       ;;
-    --suffix|--outputsuffix)        # switch : Sudo users
+    --suffix|--outputsuffix)            # switch : Sudo users
       check_value "$1" "$2"
       options['suffix']="$2"
       shift 2
       ;;
-    --systempackages)               # switch : NixOS state version
+    --systempackages)                   # switch : NixOS state version
       check_value "$1" "$2"
       options['systempackages']="$2"
       shift 2
       ;;
-    --swap)                         # switch : Enable swap
+    --swap)                             # switch : Enable swap
       options['swap']="true"
       shift
       ;;
-    --swapsize)                     # switch : Swap partition size
+    --swapsize)                         # switch : Swap partition size
       check_value "$1" "$2"
       options['swapsize']="$2"
       options['swap']="true"
       shift 2
       ;;
-    --swapvol*)                     # switch : Swap volume name
+    --swapvol*)                         # switch : Swap volume name
       check_value "$1" "$2"
       options['swapvolname']="$2"
       options['swap']="true"
       shift 2
       ;;
-    --target)                       # switch : Target directory for ISO additions
+    --target)                           # switch : Target directory for ISO additions
       check_value "$1" "$2"
       options['target']="$2"
       shift 2
       ;;
-    --targetarch)                   # switch : Target architecture
+    --targetarch)                       # switch : Target architecture
       check_value "$1" "$2"
       options['targetarch']="$2"
       shift 2
       ;;
-    --temp*)                        # switch : Target directory
+    --temp*)                            # switch : Target directory
       check_value "$1" "$2"
       options['tempdir']="$2"
       shift 2
       ;;
-    --testmode)                     # switch : Enable swap
+    --testmode)                         # switch : Enable swap
       options['testmode']="true"
       shift
       ;;
-    --usage)                        # switch : Action to perform
+    --usage)                            # switch : Action to perform
       check_value "$1" "$2"
       usage="$2"
       print_usage "${usage}"
       shift 2
       exit
       ;;
-    --username)                     # switch : User username
+    --usedns)                           # switch : SSH use DNS
+      options['use']="true"
+      shift
+      ;;
+    --username)                         # switch : User username
       check_value "$1" "$2"
       options['username']="$2"
       shift 2
       ;;
-    --verbose)                      # switch : Enable verbose mode
+    --verbose)                          # switch : Enable verbose mode
       options['verbose']="true"
       shift
       ;;
-    --version|-V)                   # switch : Print version information
+    --version|-V)                       # switch : Print version information
       print_version
       exit
       ;;
-    --videodriver)                  # switch : Video Driver
+    --videodriver)                      # switch : Video Driver
       check_value "$1" "$2"
       options['videodriver']="$2"
       shift 2
       ;;
-    --vmautoconsole)                # switch : VM Autoconsole
+    --vmautoconsole)                    # switch : VM Autoconsole
       vm['noautoconsole']="false"
       shift
       ;;
-    --vmboot)                       # switch : VM Boot type
+    --vmboot)                           # switch : VM Boot type
       check_value "$1" "$2"
       vm['boot']="$2"
       shift 2
       ;;
-    --vmcpu)                        # switch : VM CPU
+    --vmcpu)                            # switch : VM CPU
       check_value "$1" "$2"
       vm['cpu']="$2"
       shift 2
       ;;
-    --vmdir)                        # switch : VM Directory
+    --vmdir)                            # switch : VM Directory
       check_value "$1" "$2"
       vm['dir']="$2"
       shift 2
       ;;
-    --vmfeatures)                   # switch : VM Features
+    --vmfeatures)                       # switch : VM Features
       check_value "$1" "$2"
       vm['features']="$2"
       shift 2
       ;;
-    --vmhostdevice)                 # switch : VM Host device
+    --vmhostdevice)                     # switch : VM Host device
       check_value "$1" "$2"
       vm['host-device']="$2"
       shift 2
       ;;
-    --vmgraphics)                   # switch : VM Graphics
+    --vmgraphics)                       # switch : VM Graphics
       check_value "$1" "$2"
       vm['graphics']="$2"
       shift 2
       ;;
-    --vmiso|--vmcdrom)              # switch : VM ISO
+    --vmiso|--vmcdrom)                  # switch : VM ISO
       check_value "$1" "$2"
       vm['cdrom']="$2"
       shift 2
       ;;
-    --vmmachine)                    # switch : VM Machine
+    --vmmachine)                        # switch : VM Machine
       check_value "$1" "$2"
       vm['machine']="$2"
       shift 2
       ;;
-    --vmmemory)                     # switch : VM Memory
+    --vmmemory)                         # switch : VM Memory
       check_value "$1" "$2"
       vm['memory']="$2"
       shift 2
       ;;
-    --vmname)                       # switch : VM Name
+    --vmname)                           # switch : VM Name
       check_value "$1" "$2"
       vm['name']="$2"
       shift 2
       ;;
-    --vmnetwork)                    # switch : VM Network
+    --vmnetwork)                        # switch : VM Network
       check_value "$1" "$2"
       vm['network']="$2"
       shift 2
       ;;
-    --vmnoautoconsole)              # switch : VM No autoconsole
+    --vmnoautoconsole)                  # switch : VM No autoconsole
       vm['noautoconsole']="true"
       shift
       ;;
-    --vmnoreboot)                   # switch : VM Do not reboot VM after creation
+    --vmnoreboot)                       # switch : VM Do not reboot VM after creation
       vm['noreboot']="true"
       shift
       ;;
-    --vmreboot)                     # switch : VM Reboot VM after creation
+    --vmreboot)                         # switch : VM Reboot VM after creation
       vm['noreboot']="false"
       shift
       ;;
-    --vmsize)                       # switch : VM Size
+    --vmsize)                           # switch : VM Size
       check_value "$1" "$2"
       vm['size']="$2"
       shift 2
       ;;
-    --vmosvariant)                  # switch : VM OS variant
+    --vmosvariant)                      # switch : VM OS variant
       check_value "$1" "$2"
       vm['os-variant']="$2"
       shift 2
       ;;
-    --vmvirttype)                   # switch : VM Virtualisation type
+    --vmvirttype)                       # switch : VM Virtualisation type
       check_value "$1" "$2"
       vm['virt-type']="$2"
       shift 2
       ;;
-    --vmvcpus)                      # switch : VM vCPUs
+    --vmvcpus)                          # switch : VM vCPUs
       check_value "$1" "$2"
       vm['vcpus']="$2"
       shift 2
       ;;
-    --vmwait)                       # switch : VM number of seconds to wait before starting
+    --vmwait)                           # switch : VM number of seconds to wait before starting
       check_value "$1" "$2"
       vm['wait']="$2"
       shift 2
       ;;
-    --workdir)                      # switch : Set script work directory
+    --workdir)                          # switch : Set script work directory
       check_value "$1" "$2"
       options['workdir']="$2"
       shift 2
       ;;
-    --zfsinstall)                   # switch : ZFS install script
+    --x11forwarding)                    # switch : Enable SSH X11 forwarding
+      options['x11forwarding']="true"
+      shift
+      ;;
+    --nox11forwarding)                  # switch : Disable SSH X11 forwarding
+      options['x11forwarding']="false"
+      shift
+      ;;
+    --zfsinstall)                       # switch : ZFS install script
       check_value "$1" "$2"
       options['zfsinstall']="$2"
       shift 2
       ;;
-    --zsh)                          # switch : Enable zsh
+    --zsh)                              # switch : Enable zsh
       options['zsh']="true"
       shift
       ;;

@@ -244,3 +244,5 @@
 # Added auditing
 # 1.2.2: Tue 30 Sep 2025 20:58:16 AEST
 # Cleaned up formatting
+# 1.2.3: Wed 01 Oct 2025 14:19:36 AEST
+# Added more SSH and fail2ban support
