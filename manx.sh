@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.2.4
+# Version:      1.2.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -347,6 +347,7 @@ IGNOREIP
   options['allowtcpforwarding']="false"                                             # option : SSH allow TCP forwarding
   options['allowagentforwarding']="false"                                           # option : SSH allow agent forwarding
   options['permitrootlogin']="no"                                                   # option : SSH permit root login
+  options['isopermitrootlogin']="no"                                                # option : SSH permit root login for install
   options['loglevel']="VERBOSE"                                                     # option : SSH log level
   options['hostkeystype']="ed25519"                                                 # option : SSH hosts keys type
   options['hostkeyspath']="/etc/ssh/ssh_host_${options['hostkeystype']}_key"        # option : SSH hosts key type
@@ -370,6 +371,27 @@ IGNOREIP
   options['forcepagetableisolation']="true"                                         # option : Force page table isolation
   options['unprivilegedusernsclone']="config.virtualisation.containers.enable"      # option : Disable unprivileged user namespaces
   options['allowsimultaneousmultithreading']="true"                                 # option : Allow SMT
+  options['dbusimplementation']="broker"                                            # option : Dbus implementation
+  options['execwheelonly']="true"                                                   # option : Sudo exec wheel only
+  options['systemdumask']="0077"                                                    # option : systemd umask
+  options['privatenetwork']="true"                                                  # option : systemd private network
+  options['protecthostname']="true"                                                 # option : systemd protect hostname
+  options['protectkernelmodules']="true"                                            # option : systemd protect kernel modules
+  options['protectsystem']="strict"                                                 # option : systemd protect system
+  options['protecthome']="true"                                                     # option : systemd protect home
+  options['protectkerneltunables']="true"                                           # option : systemd protect kernel tunables
+  options['protectcontrolgroups']="true"                                            # option : systemd protect control groups
+  options['protectclock']="true"                                                    # option : systemd protect clock
+  options['protectproc']="invisible"                                                # option : systemd protect proc
+  options['procsubset']="pid"                                                       # option : systemd protect kernel modules
+  options['privatetmp']="true"                                                      # option : systemd private tmp
+  options['memorydenywriteexecute']="true"                                          # option : systemd deny write execute
+  options['nownewprivileges']="true"                                                # option : systemd no new privileges
+  options['lockpersonality']="true"                                                 # option : systemd lock personality
+  options['restrictrealtime']="true"                                                # option : systemd restrict realtime
+  options['systemcallarchitectures']="native"                                       # option : systemd system call architectures
+  options['ipaddressdeny']="any"                                                    # option : systemd IP address deny
+
 
   # VM defaults
   vm['name']="${script['name']}"                                                    # vm : VM name
@@ -1064,7 +1086,11 @@ populate_iso_kernel_params () {
     fail2ban maxretry bantime ignoreip bantimeincrement multipliers maxtime \
     overalljails protectkernelimage allowsimultaneousmultithreading \
     lockkernelmodules forcepagetableisolation allowusernamespaces \
-    unprivilegedusernsclone; do
+    unprivilegedusernsclone dbusimplementation execwheelonly systemdumask \
+    privatenetwork protecthostname protectkernelmodules protectsystem \
+    protecthome protectkerneltunables protectcontrolgroups protectclock \
+    protectproc procsubset privatetmp memorydenywriteexecute nownewprivileges \
+    lockpersonality restrictrealtimesystemcallarchitectures ipaddressdeny; do
     value="${options[${param}]}"
     if ! [ "${value}" = ""  ]; then
       if [[ ${param} =~ zfsoptions|sshkey|blacklist|imports|packages|kexalgorithms|ciphers|macs|ignoreip|multipliers ]]; then
@@ -1093,7 +1119,7 @@ create_nix_iso_config () {
   fi
   tee "${options['nixisoconfig']}" << NIXISOCONFIG
 # ISO build config
-{ config, pkgs, modules, ... }:
+{ config, pkgs, ... }:
 {
   imports = [ ${options['isoimports']} ];
 
@@ -1121,8 +1147,7 @@ NIXISOCONFIG
   fi
   tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
   };
-
-  # Set boot params
+   # Set boot params
   boot.runSize = "${options['runsize']}";
   boot.loader = {
     grub = {
@@ -1141,7 +1166,7 @@ NIXISOCONFIG
     };
   };
   boot.kernelParams = [ ${options['isokernelparams']} ];
-#  boot.kernelPackages = pkgs.linuxPackages${options['kernel']};
+ #  boot.kernelPackages = pkgs.linuxPackages${options['kernel']};
 
   # Set your time zone
   time.timeZone = "${options['timezone']}";
@@ -1179,7 +1204,7 @@ NIXISOCONFIG
   services.openssh.settings.MaxSessions = ${options['maxsessions']};
   services.openssh.settings.AllowUsers = [ "${options['allowusers']}" ];
   services.openssh.settings.LogLevel = "${options['loglevel']}";
-  services.openssh.settings.PermitRootLogin = "${options['permitrootlogin']}";
+  services.openssh.settings.PermitRootLogin = "${options['isopermitrootlogin']}";
   services.openssh.settings.AllowTcpForwarding = ${options['allowtcpforwarding']};
   services.openssh.settings.AllowAgentForwarding = ${options['allowagentforwarding']};
   services.openssh.settings.ClientAliveInterval = ${options['clientaliveinterval']};
@@ -1194,9 +1219,40 @@ ${options['ciphers']//\\/}
 ${options['macs']//\\/}
   ];
 
+  # Systemd
+  systemd.services.systemd-journald = {
+    serviceConfig = {
+      UMask = ${options['systemdumask']};
+      PrivateNetwork = ${options['privatenetwork']};
+      ProtectHostname = ${options['protecthostname']};
+      ProtectKernelModules = ${options['protectkernelmodules']};
+    };
+  }; 
+  systemd.services.systemd-rfkill = {
+    serviceConfig = {
+      ProtectSystem = "${options['protectsystem']}";
+      ProtectHome = ${options['protecthome']};
+      ProtectKernelTunables = ${options['protectkerneltunables']};
+      ProtectKernelModules = ${options['protectkernelmodules']};
+      ProtectControlGroups = ${options['protectcontrolgroups']};
+      ProtectClock = ${options['protectclock']};
+      ProtectProc = "${options['protectproc']}";
+      ProcSubset = "${options['procsubset']}";
+      PrivateTmp = ${options['privatetmp']};
+      MemoryDenyWriteExecute = ${options['memorydenywriteexecute']};
+      NoNewPrivileges = ${options['nownewprivileges']};
+      LockPersonality = ${options['lockpersonality']};
+      RestrictRealtime = ${options['restrictrealtime']};
+      SystemCallArchitectures = "${options['systemcallarchitectures']}";
+      UMask = "${options['systemdumask']}";
+      IPAddressDeny = "${options['ipaddressdeny']}";
+    };
+  };
+
   # Enable SSH in the boot process.
   systemd.services.sshd.wantedBy = pkgs.lib.mkForce [ "multi-user.target" ];
   users.users.root.openssh.authorizedKeys.keys = ["${options['sshkey']}" ];
+  users.users.nixos.openssh.authorizedKeys.keys = ["${options['sshkey']}" ];
 
   # Based packages to include in ISO
   environment.systemPackages = with pkgs; [ ${options['systempackages']} ];
@@ -1206,7 +1262,6 @@ ${options['macs']//\\/}
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = ${options['unfree']};
-
 NIXISOCONFIG
 
   if [ "${options['attended']}" = "false" ]; then
@@ -1235,7 +1290,6 @@ NIXISOCONFIG
 
 NIXISOCONFIG
   fi
-
   tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
   system.stateVersion = "${options['stateversion']}";
 }
@@ -1391,6 +1445,28 @@ ai['lockkernelmodules']="${options['lockkernelmodules']}"
 ai['forcepagetableisolation']="${options['forcepagetableisolation']}"
 ai['unprivilegedusernsclone']="${options['unprivilegedusernsclone']}"
 ai['allowsimultaneousmultithreading']="${options['allowsimultaneousmultithreading']}"
+ai['execwheelonly']="${options['execwheelonly']}"
+ai['dbusimplementation']="${options['dbusimplementation']}"
+ai['allowusernamespaces']="${options['allowusernamespaces']}"
+ai['systemdumask']="${options['systemdumask']}"
+ai['privatenetwork']="${options['privatenetwork']}"
+ai['protecthostname']="${options['protecthostname']}"
+ai['protectkernelmodules']="${options['protectkernelmodules']}"
+ai['protectsystem']="${options['protectsystem']}"
+ai['protecthome']="${options['protecthome']}"
+ai['protectkerneltunables']="${options['protectkerneltunables']}"
+ai['protectkernelmodules']="${options['protectkernelmodules']}"
+ai['protectcontrolgroups']="${options['protectcontrolgroups']}"
+ai['protectclock']="${options['protectclock']}"
+ai['protectproc']="${options['protectproc']}"
+ai['procsubset']="${options['procsubset']}"
+ai['privatetmp']="${options['privatetmp']}"
+ai['memorydenywriteexecute']="${options['memorydenywriteexecute']}"
+ai['nownewprivileges']="${options['nownewprivileges']}"
+ai['lockpersonality']="${options['lockpersonality']}"
+ai['restrictrealtime']="${options['restrictrealtime']}"
+ai['systemcallarchitectures']="${options['systemcallarchitectures']}"
+ai['ipaddressdeny']="${options['ipaddressdeny']}"
 
 # Parse parameters
 echo "Processing parameters"
@@ -1632,6 +1708,40 @@ tee \${ai['nixcfg']} << NIX_CFG
     allowUserNamespaces = \${ai['allowusernamespaces']};
     unprivilegedUsernsClone = \${ai['unprivilegedusernsclone']};
     allowSimultaneousMultithreading = \${ai['allowsimultaneousmultithreading']};
+  };
+
+  # Services security
+  services.dbus.implementation = "\${ai['dbusimplementation']}";
+  security.sudo.execWheelOnly = \${ai['execwheelonly']};
+
+  # Systemd
+  systemd.services.systemd-journald = {
+    serviceConfig = {
+      UMask = \${ai['systemdumask']};
+      PrivateNetwork = \${ai['privatenetwork']};
+      ProtectHostname = \${ai['protecthostname']};
+      ProtectKernelModules = \${ai['protectkernelmodules']};
+    };
+  }; 
+  systemd.services.systemd-rfkill = {
+    serviceConfig = {
+      ProtectSystem = "\${ai['protectsystem']}";
+      ProtectHome = \${ai['protecthome']};
+      ProtectKernelTunables = \${ai['protectkerneltunables']};
+      ProtectKernelModules = \${ai['protectkernelmodules']};
+      ProtectControlGroups = \${ai['protectcontrolgroups']};
+      ProtectClock = \${ai['protectclock']};
+      ProtectProc = "\${ai['protectproc']}";
+      ProcSubset = "\${ai['procsubset']}";
+      PrivateTmp = \${ai['privatetmp']};
+      MemoryDenyWriteExecute = \${ai['memorydenywriteexecute']};
+      NoNewPrivileges = \${ai['nownewprivileges']};
+      LockPersonality = \${ai['lockpersonality']};
+      RestrictRealtime = \${ai['restrictrealtime']};
+      SystemCallArchitectures = "\${ai['systemcallarchitectures']}";
+      UMask = "\${ai['systemdumask']}";
+      IPAddressDeny = "\${ai['ipaddressdeny']}";
+    };
   };
 
   # HostID and Hostname
@@ -1893,7 +2003,7 @@ if [ "\${ai['reboot']}" = "true" ]; then
 fi
 
 INSTALL
-chmod +x "${options['installscript']}"
+  chmod +x "${options['installscript']}"
 }
 
 # Function: get_output_file_suffix
@@ -2620,6 +2730,11 @@ while test $# -gt 0; do
       options['usercrypt']="$2"
       shift 2
       ;;
+    --dbusimplementation)               # switch : Dbus implementation
+      check_value "$1" "$2"
+      options['dbusimplementation']="$2"
+      shift 2
+      ;;
     --debug)                            # switch : Enable debug mode
       options['debug']="true"
       shift
@@ -2651,6 +2766,11 @@ while test $# -gt 0; do
     --dryrun)                           # switch : Enable debug mode
       options['dryrun']="true"
       shift
+      ;;
+    --execwheelonly)                    # switch : Sudo exec wheel only
+      check_value "$1" "$2"
+      options['execwheelonly']="$2"
+      shift 2
       ;;
     --experimental*)                    # switch : SSH key
       check_value "$1" "$2"
@@ -2777,6 +2897,11 @@ while test $# -gt 0; do
       options['dhcp']="false"
       shift 2
       ;;
+    --ipaddressdeny)                    # switch : systemd IP address deny
+      check_value "$1" "$2"
+      options['ipaddressdeny']="$2"
+      shift 2
+      ;;
     --isoextra*)                        # switch : ISO Kernel extra args
       check_value "$1" "$2"
       options['isoextraargs']="$2"
@@ -2801,6 +2926,10 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       options['isomount']="$2"
       shift 2
+      ;;
+    --isopermitrootlogin)               # switch : Enable SSH root login for ISO
+      options['isopermitrootlogin']="yes"
+      shift
       ;;
     --kbdinteractiveauthentication)     # switch : Enable SSH allow interactive kerboard authentication
       options['kbdinteractiveauthentication']="true"
@@ -2853,6 +2982,14 @@ while test $# -gt 0; do
       options['lockkernelmodules']="false"
       shift
       ;;
+    --lockpersonality)                  # switch : Enable systemd lock personality
+      options['lockpersonality']="true"
+      shift
+      ;;
+    --nolockpersonality)                # switch : Disable systemd lock personality
+      options['lockpersonality']="false"
+      shift
+      ;;
     --lvm)                              # switch : Enable LVM
       options['lvm']="true"
       shift
@@ -2880,6 +3017,14 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       options['maxtime']="$2"
       shift 2
+      ;;
+    --memorydenywriteexecute)           # switch : Enable systemd memory deny write execute
+      options['memorydenywriteexecute']="true"
+      shift
+      ;;
+    --nomemorydenywriteexecute)         # switch : Disable systemd memory deny write execute
+      options['memorydenywriteexecute']="false"
+      shift
       ;;
     --mbrpartname)                      # switch : MBR partition name
       check_value "$1" "$2"
@@ -2919,6 +3064,14 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       options['nixisoconfig']="$2"
       shift 2
+      ;;
+    --nonewprivileges)                  # switch : Enable systemd no new privileges
+      options['nownewprivileges']="true"
+      shift
+      ;;
+    --newprivileges)                    # switch : Disable systemd no new privileges
+      options['nownewprivileges']="false"
+      shift
       ;;
     --oneshot)                          # switch : Enable oneshot service
       options['oneshot']="true"
@@ -2977,6 +3130,54 @@ while test $# -gt 0; do
       options['preserve']="true"
       shift
       ;;
+    --privatetmp)                       # switch : Enable systemd private tmp
+      options['privatetmp']="true"
+      shift
+      ;;
+    --noprivatetmp)                     # switch : Disable systemd private tmp
+      options['privatetmp']="false"
+      shift
+      ;;
+    --privatenetwork)                   # switch : Enable systemd private network
+      options['privatenetwork']="true"
+      shift
+      ;;
+    --noprivatenetwork)                 # switch : Disable systemd private network
+      options['privatenetwork']="true"
+      shift
+      ;;
+    --protectclock)                     # switch : Enable systemd protect clock
+      options['protectclock']="true"
+      shift
+      ;;
+    --noprotectclock)                   # switch : Disable systemd protect clock
+      options['protectclock']="false"
+      shift
+      ;;
+    --protectcontrolgroups)             # switch : Enable systemd protect control groups
+      options['protectcontrolgroups']="true"
+      shift
+      ;;
+    --noprotectcontrolgroups)           # switch : Disable systemd protect control groups
+      options['protectcontrolgroups']="false"
+      shift
+      ;;
+    --protecthome)                      # switch : Enable systemd protect home
+      options['protecthome']="true"
+      shift
+      ;;
+    --noprotecthome)                    # switch : Disable systemd protect home
+      options['protecthome']="false"
+      shift
+      ;;
+    --protecthostname)                  # switch : Enable systemd protect hostname
+      options['protecthostname']="true"
+      shift
+      ;;
+    --noprotecthostname)                # switch : Disable systemd protect hostname
+      options['protecthostname']="false"
+      shift
+      ;;
     --protectkernelimage)               # switch : Protect kernel image
       options['protectkernelimage']="true"
       shift
@@ -2985,8 +3186,47 @@ while test $# -gt 0; do
       options['protectkernelimage']="false"
       shift
       ;;
+    --protectkernelmodules)             # switch : Enable systemd protect kernel modules
+      options['protectkernelmodules']="true"
+      shift
+      ;;
+    --noprotectkernelmodules)           # switch : Disable systemd protect kernel modules
+      options['protectkernelmodules']="false"
+      shift
+      ;;
+    --protectkerneltunables)            # switch : Enable systemd protect kernel tunables
+      options['protectkernelmodules']="true"
+      shift
+      ;;
+    --noprotectkerneltunables)          # switch : Disable systemd protect kernel tunables
+      options['protectkernelmodules']="false"
+      shift
+      ;;
+    --protectproc)                      # switch : systemd protect proc
+      check_value "$1" "$2"
+      options['protectproc']="$2"
+      shift 2
+      ;;
+    --protectsubset)                    # switch : systemd protect subset
+      check_value "$1" "$2"
+      options['protectsubset']="true"
+      shift 2
+      ;;
+    --protectsystem)                    # switch : systemd protect system
+      check_value "$1" "$2"
+      options['protectsystem']="$2"
+      shift 2
+      ;;
     --reboot)                           # switch : Enable reboot after install
       options['reboot']="true"
+      shift
+      ;;
+    --restrictrealtime)                 # switch : Enable systemd restrict realtime
+      options['restrictrealtime']="true"
+      shift
+      ;;
+    --norestrictrealtime)               # switch : Disable systemd restrict realtime
+      options['restrictrealtime']="false"
       shift
       ;;
     --rootcrypt)                        # switch : Root password crypt
@@ -3097,9 +3337,19 @@ while test $# -gt 0; do
       options['suffix']="$2"
       shift 2
       ;;
+    --systemdumask)                     # switch : Systemd umask
+      check_value "$1" "$2"
+      options['systemdumask']="$2"
+      shift 2
+      ;;
     --systempackages)                   # switch : NixOS state version
       check_value "$1" "$2"
       options['systempackages']="$2"
+      shift 2
+      ;;
+    --systemcallarchitectures)          # switch : Systemd call architectures
+      check_value "$1" "$2"
+      options['systemcallarchitectures']="$2"
       shift 2
       ;;
     --swap)                             # switch : Enable swap

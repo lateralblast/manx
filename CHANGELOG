@@ -248,3 +248,9 @@
 # Added more SSH and fail2ban support
 # 1.2.4: Wed 01 Oct 2025 17:05:55 AEST
 # Added additional security parameters
+# 1.2.5: Wed 01 Oct 2025 17:49:23 AEST
+# Added systemd parameters
+# 1.2.6: Wed 01 Oct 2025 21:38:26 AEST
+# Added security to ISO build
+# 1.2.7: Wed 01 Oct 2025 22:28:31 AEST
+# Updated documentation
