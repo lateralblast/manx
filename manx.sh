@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.2.3
+# Version:      1.2.4
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -364,6 +364,12 @@ IGNOREIP
   options['multipliers']="1 2 4 8 16 32 64 128 256"                                 # option : fail2ban ban time multipliers
   options['maxtime']="1h"                                                           # option : fail2ban max time
   options['overalljails']="true"                                                    # option : Enable fail2ban overalljails
+  options['protectkernelimage']="true"                                              # option : Protect kernel image
+  options['lockkernelmodules']="false"                                              # option : Lock kernel modules
+  options['allowusernamespaces']="true"                                             # option : Allow user name spaces
+  options['forcepagetableisolation']="true"                                         # option : Force page table isolation
+  options['unprivilegedusernsclone']="config.virtualisation.containers.enable"      # option : Disable unprivileged user namespaces
+  options['allowsimultaneousmultithreading']="true"                                 # option : Allow SMT
 
   # VM defaults
   vm['name']="${script['name']}"                                                    # vm : VM name
@@ -1056,7 +1062,9 @@ populate_iso_kernel_params () {
     clientalivecountmax allowtcpforwarding allowagentforwarding loglevel \
     permitrootlogin hostkeyspath hostkeystype kexalgorithms ciphers macs \
     fail2ban maxretry bantime ignoreip bantimeincrement multipliers maxtime \
-    overalljails; do
+    overalljails protectkernelimage allowsimultaneousmultithreading \
+    lockkernelmodules forcepagetableisolation allowusernamespaces \
+    unprivilegedusernsclone; do
     value="${options[${param}]}"
     if ! [ "${value}" = ""  ]; then
       if [[ ${param} =~ zfsoptions|sshkey|blacklist|imports|packages|kexalgorithms|ciphers|macs|ignoreip|multipliers ]]; then
@@ -1378,6 +1386,11 @@ ai['bantimeincrement']="${options['bantimeincrement']}"
 ai['multipliers']="${options['multipliers']}"
 ai['maxtime']="${options['maxtime']}"
 ai['overalljails']="${options['overalljails']}"
+ai['protectkernelimage']="${options['protectkernelimage']}"
+ai['lockkernelmodules']="${options['lockkernelmodules']}"
+ai['forcepagetableisolation']="${options['forcepagetableisolation']}"
+ai['unprivilegedusernsclone']="${options['unprivilegedusernsclone']}"
+ai['allowsimultaneousmultithreading']="${options['allowsimultaneousmultithreading']}"
 
 # Parse parameters
 echo "Processing parameters"
@@ -1613,6 +1626,12 @@ tee \${ai['nixcfg']} << NIX_CFG
     audit.rules = [
 \${ai['auditrules']}
     ];
+    protectKernelImage = \${ai['protectkernelimage']};
+    lockKernelModules = \${ai['lockkernelmodules']};
+    forcePageTableIsolation = \${ai['forcepagetableisolation']};
+    allowUserNamespaces = \${ai['allowusernamespaces']};
+    unprivilegedUsernsClone = \${ai['unprivilegedusernsclone']};
+    allowSimultaneousMultithreading = \${ai['allowsimultaneousmultithreading']};
   };
 
   # HostID and Hostname
@@ -1664,7 +1683,7 @@ tee \${ai['nixcfg']} << NIX_CFG
     {
       path = "\${ai['hostkeyspath']}";
       type = "\${ai['hostkeystype']}";
-    };
+    }
   ];
 
   # Firewall
@@ -2459,6 +2478,10 @@ while test $# -gt 0; do
       options['allowagentforwarding']="true"
       shift
       ;;
+    --allowsimultaneousmultithreading)  # switch : SSH allow TCP forwarding
+      options['allowsimultaneousmultithreading']="true"
+      shift
+      ;;
     --allowtcpforwarding)               # switch : SSH allow TCP forwarding
       options['allowtcpforwarding']="true"
       shift
@@ -2669,6 +2692,14 @@ while test $# -gt 0; do
       options['force']="true"
       shift
       ;;
+    --forcepagetableisolation)          # switch : Force page table isolation
+      options['forcepagetableisolation']="true"
+      shift
+      ;;
+    --noforcepagetableisolation)        # switch : Don't force page table isolation
+      options['forcepagetableisolation']="false"
+      shift
+      ;;
     --gateway)                          # switch : Gateway address
       check_value "$1" "$2"
       options['gateway']="$2"
@@ -2814,6 +2845,14 @@ while test $# -gt 0; do
       options['loglevel']="$2"
       shift 2
       ;;
+    --lockkernelmodules)                # switch : Lock kernel modules
+      options['lockkernelmodules']="true"
+      shift
+      ;;
+    --nolockkernelmodules)              # switch : Don't lock kernel modules
+      options['lockkernelmodules']="false"
+      shift
+      ;;
     --lvm)                              # switch : Enable LVM
       options['lvm']="true"
       shift
@@ -2936,6 +2975,14 @@ while test $# -gt 0; do
       ;;
     --preserve)                         # switch : Preserve output file
       options['preserve']="true"
+      shift
+      ;;
+    --protectkernelimage)               # switch : Protect kernel image
+      options['protectkernelimage']="true"
+      shift
+      ;;
+    --noprotectkernelimage)             # switch : Don't protect kernel image
+      options['protectkernelimage']="false"
       shift
       ;;
     --reboot)                           # switch : Enable reboot after install
@@ -3089,6 +3136,11 @@ while test $# -gt 0; do
     --testmode)                         # switch : Enable swap
       options['testmode']="true"
       shift
+      ;;
+    --unprivilegedusernsclone)          # switch : Disable unprivileged user namespaces
+      check_value "$1" "$2"
+      options['unprivilegedusernsclone']="$2"
+      shift 2
       ;;
     --usage)                            # switch : Action to perform
       check_value "$1" "$2"

@@ -246,3 +246,5 @@
 # Cleaned up formatting
 # 1.2.3: Wed 01 Oct 2025 14:19:36 AEST
 # Added more SSH and fail2ban support
+# 1.2.4: Wed 01 Oct 2025 17:05:55 AEST
+# Added additional security parameters
