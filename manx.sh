@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.2.7
+# Version:      1.3.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -28,7 +28,6 @@
 declare -A os
 declare -A vm
 declare -A script
-declare -A imports
 declare -A options
 declare -a options_list
 declare -a actions_list
@@ -210,8 +209,8 @@ MACS
   # fail2pan ignore IPs
   options['ignoreip']=""                                                            # option : fail2ban ignore ip
   IFS='' read -r -d '' options['ignoreip'] << IGNOREIP 
-    "172.16.0.0/12"
-    "192.168.0.0/16"
+      "172.16.0.0/12"
+      "192.168.0.0/16"
 IGNOREIP
   options['ignoreip']="${options['ignoreip']//\"/\\\"}"
   # Options
@@ -340,7 +339,7 @@ IGNOREIP
   options['maxsessions']="2"                                                        # option : SSH max sessions
   options['clientaliveinterval']="300"                                              # option : SSH client alive interval
   options['clientalivecountmax']="0"                                                # option : SSH client alive max count
-  options['firewall']="false"                                                       # option : Enable firewall
+  options['firewall']="true"                                                        # option : Enable firewall
   options['allowedtcpports']="22"                                                   # option : Allowed TCP ports
   options['allowedudpports']=""                                                     # option : Allowed UDP ports
   options['allowusers']="${options['username']}"                                    # option : SSH allow user
@@ -391,7 +390,7 @@ IGNOREIP
   options['restrictrealtime']="true"                                                # option : systemd restrict realtime
   options['systemcallarchitectures']="native"                                       # option : systemd system call architectures
   options['ipaddressdeny']="any"                                                    # option : systemd IP address deny
-
+  options['usepreservediso']="false"                                                # option : Use preserved ISO
 
   # VM defaults
   vm['name']="${script['name']}"                                                    # vm : VM name
@@ -549,14 +548,11 @@ reset_defaults () {
       "-w /etc/passwd -p wa -k identity"
       "-w /etc/gshadow -p wa -k identity"
       "-w /etc/shadow -p wa -k identity"
-      "-w /etc/security/opasswd -p wa -k identity"
       "-a exit,always -F arch=b32 -S sethostname,setdomainname -k system-locale"
       "-a exit,always -F arch=b64 -S sethostname,setdomainname -k system-locale"
       "-w /etc/issue -p wa -k system-locale"
       "-w /etc/issue.net -p wa -k system-locale"
       "-w /etc/hosts -p wa -k system-locale"
-      "-w /etc/sysconfig/network -p wa -k system-locale"
-      "-w /etc/selinux/ -p wa -k MAC-policy"
       "-w /etc/apparmor/ -p wa -k MAC-policy"
       "-w /etc/apparmor.d/ -p wa -k MAC-policy"
       "-w /var/log/faillog -p wa -k logins"
@@ -565,15 +561,11 @@ reset_defaults () {
       "-w /var/run/utmp -p wa -k session"
       "-w /var/log/btmp -p wa -k session"
       "-w /var/log/wtmp -p wa -k session"
-      "-a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=unset -k perm_chng"
-      "-a always,exit -S all -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=-1 -F key=perm_chng"
       "-a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=1000 -F auid!=unset -k perm_chng"
       "-a always,exit -F arch=b32 -C euid!=uid -F auid!=unset -S execve -k user_emulation"
       "-a always,exit -F arch=b64 -C euid!=uid -F auid!=unset -S execve -k user_emulation"
       "-a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=500 -F auid!=4294967295 -k perm_mod"
       "-a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=500 -F auid!=4294967295 -k perm_mod"
-      "-a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=500 - F auid!=4294967295 -k perm_mod"
-      "-a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=500 - F auid!=4294967295 -k perm_mod"
       "-a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=500 -F auid!=4294967295 -k perm_mod"
       "-a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=500 -F auid!=4294967295 -k perm_mod"
       "-a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=500 -F auid!=4294967295 -k access"
@@ -583,28 +575,19 @@ reset_defaults () {
       "-a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=unset -k priv_cmd"
       "-a always,exit -F arch=b32 -S mount -F auid>=500 -F auid!=4294967295 -k export"
       "-a always,exit -F arch=b64 -S mount -F auid>=500 -F auid!=4294967295 -k export"
-      "-a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=1000 -F auid!=unset -k usermod"
       "-a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=500 -F auid!=4294967295 -k delete"
       "-a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=500 -F auid!=4294967295 -k delete"
       "-w /etc/sudoers -p wa -k scope"
       "-w /etc/sudoers.d -p wa -k scope"
       "-w /etc/sudoers -p wa -k actions"
       "-w /var/log/sudo.log -p wa -k sudo_log_file"
-      "-w /sbin/insmod -p x -k modules"
-      "-w /sbin/rmmod -p x -k modules"
-      "-w /sbin/modprobe -p x -k modules"
+      "-w /run/current-system/sw/bin/insmod -p x -k modules"
+      "-w /run/current-system/sw/bin/rmmod -p x -k modules"
+      "-w /run/current-system/sw/bin/modprobe -p x -k modules"
       "-a always,exit -F arch=b64 -S init_module,finit_module,delete_module,create_module,query_module -F auid>=1000 -F auid!=unset -k kernel_modules"
-      "-a always,exit -F path=/usr/bin/kmod -F perm=x -F auid>=1000 -F auid!=unset - k kernel_modules"
       "-a always,exit -S init_module -S delete_module -k modules"
       "-a always,exit -F arch=b64 -S mount -F auid>=500 -F auid!=4294967295 -k mounts"
       "-a always,exit -F arch=b32 -S mount -F auid>=500 -F auid!=4294967295 -k mounts"
-      "space_left_action = single"
-      "action_mail_acct = email"
-      "admin_space_left_action = single" 
-      "disk_full_action = single"
-      "disk_error_action = single"
-      "max_log_file = 8"
-      "max_log_file_action = keep_logs"
 SYSCTL
     options['auditrules']="${options['auditrules']//\"/\\\"}"
   fi
@@ -1076,7 +1059,7 @@ populate_iso_kernel_params () {
     swappart kernel swapsize rootsize bootsize rootpool swapvolname rootvolname \
     bootpolname installdir mbrpartname locale devnodes logdir logfile timezone \
     usershell username extragroups usergecos normaluser sudocommand sudooptions \
-    rootpassword userpassword stateversion hostname unfree gfxmode gfxpatload \
+    rootpassword userpassword stateversion hostname unfree gfxmode gfxpayload \
     nic dns ip gateway cidr zfsoptions systempackages imports hwimports firewall \
     passwordauthentication allowedtcpports allowedudpports targetarch sshkey \
     permitemptypasswords permittunnel usedns kbdinteractiveauthentication \
@@ -1156,7 +1139,7 @@ NIXISOCONFIG
       gfxmodeBios = "${options['gfxmode']}";
       gfxpayloadBios = "${options['gfxpayload']}";
       extraConfig = "
-        ${options['isoextraargs']}
+        ${options['isoextraargs']//    /        }
       ";
       extraEntries = ''
         menuentry "Boot from next volume" {
@@ -1754,7 +1737,7 @@ tee \${ai['nixcfg']} << NIX_CFG
     maxretry = \${ai['maxretry']};
     bantime = "\${ai['bantime']}";
     ignoreIP = [
-      \${ai['ignoreip']}
+\${ai['ignoreip']}
     ];
     bantime-increment = {
       enable = \${ai['bantimeincrement']};
@@ -2032,7 +2015,7 @@ get_output_file_suffix () {
       suffix="${suffix}-${value}"
     fi
   done
-  for param in unattended noreboot standalone lvm; do
+  for param in attended unattended noreboot standalone lvm; do
     value="${options[${param}]}"
     if [ "${value}" = "true" ]; then
       suffix="${suffix}-${param}"
@@ -2293,7 +2276,7 @@ create_kvm_vm () {
     vm['memory']="${ram}"
   fi
   if [ "${vm['cdrom']}" = "" ]; then
-    if [ "${os['name']}" = "Darwin" ]; then
+    if [ "${os['name']}" = "Darwin" ] || [ "${options['usepreservediso']}" = "true" ]; then
       iso_dir="${options['workdir']}/isos"
     else
       iso_dir="${options['workdir']}/result/iso"
@@ -3401,6 +3384,10 @@ while test $# -gt 0; do
       ;;
     --usedns)                           # switch : SSH use DNS
       options['use']="true"
+      shift
+      ;;
+    --usepres*)                         # switch : Use preserved ISO
+      options['usepreservediso']="true"
       shift
       ;;
     --username)                         # switch : User username

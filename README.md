@@ -9,7 +9,7 @@ Make Automated NixOS (ISO)
 Version
 -------
 
-Current version: 1.2.7
+Current version: 1.3.0
 
 License
 -------
@@ -219,16 +219,35 @@ Create a standalone unattended install with defaults (ZFS root, DHCP):
 ./manx.sh --createiso --options standalone
 ```
 
-After creating an ISO, you can test it by creating a VM:
+After creating an ISO, you can test it by creating a VM: 
+(this will create a VM with the default name and the ISO generated above)
 
 ```
-./manx.sh --createvm --vmname test
+./manx.sh --createvm
+```
+
+This will give you information about starting and connecting to VM, etc:
+
+```
+sudo virsh start manx ; sudo virsh console manx
+```
+
+To delete the VM created:
+
+```
+./manx.sh --deletevm
 ```
 
 Create an ISO using docker on MacOS:
 
 ```
 ./manx.sh --createdockeriso
+```
+
+To boot from disk and connect to console:
+
+```
+./manx.sh --bootfromdisk --options console
 ```
 
 Help

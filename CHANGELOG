@@ -254,3 +254,9 @@
 # Added security to ISO build
 # 1.2.7: Wed 01 Oct 2025 22:28:31 AEST
 # Updated documentation
+# 1.2.8: Thu 02 Oct 2025 13:07:08 AEST
+# Fixed imports declaration
+# 1.2.9: Thu 02 Oct 2025 13:22:44 AEST
+# Added switch to use preserved ISO
+# 1.3.0: Thu 02 Oct 2025 14:59:00 AEST
+# Updated auditd config
