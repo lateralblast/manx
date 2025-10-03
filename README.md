@@ -90,6 +90,20 @@ This script has the following capabilities:
 - Creates a subdirectory which is imported in the ISO image:
   - Contains install scripts used for install
 
+By default if you don't specify an interface, even if you specify an IP,
+the installer will use DHCP for the install phase. For the system build
+phase if you haven't specified and interface it will look for the first
+available interface and configure that interface with the IP specified.
+
+If you specified an IP with an interface, then the install phase will
+not use DHCP, and assign the IP to that interface for the install phase.
+
+If you wish to have a different user to access the system during the
+install phase you can use the --installuser switch, which will add that
+user to the install phase and only allow that user to SSH into the
+machine during the install phase. The default nixos user exists, but
+you will not be able to SSH in as this user during the install phase.
+
 Status
 ------
 
@@ -98,8 +112,6 @@ This script is in the early stages of development
 To-do:
 
 - Add support for pass-thru PCIe devices
-- Add ability to create image in a NixOS docker container
-- Add ability to run this script via nix-shell on non NixOS Linux distros
 
 Methodology
 -----------
@@ -406,6 +418,8 @@ switch(es):
     Install script
 --installdir)                       
     Install directory where destination disk is mounted
+--installuser*)                     
+    Install username
 --ip)                               
     IP address
 --ipaddressdeny)                    
@@ -630,6 +644,8 @@ switch(es):
     Action to perform
 --usedns)                           
     SSH use DNS
+--usepres*)                         
+    Use preserved ISO
 --username)                         
     User username
 --verbose)                          
