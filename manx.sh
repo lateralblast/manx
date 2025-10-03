@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.3.0
+# Version:      1.3.5
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -53,7 +53,7 @@ set_defaults () {
   options['auditrules']=""                                                          # option : Auditd parameters
   options['kernelparams']=""                                                        # option : Additional kernel parameters to add to system grub commands
   # ZFS options
-  options['zfsoptions']=""                                                          # option : Blacklisted kernel modules
+  options['zfsoptions']=""                                                          # option : ZFS options
   zfsoptions=(
     "-O mountpoint=none"
     "-O atime=off"
@@ -66,6 +66,7 @@ set_defaults () {
     options['zfsoptions']+=" ${item} "
   done
   # Packages
+  spacer=$'\n      '
   options['systempackages']=""                                                      # option : System packages
   systempackages=(
     "aide"
@@ -83,11 +84,15 @@ set_defaults () {
     "wget"
   )
   for item in "${systempackages[@]}"; do
-    options['systempackages']+=" ${item} "
+    if [ "${options['systempackages']}" = "" ]; then
+      options['systempackages']="${item}"
+    else
+      options['systempackages']+="${spacer}${item}"
+    fi
   done
   # Blacklist
   options['blacklist']=""                                                           # option : Blacklisted kernel modules
-  IFS='' read -r -d '' options['auditrules'] << BLACKLIST
+  IFS='' read -r -d '' options['blacklist'] << BLACKLIST
     "dccp"
     "sctp"
     "rds"
@@ -118,10 +123,14 @@ BLACKLIST
   # Available kernel modules
   options['availmods']=""                                                           # option : Available kernel modules
   availmods=(
-    "ahci"
     "xhci_pci"
-    "virtio_pci"
+    "ahci"
+    "usbhid"
+    "usb_storage"
+    "sd_mod"
     "sr_mod"
+    "sdhci_pci"
+    "virtio_pci"
     "virtio_blk"
   )
   for item in "${availmods[@]}"; do
@@ -271,7 +280,7 @@ IGNOREIP
   options['rootpassword']="nixos"                                                   # option : Root password
   options['rootcrypt']=""                                                           # option : Root password crypt
   options['username']="nixos"                                                       # option : User Username
-  options['usergecos']="nixos"                                                      # option : User GECOS
+  options['usergecos']="Admin"                                                      # option : User GECOS
   options['usershell']="zsh"                                                        # option : User Shell
   options['normaluser']="true"                                                      # option : Normal User
   options['extragroups']="wheel"                                                    # option : Extra Groups
@@ -537,6 +546,9 @@ fi
 # Reset defaults based on command line options
 
 reset_defaults () {
+  if ! [ "${options['allowusers']}" = "${options['username']}" ]; then
+    options['allowusers']="${options['username']}"
+  fi
   # System sysctl parameters - Security related
   if [ "${options['audit']}" = "true" ]; then
     IFS='' read -r -d '' options['auditrules'] << SYSCTL
@@ -1073,7 +1085,7 @@ populate_iso_kernel_params () {
     privatenetwork protecthostname protectkernelmodules protectsystem \
     protecthome protectkerneltunables protectcontrolgroups protectclock \
     protectproc procsubset privatetmp memorydenywriteexecute nownewprivileges \
-    lockpersonality restrictrealtimesystemcallarchitectures ipaddressdeny; do
+    lockpersonality restrictrealtime systemcallarchitectures ipaddressdeny; do
     value="${options[${param}]}"
     if ! [ "${value}" = ""  ]; then
       if [[ ${param} =~ zfsoptions|sshkey|blacklist|imports|packages|kexalgorithms|ciphers|macs|ignoreip|multipliers ]]; then
@@ -1238,7 +1250,9 @@ ${options['macs']//\\/}
   users.users.nixos.openssh.authorizedKeys.keys = ["${options['sshkey']}" ];
 
   # Based packages to include in ISO
-  environment.systemPackages = with pkgs; [ ${options['systempackages']} ];
+  environment.systemPackages = with pkgs; [
+    ${options['systempackages']//   /  }
+  ];
 
   # Additional Nix options
   nix.settings.experimental-features = "${options['experimental-features']}";
@@ -1450,6 +1464,7 @@ ai['lockpersonality']="${options['lockpersonality']}"
 ai['restrictrealtime']="${options['restrictrealtime']}"
 ai['systemcallarchitectures']="${options['systemcallarchitectures']}"
 ai['ipaddressdeny']="${options['ipaddressdeny']}"
+ai['firewall']="${options['firewall']}"
 
 # Parse parameters
 echo "Processing parameters"
@@ -1512,15 +1527,17 @@ if [ "\${ai['lvm']}" = "true" ] && [ "\${ai['rootfs']}" = "zfs" ]; then
   exit
 fi
 
+# Boot modules
+if [ "\${ai['bootmods']}" = "" ]; then
+  ai['bootmods']="\"kvm-intel\""
+else
+  ai['bootmods']="\${ai['bootmods']} \"kvm-intel\""
+fi
+echo "Setting bootmods to \${ai['bootmods']}"
+
 # QEMU check
 qemu_check=\$( cat /proc/ioports |grep QEMU )
 if [ -n "\${qemu_check}" ]; then
-  if [ "\${ai['bootmods']}" = "" ]; then
-    ai['bootmods']="\"kvm-intel\""
-  else
-    ai['bootmods']="\${ai['bootmods']} \"kvm-intel\""
-  fi
-  echo "Setting bootmods to \${ai['bootmods']}"
   if [ "\${ai['hwimports']}" = "" ]; then
     ai['hwimports']="(modulesPath + \"/profiles/qemu-guest.nix\")"
   else
@@ -1660,7 +1677,7 @@ tee \${ai['nixcfg']} << NIX_CFG
   boot.loader.efi.canTouchEfiVariables = \${ai['uefiflag']};
   boot.loader.grub.devices = [ "\${ai['grubdev']}" ];
   boot.loader.grub.gfxmodeEfi = "\${ai['gfxmode']}";
-  boot.loader.grub.gfxpayloadEfi = "\${ai['gfpayxload']}";
+  boot.loader.grub.gfxpayloadEfi = "\${ai['gfxpayload']}";
   boot.loader.grub.gfxmodeBios = "\${ai['gfxmode']}";
   boot.loader.grub.gfxpayloadBios = "\${ai['gfxpayload']}";
   boot.initrd.supportedFilesystems = ["\${ai['rootfs']}"];
@@ -1854,9 +1871,9 @@ NIX_CFG
     tee -a \${ai['nixcfg']} << NIX_CFG
   networking = {
     bridges."\${ai['bridgenic']}".interfaces = [ "\${ai['nic']}" ];
-    interfaces."\${bridgenic}".useDHCP = \${ai['dhcp']};
-    interfaces."\${nic}".useDHCP = \${ai['dhcp']};
-    interfaces."\${bridgenic}".ipv4.addresses = [{
+    interfaces."\${ai['bridgenic']}".useDHCP = \${ai['dhcp']};
+    interfaces."\${ai['nic']}".useDHCP = \${ai['dhcp']};
+    interfaces."\${ai['bridgenic']}".ipv4.addresses = [{
       address = "\${ai['ip']}";
       prefixLength = \${ai['cidr']};
     }];
@@ -2015,7 +2032,7 @@ get_output_file_suffix () {
       suffix="${suffix}-${value}"
     fi
   done
-  for param in attended unattended noreboot standalone lvm; do
+  for param in bridge attended unattended noreboot standalone lvm; do
     value="${options[${param}]}"
     if [ "${value}" = "true" ]; then
       suffix="${suffix}-${param}"
