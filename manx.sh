@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.3.5
+# Version:      1.3.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -247,7 +247,8 @@ IGNOREIP
   options['ext4']="false"                                                           # option : EXT4 filesystem
   options['locale']="en_AU.UTF-8"                                                   # option : Locale
   options['timezone']="Australia/Melbourne"                                         # option : Timezone
-  options['username']=""                                                            # option : Username
+  options['username']="nixos"                                                       # option : Username
+  options['installuser']="nixos"                                                    # option : Install username
   options['userpassword']="nixos"                                                   # option : User Password
   options['usercrypt']=""                                                           # option : User Password Crypt
   options['hostname']="nixos"                                                       # option : Hostname
@@ -1114,7 +1115,7 @@ create_nix_iso_config () {
   fi
   tee "${options['nixisoconfig']}" << NIXISOCONFIG
 # ISO build config
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 {
   imports = [ ${options['isoimports']} ];
 
@@ -1197,7 +1198,7 @@ NIXISOCONFIG
   services.openssh.settings.X11Forwarding = ${options['x11forwarding']};
   services.openssh.settings.MaxAuthTries = ${options['maxauthtries']};
   services.openssh.settings.MaxSessions = ${options['maxsessions']};
-  services.openssh.settings.AllowUsers = [ "${options['allowusers']}" ];
+  services.openssh.settings.AllowUsers = [ "${options['installuser']}" ];
   services.openssh.settings.LogLevel = "${options['loglevel']}";
   services.openssh.settings.PermitRootLogin = "${options['isopermitrootlogin']}";
   services.openssh.settings.AllowTcpForwarding = ${options['allowtcpforwarding']};
@@ -1214,6 +1215,75 @@ ${options['ciphers']//\\/}
 ${options['macs']//\\/}
   ];
 
+NIXISOCONFIG
+  # Networking
+  if ! [ "${options['nic']}" = "first" ]; then
+    tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
+  networking.useDHCP = lib.mkDefault ${options['dhcp']};
+NIXISOCONFIG
+  else
+    tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
+  networking.useDHCP = lib.mkDefault true;
+NIXISOCONFIG
+  fi
+  if [ "${options['dhcp']}" = "false" ] && ! [ "${options['nic']}" = "first" ]; then
+    if [ "${options['bridge']}" = "false" ]; then
+      tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
+  networking = {
+    interfaces."${options['nic']}".useDHCP = ${options['dhcp']};
+    interfaces."${options['nic']}".ipv4.addresses = [{
+      address = "${options['ip']}";
+      prefixLength = ${options['cidr']};
+    }];
+    defaultGateway = "${options['gateway']}";
+    nameservers = [ "${options['dns']}" ];
+  };
+NIXISOCONFIG
+    else
+      tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
+  networking = {
+    bridges."${options['bridgenic']}".interfaces = [ "${options['nic']}" ];
+    interfaces."${options['bridgenic']}".useDHCP = ${options['dhcp']};
+    interfaces."${options['nic']}".useDHCP = ${options['dhcp']};
+    interfaces."${options['bridgenic']}".ipv4.addresses = [{
+      address = "${options['ip']}";
+      prefixLength = ${options['cidr']};
+    }];
+    defaultGateway = "${options['gateway']}";
+    nameservers = [ "${options['dns']}" ];
+  };
+
+NIXISOCONFIG
+    fi
+  fi
+  if ! [ "${options['installuser']}" = "nixos" ]; then
+    tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
+    # Define a user account.
+  users.users.${options['username']} = {
+    shell = pkgs.${options['usershell']};
+    isNormalUser = ${options['normaluser']};
+    description = "${options['usergecos']}";
+    extraGroups = [ "${options['extragroups']}" ];
+    openssh.authorizedKeys.keys = [ "${options['sshkey']}" ];
+    hashedPassword = "${options['usercrypt']}";
+  };
+  programs.zsh.enable = ${options['zsh']};
+  system.userActivationScripts.zshrc = "touch .zshrc";
+
+  # Sudo configuration
+  security.sudo.extraRules= [
+    { users = [ "${options['username']}" ];
+      commands = [
+        { command = "${options['sudocommand']}" ;
+          options= [ "${options['sudooptions']}" ];
+        }
+      ];
+    }
+  ];
+
+NIXISOCONFIG
+  fi
+  tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
   # Systemd
   systemd.services.systemd-journald = {
     serviceConfig = {
@@ -1839,6 +1909,7 @@ tee \${ai['nixcfg']} << NIX_CFG
     hashedPassword = "\${ai['usercrypt']}";
   };
   programs.zsh.enable = \${ai['zsh']};
+  system.userActivationScripts.zshrc = "touch .zshrc";
 
   # Sudo configuration
   security.sudo.extraRules= [
@@ -2032,7 +2103,7 @@ get_output_file_suffix () {
       suffix="${suffix}-${value}"
     fi
   done
-  for param in bridge attended unattended noreboot standalone lvm; do
+  for param in bridge attended noreboot standalone lvm; do
     value="${options[${param}]}"
     if [ "${value}" = "true" ]; then
       suffix="${suffix}-${param}"
@@ -2889,6 +2960,11 @@ while test $# -gt 0; do
     --installdir)                       # switch : Install directory where destination disk is mounted
       check_value "$1" "$2"
       options['installdir']="$2"
+      shift 2
+      ;;
+    --installuser*)                     # switch : Install username
+      check_value "$1" "$2"
+      options['installuser']="$2"
       shift 2
       ;;
     --ip)                               # switch : IP address

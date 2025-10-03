@@ -270,3 +270,7 @@
 # Fixed formatting
 # 1.3.5: Fri 03 Oct 2025 17:05:43 AEST
 # Fixed bridge specification in install script
+# 1.3.6: Fri 03 Oct 2025 20:32:24 AEST
+# Added installuser switch
+# 1.3.7: Fri 03 Oct 2025 20:50:46 AEST
+# Added stanza to initialize .zshrc
