@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.3.7
+# Version:      1.3.9
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -547,6 +547,18 @@ fi
 # Reset defaults based on command line options
 
 reset_defaults () {
+  if [ "${options['attended']}" = "true" ]; then
+    options['unattended']="false"
+  fi
+  if [ "${options['unattended']}" = "true" ]; then
+    options['attended']="false"
+  fi
+  if [ "${options['reboot']}" = "true" ]; then
+    options['poweroff']="false"
+  fi
+  if [ "${options['poweroff']}" = "true" ]; then
+    options['reboot']="false"
+  fi
   if ! [ "${options['allowusers']}" = "${options['username']}" ]; then
     options['allowusers']="${options['username']}"
   fi
@@ -958,7 +970,11 @@ process_options () {
   option="$1"
   if [[ "${option}" =~ ^no|^un|^dont ]]; then
     options["${option}"]="true"
-    option="${option:2}"
+    if [[ "${option}" =~ ^dont ]]; then
+      option="${option:4}"
+    else
+      option="${option:2}"
+    fi
     value="false"
   else
     value="true"
@@ -1579,7 +1595,18 @@ fi
 # Set up non DHCP environment
 if [ "\${ai['dhcp']}" = "false" ]; then
   if [ "\${ai['nic']}" = "first" ]; then
+    counter=1
     ai['nic']=\$( ip link | grep "state UP" | awk '{ print \$2}' | head -1 | grep ^e | cut -f1 -d: )
+    while [ "\${ai['nic']}" = "" ]; do
+      echo "Waiting for network link to come up (count=\${counter})"
+      sleep 5s
+      ai['nic']=\$( ip link | grep "state UP" | awk '{ print \$2}' | head -1 | grep ^e | cut -f1 -d: )
+      counter=\$(( counter + 1 ))
+      if [ "\${counter}" = "10" ]; then
+        echo "Could not find network with link up"
+        ai['nic']=\$( ip link | awk '{ print \$2}' | head -1 | grep ^e | cut -f1 -d: )
+      fi
+    done
     echo "Setting nic to \${ai['nic']}"
   fi
 fi
@@ -2095,6 +2122,12 @@ get_output_file_suffix () {
     value="${options[${param}]}"
     if ! [ "${value}" = "first" ]; then
       suffix="${suffix}-${value}"
+    else
+      if [ "${param}" = "rootdisk" ]; then
+        suffix="${suffix}-first-disk"
+      else
+        suffix="${suffix}-first-${param}"
+      fi
     fi
   done
   for param in ip username; do
@@ -2103,7 +2136,7 @@ get_output_file_suffix () {
       suffix="${suffix}-${value}"
     fi
   done
-  for param in bridge attended noreboot standalone lvm; do
+  for param in bridge unattended attended poweroff nopoweroff reboot noreboot standalone lvm; do
     value="${options[${param}]}"
     if [ "${value}" = "true" ]; then
       suffix="${suffix}-${param}"
@@ -2153,7 +2186,6 @@ create_iso () {
   create_oneshot_script
   create_install_script
   execute_command "cd ${options['workdir']} ; nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=${options['nixisoconfig']} --builders ''"
-#  execute_command "nixos-generate -f iso -c ${options['nixisoconfig']}"
   iso_dir="${options['workdir']}/result/iso"
   if [ -d "${iso_dir}" ]; then
     iso_file=$( find "${iso_dir}" -name "*.iso" )
