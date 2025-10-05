@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.3.9
+# Version:      1.4.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -75,6 +75,7 @@ set_defaults () {
     "dmidecode"
     "efibootmgr"
     "file"
+    "fwupd"
     "kernel-hardening-checker"
     "lsb-release"
     "lshw"
@@ -223,6 +224,7 @@ MACS
 IGNOREIP
   options['ignoreip']="${options['ignoreip']//\"/\\\"}"
   # Options
+  options['fwupd']="true"                                                           # option : Enable fwupd
   options['secure']="true"                                                          # option : Enable secure parameters
   options['sysctl']=""                                                              # option : System sysctl parameters
   options['prefix']="ai"                                                            # option : Install directory prefix
@@ -1096,7 +1098,7 @@ populate_iso_kernel_params () {
     clientalivecountmax allowtcpforwarding allowagentforwarding loglevel \
     permitrootlogin hostkeyspath hostkeystype kexalgorithms ciphers macs \
     fail2ban maxretry bantime ignoreip bantimeincrement multipliers maxtime \
-    overalljails protectkernelimage allowsimultaneousmultithreading \
+    overalljails protectkernelimage allowsimultaneousmultithreading fwupd\
     lockkernelmodules forcepagetableisolation allowusernamespaces \
     unprivilegedusernsclone dbusimplementation execwheelonly systemdumask \
     privatenetwork protecthostname protectkernelmodules protectsystem \
@@ -1203,6 +1205,9 @@ NIXISOCONFIG
     allowedTCPPorts = [ ${options['allowedtcpports']} ];
     allowedUDPPorts = [ ${options['allowedudpports']} ];
   };
+
+  # Fwupd service
+  services.fwupd.enable = ${options['fwupd']};
 
   # OpenSSH
   services.openssh.enable = ${options['sshserver']};
@@ -1551,6 +1556,7 @@ ai['restrictrealtime']="${options['restrictrealtime']}"
 ai['systemcallarchitectures']="${options['systemcallarchitectures']}"
 ai['ipaddressdeny']="${options['ipaddressdeny']}"
 ai['firewall']="${options['firewall']}"
+ai['fwupd']="${options['fwupd']}"
 
 # Parse parameters
 echo "Processing parameters"
@@ -1810,6 +1816,9 @@ tee \${ai['nixcfg']} << NIX_CFG
   # Services security
   services.dbus.implementation = "\${ai['dbusimplementation']}";
   security.sudo.execWheelOnly = \${ai['execwheelonly']};
+
+  # Fwupd service
+  services.fwupd.enable = \${ai['fwupd']};
 
   # Systemd
   systemd.services.systemd-journald = {
@@ -2921,6 +2930,14 @@ while test $# -gt 0; do
       ;;
     --noforcepagetableisolation)        # switch : Don't force page table isolation
       options['forcepagetableisolation']="false"
+      shift
+      ;;
+    --fwupd)                            # switch : Enable fwupd
+      options['fwupd']="true"
+      shift
+      ;;
+    --nofwupd)                          # switch : Disable fwupd
+      options['fwupd']="false"
       shift
       ;;
     --gateway)                          # switch : Gateway address
