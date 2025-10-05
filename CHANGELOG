@@ -280,3 +280,7 @@
 # Added wait for link to come up
 # 1.4.0: Sun 05 Oct 2025 15:15:40 AEDT
 # Added fwupd to packages and services
+# 1.4.1: Sun 05 Oct 2025 22:52:00 AEDT
+# Improvements for NVMe installs
+# 1.4.2: Mon  6 Oct 2025 00:03:05 AEDT
+# Updates to install script

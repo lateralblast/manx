@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.4.0
+# Version:      1.4.2
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -278,7 +278,7 @@ IGNOREIP
   options['touchefi']="true"                                                        # option : Touch EFI
   options['sshserver']="true"                                                       # option : Enable SSH server
   options['swapsize']="2G"                                                          # option : Swap partition size
-  options['rootsize']="100%"                                                        # option : Root partition size
+  options['rootsize']="100%FREE"                                                    # option : Root partition size
   options['rootpool']="rpool"                                                       # option : Root pool name
   options['rootpassword']="nixos"                                                   # option : Root password
   options['rootcrypt']=""                                                           # option : Root password crypt
@@ -403,6 +403,7 @@ IGNOREIP
   options['systemcallarchitectures']="native"                                       # option : systemd system call architectures
   options['ipaddressdeny']="any"                                                    # option : systemd IP address deny
   options['usepreservediso']="false"                                                # option : Use preserved ISO
+  options['processgrub']="true"                                                     # option : Process grub command line
 
   # VM defaults
   vm['name']="${script['name']}"                                                    # vm : VM name
@@ -1060,7 +1061,7 @@ get_ssh_key () {
   if [ "${options['sshkey']}" = "" ]; then
     if [ "${options['sshkeyfile']}" = "" ]; then
       information_message "Attempting to find SSH key file"
-      key_file=$( find "$HOME"/.ssh -name "*.pub" |head -1 )
+      key_file=$( find "$HOME"/.ssh -name "*.pub" | head -1 )
       if [ "${key_file}" = "" ]; then
         information_message "No SSH key file found"
         information_message "Disabling use of SSH key file"
@@ -1099,7 +1100,7 @@ populate_iso_kernel_params () {
     permitrootlogin hostkeyspath hostkeystype kexalgorithms ciphers macs \
     fail2ban maxretry bantime ignoreip bantimeincrement multipliers maxtime \
     overalljails protectkernelimage allowsimultaneousmultithreading fwupd\
-    lockkernelmodules forcepagetableisolation allowusernamespaces \
+    lockkernelmodules forcepagetableisolation allowusernamespaces processgrub \
     unprivilegedusernsclone dbusimplementation execwheelonly systemdumask \
     privatenetwork protecthostname protectkernelmodules protectsystem \
     protecthome protectkerneltunables protectcontrolgroups protectclock \
@@ -1557,6 +1558,7 @@ ai['systemcallarchitectures']="${options['systemcallarchitectures']}"
 ai['ipaddressdeny']="${options['ipaddressdeny']}"
 ai['firewall']="${options['firewall']}"
 ai['fwupd']="${options['fwupd']}"
+ai['processgrub']="${options['processgrub']}"
 
 # Parse parameters
 echo "Processing parameters"
@@ -1566,30 +1568,32 @@ do
 done
 
 # Parse grub parameters
-echo "Processing grub parameters"
-str=\$( < /proc/cmdline )
-del="ai."
-sep="\${str}\${del}"
-items=();
-while [[ "\${sep}" ]]; do
+if [ "\${ai['processgrub']}" = "true" ]; then
+  echo "Processing grub parameters"
+  str=\$( < /proc/cmdline )
+  del="ai."
+  sep="\${str}\${del}"
+  items=();
+  while [[ "\${sep}" ]]; do
     items+=( "\${sep%%"\$del"*}" );
     sep=\${sep#*"\$del"};
-done;
-declare -a items
-for item in "\${items[@]}"; do
-  if [[ ! \${item} =~ BOOT_IMAGE ]]; then
-    IFS='=' read -r param value <<< \${item}
-    value=\${value//\"/}
-    value=\${value// nohibernate*/}
-    value="\${value%"\${value##*[![:space:]]}"}"
-    if [ ! "\${value}" = "" ]; then
-      if [ ! "\${ai[\${param}]}" = "\${value}" ]; then
-        ai[\${param}]="\${value}"
-        echo "Setting \${param} to \${value}"
+  done;
+  declare -a items
+  for item in "\${items[@]}"; do
+    if [[ ! \${item} =~ BOOT_IMAGE ]]; then
+      IFS='=' read -r param value <<< \${item}
+      value=\${value//\"/}
+      value=\${value// nohibernate*/}
+      value="\${value%"\${value##*[![:space:]]}"}"
+      if [ ! "\${value}" = "" ]; then
+        if [ ! "\${ai[\${param}]}" = "\${value}" ]; then
+          ai[\${param}]="\${value}"
+          echo "Setting \${param} to \${value}"
+        fi
       fi
     fi
-  fi
-done
+  done
+fi
 ai['zfsoptions']="\${ai['zfsoptions']} -R \${ai['installdir']}"
 echo "Setting zfsoptions to \${ai['zfsoptions']}"
 
@@ -1619,9 +1623,22 @@ fi
 
 # Discover first disk
 if [ "\${ai['rootdisk']}" = "first" ]; then
-  ai['rootdisk']=\$( lsblk -x TYPE|grep disk |sort |head -1 |awk '{print \$1}' )
+  ai['rootdisk']=\$( lsblk -l -o TYPE,NAME,TRAN | grep disk | grep -v usb | sort | head -1 | awk '{print \$2}' )
   ai['rootdisk']="/dev/\${ai['rootdisk']}"
   echo "Setting rootdisk to \${ai['rootdisk']}"
+fi
+
+# Update partitions for NVMe devices
+if [[ \${ai['rootdisk']} =~ nvme ]]; then
+  ai['efipart']="1"
+  ai['bootpart']="1"
+  ai['swappart']="2"
+  ai['rootpart']="3"
+  ai['rootpart']="p\${ai['rootpart']}"
+  ai['efipart']="p\${ai['efipart']}"
+  ai['bootpart']="p\${ai['efipart']}"
+  ai['swappart']="p\${ai['swappart']}"
+  ai['devnodes']="/dev/disk/by-id"
 fi
 
 # Check we are using only one volume manager
@@ -1639,7 +1656,7 @@ fi
 echo "Setting bootmods to \${ai['bootmods']}"
 
 # QEMU check
-qemu_check=\$( cat /proc/ioports |grep QEMU )
+qemu_check=\$( cat /proc/ioports | grep QEMU )
 if [ -n "\${qemu_check}" ]; then
   if [ "\${ai['hwimports']}" = "" ]; then
     ai['hwimports']="(modulesPath + \"/profiles/qemu-guest.nix\")"
@@ -1697,25 +1714,24 @@ if [ "\${ai['biosflag']}" = "true" ]; then
 fi
 if [ "\${ai['lvm']}" = "true" ]; then
   sgdisk -n \${ai['rootpart']}:0:0 -t \${ai['rootpart']}:\${ai['partflag']} -c \${ai['rootpart']}:\${ai['rootvolname']} \${ai['rootdisk']}
-  pvcreate -f \${ai['rootdisk']}\${ai['rootpart']}
+  pvcreate -ff \${ai['rootdisk']}\${ai['rootpart']}
   vgcreate -f \${ai['rootpool']} \${ai['rootdisk']}\${ai['rootpart']}
   lvcreate -y --size \${ai['bootsize']} --name \${ai['bootvolname']} \${ai['rootpool']}
   if [ "\${USE_SWAP}" = "true" ]; then
     lvcreate -y --size \${ai['swapsize']} --name \${ai['swapvolname']} \${ai['rootpool']}
   fi
-  lvcreate -y --size \${ai['rootsize']} --name \${ai['rootvolname']} \${ai['rootpool']}
+  lvcreate -y -l \${ai['rootsize']} --name \${ai['rootvolname']} \${ai['rootpool']}
   ai['swapvol']="/dev/\${ai['rootpool']}/\${ai['swapvolname']}"
   ai['bootvol']="/dev/\${ai['rootpool']}/\${ai['bootvolname']}"
   ai['rootvol']="/dev/\${ai['rootpool']}/\${ai['rootvolname']}"
-  lvextend -l +100%FREE \${ai['rootvol']}
   if [ "\${ai[initmods]}" = "" ]; then
     ai['initmods']="\"dm-snapshot\" \"dm-raid\" \"dm-cache-default\""
   else
     ai['initmods']="\${ai['initmods']} \"dm-snapshot\" \"dm-raid\" \"dm-cache-default\""
   fi
-  ai['rootsearch']=\$( ls -l \${ai['rootvol']} | awk '{print \$11}' |cut -f2 -d/ )
-  ai['bootsearch']=\$( ls -l \${ai['bootvol']} | awk '{print \$11}' |cut -f2 -d/ )
-  ai['swapsearch']=\$( ls -l \${ai['swapvol']} | awk '{print \$11}' |cut -f2 -d/ )
+  ai['rootsearch']=\$( ls -l \${ai['rootvol']} | awk '{print \$11}' | cut -f2 -d/ )
+  ai['bootsearch']=\$( ls -l \${ai['bootvol']} | awk '{print \$11}' | cut -f2 -d/ )
+  ai['swapsearch']=\$( ls -l \${ai['swapvol']} | awk '{print \$11}' | cut -f2 -d/ )
 else
   sgdisk -n \${ai['efipart']}:2M:+\${ai['bootsize']} -t \${ai['efipart']}:EF00 -c \${ai['efipart']}:\${ai['bootvolname']} \${ai['rootdisk']}
   if [ "\${ai['swap']}" = "true" ]; then
@@ -1999,14 +2015,14 @@ NIX_CFG
 
 # Get device UUIDs
 if [ "\${ai['swap']}" = "true" ]; then
-  ai['swapuuid']=\$(ls -l \${ai['devnodes']} |grep \${ai['swapsearch']} |awk '{print \$9}' )
+  ai['swapuuid']=\$(ls -l \${ai['devnodes']} | grep \${ai['swapsearch']} | awk '{print \$9}' )
   ai['swapdev']="\${ai['devnodes']}/\${ai['swapuuid']}"
 else
   ai['swapdev']=""
 fi
-ai['bootuuid']=\$(ls -l \${ai['devnodes']} |grep \${ai['bootsearch']} |awk '{print \$9}' )
+ai['bootuuid']=\$(ls -l \${ai['devnodes']} | grep \${ai['bootsearch']} | awk '{print \$9}' )
 ai['bootdev']="\${ai['devnodes']}/\${ai['bootuuid']}"
-ai['rootuuid']=\$(ls -l \${ai['devnodes']} |grep \${ai['rootsearch']} |awk '{print \$9}' )
+ai['rootuuid']=\$(ls -l \${ai['devnodes']} | grep \${ai['rootsearch']} | awk '{print \$9}' )
 ai['rootdev']="\${ai['devnodes']}/\${ai['rootuuid']}"
 echo "Setting rootuuid to \${ai['rootuuid']}"
 echo "Setting rootdev to \${ai['rootdev']}"
@@ -2077,7 +2093,7 @@ mkdir -p \${ai['installdir']}/\${ai['logdir']}
 
 if [ "\${ai['attended']}" = "true" ]; then
   echo "To install:"
-  echo "nixos-install -v --show-trace --no-root-passwd 2>&1 |tee \${ai['installdir']}\${ai['logfile']}"
+  echo "nixos-install -v --show-trace --no-root-passwd 2>&1 | tee \${ai['installdir']}\${ai['logfile']}"
   echo "To unmount filesystems and reboot:"
   echo "umount -Rl \${ai['installdir']}"
   echo "zpool export -a"
@@ -2085,7 +2101,7 @@ if [ "\${ai['attended']}" = "true" ]; then
   echo "reboot"
   exit
 else
-  nixos-install -v --show-trace --no-root-passwd 2>&1 |tee \${ai['installdir']}\${ai['logfile']}
+  nixos-install -v --show-trace --no-root-passwd 2>&1 | tee \${ai['installdir']}\${ai['logfile']}
   echo "Logged to \${ai['installdir']}\${ai['logfile']}"
 fi
 
@@ -2411,7 +2427,7 @@ create_kvm_vm () {
       iso_dir="${options['workdir']}/result/iso"
     fi
     if [ -d "${iso_dir}" ]; then
-      vm['cdrom']=$( ls -rt "${iso_dir}"/nixos*.iso |tail -1 )
+      vm['cdrom']=$( ls -rt "${iso_dir}"/nixos*.iso | tail -1 )
     else
       warning_message "Could not find an ISO to use"
       exit
@@ -3269,6 +3285,14 @@ while test $# -gt 0; do
       ;;
     --noprivatenetwork)                 # switch : Disable systemd private network
       options['privatenetwork']="true"
+      shift
+      ;;
+    --processgrub*)                     # switch : Enable processing grub command line
+      options['processgrub']="true"
+      shift
+      ;;
+    --noprocessgrub*)                   # switch : Disable processing grub command line
+      options['processgrub']="false"
       shift
       ;;
     --protectclock)                     # switch : Enable systemd protect clock
