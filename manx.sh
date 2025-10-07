@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.4.3
+# Version:      1.4.4
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -71,16 +71,23 @@ set_defaults () {
   systempackages=(
     "aide"
     "ansible"
+    "btop"
     "curl"
     "dmidecode"
     "efibootmgr"
+    "ethtool"
     "file"
     "fwupd"
     "kernel-hardening-checker"
     "lsb-release"
+    "lsof"
     "lshw"
     "lynis"
+    "nmap"
     "pciutils"
+    "ripgrep"
+    "rclone"
+    "tmux"
     "vim"
     "wget"
   )
