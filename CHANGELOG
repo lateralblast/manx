@@ -288,3 +288,5 @@
 # Updates to install script
 # 1.4.4: Wed 08 Oct 2025 01:27:35 AEDT
 # Updated package list
+# 1.4.5: Wed 08 Oct 2025 01:32:19 AEDT
+# Added initrd kernel modules

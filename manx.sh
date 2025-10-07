@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.4.4
+# Version:      1.4.5
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -131,15 +131,17 @@ BLACKLIST
   # Available kernel modules
   options['availmods']=""                                                           # option : Available kernel modules
   availmods=(
-    "xhci_pci"
     "ahci"
-    "usbhid"
-    "usb_storage"
+    "ehci_pci"
+    "megaraid_sas"
+    "sdhci_pci"
     "sd_mod"
     "sr_mod"
-    "sdhci_pci"
-    "virtio_pci"
+    "usbhid"
+    "usb_storage"
     "virtio_blk"
+    "virtio_pci"
+    "xhci_pci"
   )
   for item in "${availmods[@]}"; do
     options['availmods']+=" \\\"${item}\\\" "
@@ -2016,6 +2018,7 @@ fi
 tee -a \${ai['nixcfg']} << NIX_CFG
   users.users.root.initialHashedPassword = "\${ai['rootcrypt']}";
   nixpkgs.hostPlatform = lib.mkDefault "\${ai['targetarch']}-linux";
+  hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
   system.stateVersion = "\${ai['stateversion']}";
 }
 NIX_CFG
