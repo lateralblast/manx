@@ -833,7 +833,9 @@ if [ "${ai['attended']}" = "true" ]; then
   echo "nixos-install -v --show-trace --no-root-passwd 2>&1 | tee ${ai['installdir']}${ai['logfile']}"
   echo "To unmount filesystems and reboot:"
   echo "umount -Rl ${ai['installdir']}"
-  echo "zpool export -a"
+  if [ "${ai['rootfs']}" = "zfs" ]; then
+    echo "zpool export -a"
+  fi
   echo "swapoff -a"
   echo "reboot"
   exit
@@ -851,7 +853,9 @@ if [ "${install_check}" = "0" ]; then
   exit
 else
   umount -Rl ${ai['installdir']}
-  zpool export -a
+  if [ "${ai['rootfs']}" = "zfs" ]; then
+    zpool export -a
+  fi
   swapoff -a
 fi
 
