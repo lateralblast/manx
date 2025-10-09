@@ -290,3 +290,15 @@
 # Updated package list
 # 1.4.5: Wed 08 Oct 2025 01:32:19 AEDT
 # Added initrd kernel modules
+# 1.4.6: Wed 08 Oct 2025 14:03:27 AEDT
+# Improved serial support
+# 1.4.7: Wed 08 Oct 2025 14:48:24 AEDT
+# Improved kernel package code
+# 1.4.8: Wed 08 Oct 2025 17:30:13 AEDT
+# Cleaned up ISO nix file creation
+# 1.4.9: Wed 08 Oct 2025 18:20:00 AEDT
+# Cleaned up grub parameters
+# 1.5.0: Thu 09 Oct 2025 10:12:17 AEDT
+# Improved kernel parameters handling
+# 1.5.1: Thu 09 Oct 2025 14:05:28 AEDT
+# Updated install script

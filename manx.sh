@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.4.5
+# Version:      1.5.1
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -62,13 +62,9 @@ set_defaults () {
     "-O acltype=posixacl"
     "-o ashift=12"
   )
-  for item in "${zfsoptions[@]}"; do
-    options['zfsoptions']+=" ${item} "
-  done
-  # Packages
-  spacer=$'\n      '
-  options['systempackages']=""                                                      # option : System packages
-  systempackages=(
+  options['zfsoptions']="${zfsoptions[@]}"
+  options['isosystempackages']=""                                                   # option : ISO system packages
+  isosystempackages=(
     "aide"
     "ansible"
     "btop"
@@ -78,6 +74,7 @@ set_defaults () {
     "ethtool"
     "file"
     "fwupd"
+    "git"
     "kernel-hardening-checker"
     "lsb-release"
     "lsof"
@@ -91,16 +88,62 @@ set_defaults () {
     "vim"
     "wget"
   )
-  for item in "${systempackages[@]}"; do
-    if [ "${options['systempackages']}" = "" ]; then
-      options['systempackages']="${item}"
-    else
-      options['systempackages']+="${spacer}${item}"
-    fi
-  done
+  options['isosystempackages']="${isosystempackages[@]}"
+  options['isostorepackages']=""                                                    # option : ISO store packages
+  isostorepackages=(
+    "aide"
+    "ansible"
+    "btop"
+    "curl"
+    "dmidecode"
+    "efibootmgr"
+    "ethtool"
+    "file"
+    "fwupd"
+    "git"
+    "kernel-hardening-checker"
+    "lsb-release"
+    "lsof"
+    "lshw"
+    "lynis"
+    "nmap"
+    "pciutils"
+    "ripgrep"
+    "rclone"
+    "tmux"
+    "vim"
+    "wget"
+  )
+  options['isostorepackages']="${isostorepackages[@]}"
+  options['systempackages']=""                                                      # option : System packages
+  systempackages=(
+    "aide"
+    "ansible"
+    "btop"
+    "curl"
+    "dmidecode"
+    "efibootmgr"
+    "ethtool"
+    "file"
+    "fwupd"
+    "git"
+    "kernel-hardening-checker"
+    "lsb-release"
+    "lsof"
+    "lshw"
+    "lynis"
+    "nmap"
+    "pciutils"
+    "ripgrep"
+    "rclone"
+    "tmux"
+    "vim"
+    "wget"
+  )
+  options['systempackages']="${systempackages[@]}"
   # Blacklist
   options['blacklist']=""                                                           # option : Blacklisted kernel modules
-  IFS='' read -r -d '' options['blacklist'] << BLACKLIST
+  blacklist=(
     "dccp"
     "sctp"
     "rds"
@@ -126,8 +169,8 @@ set_defaults () {
     "hfs"
     "hfsplus"
     "udf"
-BLACKLIST
-  options['blacklist']="${options['blacklist']//\"/\\\"}"
+  )
+  options['blacklist']="${blacklist[@]}"
   # Available kernel modules
   options['availmods']=""                                                           # option : Available kernel modules
   availmods=(
@@ -143,37 +186,20 @@ BLACKLIST
     "virtio_pci"
     "xhci_pci"
   )
-  for item in "${availmods[@]}"; do
-    options['availmods']+=" \\\"${item}\\\" "
-  done
+  options['availmods']="${availmods[@]}"
+  # Serial parameters
+  options['serialspeed']="115200"                                                   # option : Serial speed
+  options['serialunit']="0"                                                         # option : Serial unit
+  options['serialword']="8"                                                         # option : Serial word
+  options['serialparity']="no"                                                      # option : Serial parity
+  options['serialstop']="1"                                                         # option : Serial stop
+  options['serialport']="0x02f8"                                                    # option : Serial port
+  options['serialtty']="ttyS0"                                                      # option : Serial TTY
   # Kernel parameters
   options['isokernelparams']=""                                                     # option : Additional kernel parameters to add to ISO grub commands
+  options['kernelparams']=""                                                        # option : Additional kernel parameters to add to system grub commands
   options['serialkernelparams']=""                                                  # option : Serial kernel params
-  serialkernelparams=(
-    "console=tty1"
-    "console=ttyS0,115200n8"
-    "console=ttyS1,115200n8"
-  )
-  for item in "${serialkernelparams[@]}"; do
-    options['isoserialkernelparams']+=" \"${item}\" "
-  done
-  for item in "${serialkernelparams[@]}"; do
-    options['serialkernelparams']+=" \\\"${item}\\\" "
-  done
   options['serialextraargs']=""                                                     # option : Serial extra args
-  serialextraargs=(
-    "serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1"
-    "terminal_input serial"
-    "terminal_output serial"
-  )
-  spacer=$'\n    '
-  for item in "${serialextraargs[@]}"; do
-    if [ "${options['serialextraargs']}" = "" ]; then
-      options['serialextraargs']="${item}"
-    else
-      options['serialextraargs']+="${spacer}${item}"
-    fi
-  done
   # Imports
   options['isoimports']=""                                                          # option : ISO imports
   isoimports=(
@@ -182,56 +208,52 @@ BLACKLIST
     "<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>"
     "<nixpkgs/nixos/modules/system/boot/kernel.nix>"
   )
-  for item in "${isoimports[@]}"; do
-    options['isoimports']+=" ${item} "
-  done
+  options['isoimports']="${isoimports[@]}"
   options['imports']=""                                                             # option : System imports
   imports=(
     "<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>"
     "<nixpkgs/nixos/modules/system/boot/kernel.nix>"
   )
-  for item in "${imports[@]}"; do
-    options['imports']+=" ${item} "
-  done
+  options['imports']="${imports[@]}"
   # SSH Kex Algorithms
   options['kexalgorithms']=""                                                       # option : SSH Key Exchange Algorithms
-  IFS='' read -r -d '' options['kexalgorithms'] << CIPHERS
+  kexalgorithms=(
     "curve25519-sha256@libssh.org"
     "ecdh-sha2-nistp521"
     "ecdh-sha2-nistp384"
     "ecdh-sha2-nistp256"
     "diffie-hellman-group-exchange-sha256"
-CIPHERS
-  options['kexalgorithms']="${options['kexalgorithms']//\"/\\\"}"
+  )
+  options['kexalgorithms']="${kexalgorithms[@]}"
   # SSH ciphers
   options['ciphers']=""                                                             # option : SSH Ciphers
-  IFS='' read -r -d '' options['ciphers'] << CIPHERS
+  ciphers=(
     "chacha20-poly1305@openssh.com"
     "aes256-gcm@openssh.com"
     "aes128-gcm@openssh.com"
     "aes256-ctr"
     "aes192-ctr"
     "aes128-ctr"
-CIPHERS
-  options['ciphers']="${options['ciphers']//\"/\\\"}"
+  )
+  options['ciphers']="${ciphers[@]}"
   # SSH Macs
   options['macs']=""                                                                # option : SSH Macs
-  IFS='' read -r -d '' options['macs'] << MACS 
+  macs=(
     "hmac-sha2-512-etm@openssh.com"
     "hmac-sha2-256-etm@openssh.com"
     "umac-128-etm@openssh.com"
     "hmac-sha2-512"
     "hmac-sha2-256"
     "umac-128@openssh.com"
-MACS
-  options['macs']="${options['macs']//\"/\\\"}"
+  )
+  options['macs']="${macs[@]}"
   # fail2pan ignore IPs
   options['ignoreip']=""                                                            # option : fail2ban ignore ip
-  IFS='' read -r -d '' options['ignoreip'] << IGNOREIP 
-      "172.16.0.0/12"
-      "192.168.0.0/16"
-IGNOREIP
-  options['ignoreip']="${options['ignoreip']//\"/\\\"}"
+  ignoreip=(
+    "172.16.0.0/12"
+    "192.168.0.0/16"
+  )
+  options['ignoreip']="${ignoreip[@]}"
   # Options
   options['fwupd']="true"                                                           # option : Enable fwupd
   options['secure']="true"                                                          # option : Enable secure parameters
@@ -559,6 +581,37 @@ fi
 # Reset defaults based on command line options
 
 reset_defaults () {
+  serial_console="console=${options['serialtty']},${options['serialspeed']}${options['serialparity']}${options['serialword']}"
+  serialkernelparams=(
+    "console=tty1"
+    "${serial_console}"
+  )
+  for item in "${serialkernelparams[@]}"; do
+    options['isoserialkernelparams']+=" \"${item}\" "
+  done
+  for item in "${serialkernelparams[@]}"; do
+    options['serialkernelparams']+=" \\\"${item}\\\" "
+  done
+  serial_params="serial"
+  for param in speed unit word parity stop port; do
+    item="serial${param}"
+    value="${options[${item}]}"
+    if ! [ "${value}" = "" ]; then
+      serial_params="${serial_params} --${param}=${value}"
+    fi
+  done
+  serialextraargs=(
+    "${serial_params}"
+    "terminal_input serial"
+    "terminal_output serial"
+  )
+  for item in "${serialextraargs[@]}"; do
+    if [ "${options['serialextraargs']}" = "" ]; then
+      options['serialextraargs']=" ${item} "
+    else
+      options['serialextraargs']+=" ${item} "
+    fi
+  done
   if [ "${options['attended']}" = "true" ]; then
     options['unattended']="false"
   fi
@@ -645,9 +698,7 @@ SYSCTL
       "rd.udev.log_level=3"
       "udev.log_priority=3"
     )
-    for item in "${kernelparams[@]}"; do
-      options['kernelparams']+=" \\\"${item}\\\" "
-    done
+    options['kernelparams']="${kernelparams[@]}"
     IFS='' read -r -d '' options['sysctl'] << SYSCTL
     "kernel.exec-shield" = 1;
     "net.ipv4.tcp_rfc1337" = 1;
@@ -750,16 +801,15 @@ SYSCTL
     else
       options['kernelparams']="${options['kernelparams']} ${options['serialkernelparams']}"
     fi
-    spacer=$'\n    '
     if [ "${options['isoextraargs']}" = "" ]; then
       options['isoextraargs']="${options['serialextraargs']}"
     else
-      options['isoextraargs']="${options['isoextraargs']}${spacer}${options['serialextraargs']}"
+      options['isoextraargs']="${options['isoextraargs']} ${options['serialextraargs']}"
     fi
     if [ "${options['extraargs']}" = "" ]; then
       options['extraargs']="${options['serialextraargs']}"
     else
-      options['extraargs']="${options['extraargs']}${spacer}${options['serialextraargs']}"
+      options['extraargs']="${options['extraargs']} ${options['serialextraargs']}"
     fi
   fi
   if [[ ${options['kernel']} =~ latest ]] && [[ ${options['kernel']} =~ hardened ]]; then
@@ -772,6 +822,12 @@ SYSCTL
         options['kernel']="_hardened"
       fi
     fi
+  fi
+  if ! [ "${options['kernel']}" = "" ]; then
+    if ! [[ "${options['kernel']}" =~ ^_ ]]; then
+      options['kernel']="_${options['kernel']}"
+    fi
+    options['kernel']="${options['kernel']//\./_}"
   fi
   if ! [ "${options['import']}" = "" ]; then
     if ! [ -f "${options['import']}" ]; then
@@ -1030,9 +1086,11 @@ check_nix_config () {
   if ! [ -d "${options['workdir']}/ai" ]; then
     execute_command "mkdir -p ${options['workdir']}/ai"
   fi
-  nix_test=$( command -v nix )
-  if [ "${nix_test}" = "" ]; then
-    sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install) --no-daemon
+  if [ "${os['name']}" = "Linux" ]; then
+    nix_test=$( command -v nix )
+    if [ "${nix_test}" = "" ]; then
+      sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install) --no-daemon
+    fi
   fi
 }
 
@@ -1101,9 +1159,9 @@ populate_iso_kernel_params () {
     bootpolname installdir mbrpartname locale devnodes logdir logfile timezone \
     usershell username extragroups usergecos normaluser sudocommand sudooptions \
     rootpassword userpassword stateversion hostname unfree gfxmode gfxpayload \
-    nic dns ip gateway cidr zfsoptions systempackages imports hwimports firewall \
     passwordauthentication allowedtcpports allowedudpports targetarch sshkey \
-    permitemptypasswords permittunnel usedns kbdinteractiveauthentication \
+    permitemptypasswords permittunnel usedns kbdinteractiveauthentication nic \
+    dns ip gateway cidr zfsoptions systempackages firewall imports hwimports\
     x11forwarding maxauthtries maxsessions clientaliveinterval allowusers \
     clientalivecountmax allowtcpforwarding allowagentforwarding loglevel \
     permitrootlogin hostkeyspath hostkeystype kexalgorithms ciphers macs \
@@ -1115,13 +1173,16 @@ populate_iso_kernel_params () {
     protecthome protectkerneltunables protectcontrolgroups protectclock \
     protectproc procsubset privatetmp memorydenywriteexecute nownewprivileges \
     lockpersonality restrictrealtime systemcallarchitectures ipaddressdeny; do
+    item=""
     value="${options[${param}]}"
     if ! [ "${value}" = ""  ]; then
-      if [[ ${param} =~ zfsoptions|sshkey|blacklist|imports|packages|kexalgorithms|ciphers|macs|ignoreip|multipliers ]]; then
+      if [[ "${value}" =~ " " ]]; then
         item="\"ai.${param}=\\\"${value}\\\"\""
       else
         item="\"ai.${param}=${value}\""
       fi
+    else
+      item="\"ai.${param}=\""
     fi 
     options['isokernelparams']+=" ${item} "
   done
@@ -1141,11 +1202,14 @@ create_nix_iso_config () {
   else
     source_dir="${options['source']}"
   fi
+  spacer=$'\n'
   tee "${options['nixisoconfig']}" << NIXISOCONFIG
 # ISO build config
 { config, pkgs, lib, ... }:
 {
-  imports = [ ${options['isoimports']} ];
+  imports = [
+    ${options['isoimports']// /${spacer}    }
+  ];
 
   # Add contents to ISO
   isoImage = {
@@ -1165,7 +1229,7 @@ NIXISOCONFIG
   else
     tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
     storeContents = with pkgs; [
-      ${options['systempackages']}
+      ${options['isostorepackages']// /${spacer}      }
     ];
 NIXISOCONFIG
   fi
@@ -1180,17 +1244,19 @@ NIXISOCONFIG
       gfxmodeBios = "${options['gfxmode']}";
       gfxpayloadBios = "${options['gfxpayload']}";
       extraConfig = "
-        ${options['isoextraargs']//    /        }
+        ${options['isoextraargs']//  /${spacer}         }
       ";
-      extraEntries = ''
-        menuentry "Boot from next volume" {
-          exit 1
-        }
-      '';
     };
   };
-  boot.kernelParams = [ ${options['isokernelparams']} ];
- #  boot.kernelPackages = pkgs.linuxPackages${options['kernel']};
+  boot.kernelParams = [ ${options['isokernelparams']// \"/${spacer}    \"}
+  ];
+NIXISOCONFIG
+  if ! [ "${options['kernel']}" = "" ]; then
+    tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
+  boot.kernelPackages = pkgs.linuxPackages${options['kernel']};
+NIXISOCONFIG
+  fi
+  tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
 
   # Set your time zone
   time.timeZone = "${options['timezone']}";
@@ -1237,17 +1303,35 @@ NIXISOCONFIG
   services.openssh.settings.ClientAliveInterval = ${options['clientaliveinterval']};
   services.openssh.settings.ClientAliveCountMax = ${options['clientalivecountmax']};
   services.openssh.settings.KexAlgorithms = [
-${options['kexalgorithms']//\\/}
+NIXISOCONFIG
+  for item in ${options['kexalgorithms']}; do
+    tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
+    "${item}"
+NIXISOCONFIG
+  done
+  tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
   ];
   services.openssh.settings.Ciphers = [
-${options['ciphers']//\\/}
+NIXISOCONFIG
+  for item in ${options['ciphers']}; do
+    tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
+    "${item}"
+NIXISOCONFIG
+  done
+  tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
   ];
   services.openssh.settings.Macs = [
-${options['macs']//\\/}
+NIXISOCONFIG
+  for item in ${options['macs']}; do
+    tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
+    "${item}"
+NIXISOCONFIG
+  done
+  tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
   ];
 
-NIXISOCONFIG
   # Networking
+NIXISOCONFIG
   if ! [ "${options['nic']}" = "first" ]; then
     tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
   networking.useDHCP = lib.mkDefault ${options['dhcp']};
@@ -1347,12 +1431,12 @@ NIXISOCONFIG
 
   # Enable SSH in the boot process.
   systemd.services.sshd.wantedBy = pkgs.lib.mkForce [ "multi-user.target" ];
-  users.users.root.openssh.authorizedKeys.keys = ["${options['sshkey']}" ];
-  users.users.nixos.openssh.authorizedKeys.keys = ["${options['sshkey']}" ];
+  users.users.root.openssh.authorizedKeys.keys = [ "${options['sshkey']}" ];
+  users.users.nixos.openssh.authorizedKeys.keys = [ "${options['sshkey']}" ];
 
   # Based packages to include in ISO
   environment.systemPackages = with pkgs; [
-    ${options['systempackages']//   /  }
+    ${options['isosystempackages']// /${spacer}    }
   ];
 
   # Additional Nix options
@@ -1499,6 +1583,7 @@ ai['oneshot']="${options['oneshot']}"
 ai['kernelparams']="${options['kernelparams']}"
 ai['extraargs']="${options['extraargs']}"
 ai['imports']="${options['imports']}"
+ai['hwimports']="${options['hwimports']}"
 ai['kernel']="${options['kernel']}"
 ai['passwordauthentication']="${options['passwordauthentication']}"
 ai['permitemptypasswords']="${options['permitemptypasswords']}"
@@ -1568,6 +1653,9 @@ ai['ipaddressdeny']="${options['ipaddressdeny']}"
 ai['firewall']="${options['firewall']}"
 ai['fwupd']="${options['fwupd']}"
 ai['processgrub']="${options['processgrub']}"
+
+
+spacer=\$'\n'
 
 # Parse parameters
 echo "Processing parameters"
@@ -1658,9 +1746,9 @@ fi
 
 # Boot modules
 if [ "\${ai['bootmods']}" = "" ]; then
-  ai['bootmods']="\"kvm-intel\""
+  ai['bootmods']="kvm-intel"
 else
-  ai['bootmods']="\${ai['bootmods']} \"kvm-intel\""
+  ai['bootmods']="\${ai['bootmods']} kvm-intel"
 fi
 echo "Setting bootmods to \${ai['bootmods']}"
 
@@ -1800,7 +1888,10 @@ echo "Creating \${ai['nixcfg']}"
 tee \${ai['nixcfg']} << NIX_CFG
 { config, lib, pkgs, ... }:
 {
-  imports = [ \${ai['imports']} ./hardware-configuration.nix ];
+  imports = [
+    \${ai['imports']// /\${spacer}    }
+    ./hardware-configuration.nix
+  ];
   boot.loader.systemd-boot.enable = \${ai['uefiflag']};
   boot.loader.efi.canTouchEfiVariables = \${ai['uefiflag']};
   boot.loader.grub.devices = [ "\${ai['grubdev']}" ];
@@ -1812,9 +1903,21 @@ tee \${ai['nixcfg']} << NIX_CFG
   boot.supportedFilesystems = [ "\${ai['rootfs']}" ];
   boot.zfs.devNodes = "\${ai['devnodes']}";
   services.lvm.boot.thin.enable = \${ai['lvm']};
-#  boot.kernelPackages = pkgs.linuxPackages\${ai['kernel']};
+NIX_CFG
+if ! [ "\${ai['kernel']}" = "" ]; then
+  tee -a \${ai['nixcfg']} << NIX_CFG
+  boot.kernelPackages = pkgs.linuxPackages\${ai['kernel']};
+NIX_CFG
+fi
+tee -a \${ai['nixcfg']} << NIX_CFG
   boot.blacklistedKernelModules = [
-\${ai['blacklist']}
+NIX_CFG
+for item in \${ai['blacklist']}; do
+  tee -a \${ai['nixcfg']} << NIX_CFG
+    "\${item}"
+NIX_CFG
+done
+tee -a \${ai['nixcfg']} << NIX_CFG
   ];
 
   # Sysctl Parameters
@@ -1885,7 +1988,13 @@ tee \${ai['nixcfg']} << NIX_CFG
     maxretry = \${ai['maxretry']};
     bantime = "\${ai['bantime']}";
     ignoreIP = [
-\${ai['ignoreip']}
+NIX_CFG
+for item in \${ai['ignoreip']}; do
+  tee -a \${ai['nixcfg']} << NIX_CFG
+    "\${item}"
+NIX_CFG
+done
+tee -a \${ai['nixcfg']} << NIX_CFG
     ];
     bantime-increment = {
       enable = \${ai['bantimeincrement']};
@@ -1912,13 +2021,31 @@ tee \${ai['nixcfg']} << NIX_CFG
   services.openssh.settings.ClientAliveInterval = \${ai['clientaliveinterval']};
   services.openssh.settings.ClientAliveCountMax = \${ai['clientalivecountmax']};
   services.openssh.settings.KexAlgorithms = [
-\${ai['kexalgorithms']}
+NIX_CFG
+for item in \${ai['kexalgorithms']}; do
+  tee -a \${ai['nixcfg']} << NIX_CFG
+    "\${item}"
+NIX_CFG
+done
+tee -a \${ai['nixcfg']} << NIX_CFG
   ];
   services.openssh.settings.Ciphers = [
-\${ai['ciphers']}
+NIX_CFG
+for item in \${ai['ciphers']}; do
+  tee -a \${ai['nixcfg']} << NIX_CFG
+    "\${item}"
+NIX_CFG
+done
+tee -a \${ai['nixcfg']} << NIX_CFG
   ];
   services.openssh.settings.Macs = [
-\${ai['macs']}
+NIX_CFG
+for item in \${ai['macs']}; do
+  tee -a \${ai['nixcfg']} << NIX_CFG
+    "\${item}"
+NIX_CFG
+done
+tee -a \${ai['nixcfg']} << NIX_CFG
   ];
   services.openssh.hostKeys = [
     {
@@ -1938,8 +2065,9 @@ tee \${ai['nixcfg']} << NIX_CFG
   nix.settings.experimental-features = "\${ai['experimental-features']}";
 
   # System packages
-  environment.systemPackages = with pkgs; [ \${ai['systempackages']} ];
-
+  environment.systemPackages = with pkgs; [
+    \${ai['systempackages']// /\${spacer}    }
+  ];
   # Allow unfree packages
   nixpkgs.config.allowUnfree = \${ai['unfree']};
 
@@ -1989,6 +2117,7 @@ NIX_CFG
 if [ "\${ai['dhcp']}" = "false" ]; then
   if [ "\${ai['bridge']}" = "false" ]; then
     tee -a \${ai['nixcfg']} << NIX_CFG
+
   networking = {
     interfaces."\${ai['nic']}".useDHCP = \${ai['dhcp']};
     interfaces."\${ai['nic']}".ipv4.addresses = [{
@@ -2042,18 +2171,45 @@ echo "Setting swapuuid to \${ai['swapuuid']}"
 echo "Setting swapdev to \${ai['swapdev']}"
 
 # Create hardware-configuration.nix
-echo "Creating \${ai['nixcfg']}"
+echo "Creating \${ai['hwcfg']}"
 tee \${ai['hwcfg']} << HW_CFG
 { config, lib, pkgs, modulesPath, ... }:
 {
-  imports = [ \${ai['hwimports']} ];
-  boot.initrd.availableKernelModules = [ \${ai['availmods']} ];
-  boot.initrd.kernelModules = [ \${ai['initmods']} ];
-  boot.kernelModules = [ \${ai['bootmods']} ];
-  boot.kernelParams = [ \${ai['kernelparams']} ];
+  imports = [
+    \${ai['hwimports']}
+  ];
+  boot.initrd.availableKernelModules = [ 
+HW_CFG
+for item in \${ai['availmods']}; do
+  tee -a \${ai['hwcfg']} << HW_CFG
+    "\${item}"
+HW_CFG
+done
+tee -a \${ai['hwcfg']} << HW_CFG
+  ];
+  boot.initrd.kernelModules = [
+HW_CFG
+for item in \${ai['initmods']}; do
+  tee -a \${ai['hwcfg']} << HW_CFG
+    "\${item}""
+HW_CFG
+done
+tee -a \${ai['hwcfg']} << HW_CFG
+  ];
+  boot.kernelModules = [
+HW_CFG
+for item in \${ai['bootmods']}; do
+  tee -a \${ai['hwcfg']} << HW_CFG
+    "\${item}"
+HW_CFG
+done
+tee -a \${ai['hwcfg']} << HW_CFG
+  ];
   boot.loader.grub.extraConfig = "
-    \${ai['extraargs']}
+    \${ai['extraargs']//  /\${spacer}     }
   ";
+  boot.kernelParams = [ \${ai['isokernelparams']// \"/\${spacer}    \"}
+  ];
   boot.extraModulePackages = [ ];
 HW_CFG
 if [ "\${ai['rootfs']}" = "zfs" ]; then
@@ -3434,6 +3590,36 @@ while test $# -gt 0; do
     --serial)                           # switch : Enable serial
       options['serial']="true"
       shift
+      ;;
+    --serialparity)                     # switch : Serial parity
+      check_value "$1" "$2"
+      options['serialparity']="$2"
+      shift 2
+      ;;
+    --serialport)                       # switch : Serial port
+      check_value "$1" "$2"
+      options['serialport']="$2"
+      shift 2
+      ;;
+    --serialspeed)                      # switch : Serial speed
+      check_value "$1" "$2"
+      options['serialspeed']="$2"
+      shift 2
+      ;;
+    --serialstop)                       # switch : Serial stop
+      check_value "$1" "$2"
+      options['serialstop']="$2"
+      shift 2
+      ;;
+    --serialunit)                       # switch : Serial unit
+      check_value "$1" "$2"
+      options['serialunit']="$2"
+      shift 2
+      ;;
+    --serialword)                       # switch : Serial stop
+      check_value "$1" "$2"
+      options['serialword']="$2"
+      shift 2
       ;;
     --setboot*)                         # switch : Set boot device
       actions_list+=("setboot")
