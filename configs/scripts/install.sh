@@ -70,7 +70,9 @@ ai['cidr']="22"
 ai['sshkey']="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICl7w06accD5PJuQYiqpGiZBAsK82W4CVibaQ0kJsYq2 spindler@nixos"
 ai['oneshot']="true"
 ai['kernelparams']="audit=1 slab_nomerge init_on_alloc=1 init_on_free=1 page_alloc.shuffel=1 pti=on randomize_kstack_offset=on vsyscall=none debugfs=off oops=panic module.sig_enforce=1 lockdown=confidentiality rd.udev.log_level=3 udev.log_priority=3  \"console=tty1\"  \"console=ttyS0,115200no8\" "
-ai['extraargs']=" serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1 --port=0x02f8  terminal_input serial  terminal_output serial "
+ai['grubextraconfig']=" serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1 --port=0x02f8  terminal_input serial  terminal_output serial "
+ai['journaldextraconfig']="SystemMaxUse=500M SystemMaxFileSize=50M"
+ai['journaldupload']="false"
 ai['imports']="<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix> <nixpkgs/nixos/modules/system/boot/kernel.nix>"
 ai['hwimports']=""
 ai['kernel']=""
@@ -99,7 +101,7 @@ ai['macs']="hmac-sha2-512-etm@openssh.com hmac-sha2-256-etm@openssh.com umac-128
 ai['isomount']="/iso"
 ai['prefix']="ai"
 ai['targetarch']="x86_64"
-ai['systempackages']="aide ansible btop curl dmidecode efibootmgr ethtool file fwupd git kernel-hardening-checker lsb-release lsof lshw lynis nmap pciutils ripgrep rclone tmux vim wget"
+ai['systempackages']="aide ansible btop curl dmidecode efibootmgr ethtool file fwupd git kernel-hardening-checker lsb-release lsof lshw lynis nmap pciutils ripgrep rclone tmux usbutils vim wget"
 ai['blacklist']="dccp sctp rds tipc n-hdlc ax25 netrom x25 rose decnet econet af_802154 ipx appletalk psnap p8023 p8022 can atm cramfs freevxfs jffs2 hfs hfsplus udf"
 ai['sysctl']="    \"kernel.exec-shield\" = 1;
     \"net.ipv4.tcp_rfc1337\" = 1;
@@ -236,6 +238,7 @@ ai['systemcallarchitectures']="native"
 ai['ipaddressdeny']="any"
 ai['firewall']="true"
 ai['fwupd']="true"
+ai['logrotate']="true"
 ai['processgrub']="true"
 
 
@@ -526,8 +529,19 @@ ${ai['auditrules']}
   };
 
   # Services security
-  services.dbus.implementation = "${ai['dbusimplementation']}";
   security.sudo.execWheelOnly = ${ai['execwheelonly']};
+  services.dbus.implementation = "${ai['dbusimplementation']}";
+  services.logrotate.enable = ${ai['logrotate']};
+  services.journald.upload.enable = ${ai['journaldupload']};
+  services.journald.extraConfig = "
+NIX_CFG
+for item in  ${ai['journaldextraconfig']}; do
+  tee -a ${ai['nixcfg']} << NIX_CFG
+    ${item}
+NIX_CFG
+done
+tee -a ${ai['nixcfg']} << NIX_CFG
+  ";
 
   # Fwupd service
   services.fwupd.enable = ${ai['fwupd']};
@@ -790,7 +804,7 @@ done
 tee -a ${ai['hwcfg']} << HW_CFG
   ];
   boot.loader.grub.extraConfig = "
-    ${ai['extraargs']//  /${spacer}     }
+    ${ai['grubextraconfig']//  /${spacer}     }
   ";
   boot.kernelParams = [ ${ai['isokernelparams']// \"/${spacer}    \"}
   ];
