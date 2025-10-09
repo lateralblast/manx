@@ -302,3 +302,7 @@
 # Improved kernel parameters handling
 # 1.5.1: Thu 09 Oct 2025 14:05:28 AEDT
 # Updated install script
+# 1.5.2: Thu 09 Oct 2025 16:54:15 AEDT
+# Added journald options
+# 1.5.3: Thu 09 Oct 2025 20:34:18 AEDT
+# Added logrotate switch

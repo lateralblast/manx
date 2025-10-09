@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.5.1
+# Version:      1.5.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -85,6 +85,7 @@ set_defaults () {
     "ripgrep"
     "rclone"
     "tmux"
+    "usbutils"
     "vim"
     "wget"
   )
@@ -111,6 +112,7 @@ set_defaults () {
     "ripgrep"
     "rclone"
     "tmux"
+    "usbutils"
     "vim"
     "wget"
   )
@@ -137,6 +139,7 @@ set_defaults () {
     "ripgrep"
     "rclone"
     "tmux"
+    "usbutils"
     "vim"
     "wget"
   )
@@ -199,7 +202,7 @@ set_defaults () {
   options['isokernelparams']=""                                                     # option : Additional kernel parameters to add to ISO grub commands
   options['kernelparams']=""                                                        # option : Additional kernel parameters to add to system grub commands
   options['serialkernelparams']=""                                                  # option : Serial kernel params
-  options['serialextraargs']=""                                                     # option : Serial extra args
+  options['serialextraconfig']=""                                                   # option : Serial extra args
   # Imports
   options['isoimports']=""                                                          # option : ISO imports
   isoimports=(
@@ -254,6 +257,14 @@ set_defaults () {
     "192.168.0.0/16"
   )
   options['ignoreip']="${ignoreip[@]}"
+  # Journald extra config
+  options['journaldextraconfig']=""                                                 # option : Journald extra config
+  journaldextraconfig=(
+    "SystemMaxUse=500M"
+    "SystemMaxFileSize=50M"
+  )
+  options['journaldextraconfig']="${journaldextraconfig[@]}"
+  options['journaldupload']="false"                                                 # option : Journald remote log upload
   # Options
   options['fwupd']="true"                                                           # option : Enable fwupd
   options['secure']="true"                                                          # option : Enable secure parameters
@@ -365,8 +376,8 @@ set_defaults () {
   options['logdir']="/var/log"                                                      # option : Install log dir
   options['logfile']="${options['logdir']}/install.log"                             # option : Install log file
   options['bootsize']="512M"                                                        # option : Boot partition size
-  options['isoextraargs']=""                                                        # option : Additional kernel config to add to ISO grub commands
-  options['extraargs']=""                                                           # option : Additional kernel config to add to system grub commands
+  options['isogrubextraconfig']=""                                                  # option : Additional kernel config to add to ISO grub commands
+  options['grubextraconfig']=""                                                     # option : Additional kernel config to add to system grub commands
   options['initmods']=''                                                            # option : Available system init modules
   options['bootmods']=''                                                            # option : Available system boot modules
   options['oneshot']="true"                                                         # option : Enable oneshot service
@@ -435,6 +446,7 @@ set_defaults () {
   options['ipaddressdeny']="any"                                                    # option : systemd IP address deny
   options['usepreservediso']="false"                                                # option : Use preserved ISO
   options['processgrub']="true"                                                     # option : Process grub command line
+  options['logrotate']="true"                                                       # option : Log rotate
 
   # VM defaults
   vm['name']="${script['name']}"                                                    # vm : VM name
@@ -600,16 +612,16 @@ reset_defaults () {
       serial_params="${serial_params} --${param}=${value}"
     fi
   done
-  serialextraargs=(
+  serialextraconfig=(
     "${serial_params}"
     "terminal_input serial"
     "terminal_output serial"
   )
-  for item in "${serialextraargs[@]}"; do
-    if [ "${options['serialextraargs']}" = "" ]; then
-      options['serialextraargs']=" ${item} "
+  for item in "${serialextraconfig[@]}"; do
+    if [ "${options['serialextraconfig']}" = "" ]; then
+      options['serialextraconfig']=" ${item} "
     else
-      options['serialextraargs']+=" ${item} "
+      options['serialextraconfig']+=" ${item} "
     fi
   done
   if [ "${options['attended']}" = "true" ]; then
@@ -801,15 +813,15 @@ SYSCTL
     else
       options['kernelparams']="${options['kernelparams']} ${options['serialkernelparams']}"
     fi
-    if [ "${options['isoextraargs']}" = "" ]; then
-      options['isoextraargs']="${options['serialextraargs']}"
+    if [ "${options['isogrubextraconfig']}" = "" ]; then
+      options['isogrubextraconfig']="${options['serialextraconfig']}"
     else
-      options['isoextraargs']="${options['isoextraargs']} ${options['serialextraargs']}"
+      options['isogrubextraconfig']="${options['isogrubextraconfig']} ${options['serialextraconfig']}"
     fi
-    if [ "${options['extraargs']}" = "" ]; then
-      options['extraargs']="${options['serialextraargs']}"
+    if [ "${options['grubextraconfig']}" = "" ]; then
+      options['grubextraconfig']="${options['serialextraconfig']}"
     else
-      options['extraargs']="${options['extraargs']} ${options['serialextraargs']}"
+      options['grubextraconfig']="${options['grubextraconfig']} ${options['serialextraconfig']}"
     fi
   fi
   if [[ ${options['kernel']} =~ latest ]] && [[ ${options['kernel']} =~ hardened ]]; then
@@ -1172,7 +1184,8 @@ populate_iso_kernel_params () {
     privatenetwork protecthostname protectkernelmodules protectsystem \
     protecthome protectkerneltunables protectcontrolgroups protectclock \
     protectproc procsubset privatetmp memorydenywriteexecute nownewprivileges \
-    lockpersonality restrictrealtime systemcallarchitectures ipaddressdeny; do
+    lockpersonality restrictrealtime systemcallarchitectures ipaddressdeny \
+    grubextraconfig journaldextraconfig journaldupload; do
     item=""
     value="${options[${param}]}"
     if ! [ "${value}" = ""  ]; then
@@ -1244,7 +1257,7 @@ NIXISOCONFIG
       gfxmodeBios = "${options['gfxmode']}";
       gfxpayloadBios = "${options['gfxpayload']}";
       extraConfig = "
-        ${options['isoextraargs']//  /${spacer}         }
+        ${options['isogrubextraconfig']//  /${spacer}         }
       ";
     };
   };
@@ -1581,7 +1594,9 @@ ai['cidr']="${options['cidr']}"
 ai['sshkey']="${options['sshkey']}"
 ai['oneshot']="${options['oneshot']}"
 ai['kernelparams']="${options['kernelparams']}"
-ai['extraargs']="${options['extraargs']}"
+ai['grubextraconfig']="${options['grubextraconfig']}"
+ai['journaldextraconfig']="${options['journaldextraconfig']}"
+ai['journaldupload']="${options['journaldupload']}"
 ai['imports']="${options['imports']}"
 ai['hwimports']="${options['hwimports']}"
 ai['kernel']="${options['kernel']}"
@@ -1652,6 +1667,7 @@ ai['systemcallarchitectures']="${options['systemcallarchitectures']}"
 ai['ipaddressdeny']="${options['ipaddressdeny']}"
 ai['firewall']="${options['firewall']}"
 ai['fwupd']="${options['fwupd']}"
+ai['logrotate']="${options['logrotate']}"
 ai['processgrub']="${options['processgrub']}"
 
 
@@ -1942,8 +1958,19 @@ tee -a \${ai['nixcfg']} << NIX_CFG
   };
 
   # Services security
-  services.dbus.implementation = "\${ai['dbusimplementation']}";
   security.sudo.execWheelOnly = \${ai['execwheelonly']};
+  services.dbus.implementation = "\${ai['dbusimplementation']}";
+  services.logrotate.enable = \${ai['logrotate']};
+  services.journald.upload.enable = \${ai['journaldupload']};
+  services.journald.extraConfig = "
+NIX_CFG
+for item in  \${ai['journaldextraconfig']}; do
+  tee -a \${ai['nixcfg']} << NIX_CFG
+    \${item}
+NIX_CFG
+done
+tee -a \${ai['nixcfg']} << NIX_CFG
+  ";
 
   # Fwupd service
   services.fwupd.enable = \${ai['fwupd']};
@@ -2206,7 +2233,7 @@ done
 tee -a \${ai['hwcfg']} << HW_CFG
   ];
   boot.loader.grub.extraConfig = "
-    \${ai['extraargs']//  /\${spacer}     }
+    \${ai['grubextraconfig']//  /\${spacer}     }
   ";
   boot.kernelParams = [ \${ai['isokernelparams']// \"/\${spacer}    \"}
   ];
@@ -3023,7 +3050,7 @@ while test $# -gt 0; do
       actions_list+=("consolevm")
       shift
       ;;
-    --usercrypt|--crypt)                # switch : User Password Crypt
+    --crypt|--usercrypt)                # switch : User Password Crypt
       check_value "$1" "$2"
       options['usercrypt']="$2"
       shift 2
@@ -3073,11 +3100,6 @@ while test $# -gt 0; do
     --experimental*)                    # switch : SSH key
       check_value "$1" "$2"
       options['experimental-features']="$2"
-      shift 2
-      ;;
-    --extraargs)                        # switch : ISO Kernel extra args
-      check_value "$1" "$2"
-      options['extraargs']="$2"
       shift 2
       ;;
     --extragroup*)                      # switch : Extra groups
@@ -3147,6 +3169,11 @@ while test $# -gt 0; do
       options['gfxpayload']="$2"
       shift 2
       ;;
+    --grubextra*)                       # switch : ISO grub extra config
+      check_value "$1" "$2"
+      options['grubextraconfig']="$2"
+      shift 2
+      ;;
     --help|-h)                          # switch : Print help information
       print_help
       shift
@@ -3213,9 +3240,9 @@ while test $# -gt 0; do
       options['ipaddressdeny']="$2"
       shift 2
       ;;
-    --isoextra*)                        # switch : ISO Kernel extra args
+    --isogrubextra*)                    # switch : ISO grub extra config
       check_value "$1" "$2"
-      options['isoextraargs']="$2"
+      options['isogrubextraconfig']="$2"
       shift 2
       ;;
     --isoimport)                        # switch : Import additional Nix configuration file into ISO configuration
@@ -3240,6 +3267,19 @@ while test $# -gt 0; do
       ;;
     --isopermitrootlogin)               # switch : Enable SSH root login for ISO
       options['isopermitrootlogin']="yes"
+      shift
+      ;;
+    --journaldextra*)                   # switch : System journald extra config
+      check_value "$1" "$2"
+      options['journaldextraconfig']="$2"
+      shift 2
+      ;;
+    --journalupload)                    # switch : Enable remote log upload
+      options['journaldupload']="true"
+      shift
+      ;;
+    --nojournalupload)                  # switch : Disable remote log upload
+      options['journaldupload']="false"
       shift
       ;;
     --kbdinteractiveauthentication)     # switch : Enable SSH allow interactive kerboard authentication
@@ -3284,6 +3324,14 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       options['loglevel']="$2"
       shift 2
+      ;;
+    --logrotate)                        # switch : Enable logrotate
+      options['logrotate']="true"
+      shift
+      ;;
+    --nologrotate)                      # switch : Enable logrotate
+      options['logrotate']="false"
+      shift
       ;;
     --lockkernelmodules)                # switch : Lock kernel modules
       options['lockkernelmodules']="true"
