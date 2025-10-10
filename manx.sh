@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.6.0
+# Version:      1.6.1
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -2372,9 +2372,15 @@ get_output_file_suffix () {
       fi
     fi
   done
-  for param in ip username; do
+  for param in ip; do
     value="${options[${param}]}"
     if ! [ "${value}" = "" ]; then
+      suffix="${suffix}-${value}"
+    fi
+  done
+  for param in hostname username; do
+    value="${options[${param}]}"
+    if ! [ "${value}" = "nixos" ]; then
       suffix="${suffix}-${value}"
     fi
   done

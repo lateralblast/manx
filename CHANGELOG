@@ -320,3 +320,5 @@
 # Added serialtty switch
 # 1.6.0: Fri 10 Oct 2025 20:49:52 AEDT
 # Fixed typos in install script
+# 1.6.1: Fri 10 Oct 2025 21:02:20 AEDT
+# Updated file name gerneration
