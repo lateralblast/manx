@@ -306,3 +306,17 @@
 # Added journald options
 # 1.5.3: Thu 09 Oct 2025 20:34:18 AEDT
 # Added logrotate switch
+# 1.5.4: Thu 09 Oct 2025 22:02:02 AEDT
+# Added unstable switch
+# 1.5.5: Fri 10 Oct 2025 15:03:42 AEDT
+# Bug fixes
+# 1.5.6: Fri 10 Oct 2025 15:24:12 AEDT
+# Decreased number of parameters parsed through grub
+# 1.5.7: Fri 10 Oct 2025 17:00:11 AEDT
+# Install script fix
+# 1.5.8: Fri 10 Oct 2025 17:03:49 AEDT
+# Improved rootfs handling
+# 1.5.9: Fri 10 Oct 2025 20:04:41 AEDT
+# Added serialtty switch
+# 1.6.0: Fri 10 Oct 2025 20:49:52 AEDT
+# Fixed typos in install script

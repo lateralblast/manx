@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.5.3
+# Version:      1.6.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -447,6 +447,7 @@ set_defaults () {
   options['usepreservediso']="false"                                                # option : Use preserved ISO
   options['processgrub']="true"                                                     # option : Process grub command line
   options['logrotate']="true"                                                       # option : Log rotate
+  options['unstable']="false"                                                       # option : Enable unstable features/packages
 
   # VM defaults
   vm['name']="${script['name']}"                                                    # vm : VM name
@@ -593,6 +594,11 @@ fi
 # Reset defaults based on command line options
 
 reset_defaults () {
+  if [ "${options['unstable']}" = "true" ]; then
+    options['isostorepackages']="${options['isostorepackages']} zfs_unstable"
+    options['isossystempackages']="${options['isosystempackages']} zfs_unstable"
+    options['systempackages']="${options['systempackages']} zfs_unstable"
+  fi
   serial_console="console=${options['serialtty']},${options['serialspeed']}${options['serialparity']}${options['serialword']}"
   serialkernelparams=(
     "console=tty1"
@@ -602,7 +608,7 @@ reset_defaults () {
     options['isoserialkernelparams']+=" \"${item}\" "
   done
   for item in "${serialkernelparams[@]}"; do
-    options['serialkernelparams']+=" \\\"${item}\\\" "
+    options['serialkernelparams']+=" ${item} "
   done
   serial_params="serial"
   for param in speed unit word parity stop port; do
@@ -778,6 +784,14 @@ SYSCTL
   fi
   if ! [ "${options['usershell']}" = "zsh" ]; then
     options['zsh']="false"
+  fi
+  if ! [ "${options['rootfs']}" = "zfs" ]; then
+    options['zfs']="false"
+    if [ "${options['rootfs']}" = "btrfs" ]; then
+      options['lvm']="false"
+    else
+      options['lvm']="true"
+    fi
   fi
   if [ "${options['lvm']}" = "true" ]; then
     options['zfs']="false"
@@ -1174,18 +1188,18 @@ populate_iso_kernel_params () {
     passwordauthentication allowedtcpports allowedudpports targetarch sshkey \
     permitemptypasswords permittunnel usedns kbdinteractiveauthentication nic \
     dns ip gateway cidr zfsoptions systempackages firewall imports hwimports\
-    x11forwarding maxauthtries maxsessions clientaliveinterval allowusers \
-    clientalivecountmax allowtcpforwarding allowagentforwarding loglevel \
-    permitrootlogin hostkeyspath hostkeystype kexalgorithms ciphers macs \
-    fail2ban maxretry bantime ignoreip bantimeincrement multipliers maxtime \
-    overalljails protectkernelimage allowsimultaneousmultithreading fwupd\
-    lockkernelmodules forcepagetableisolation allowusernamespaces processgrub \
-    unprivilegedusernsclone dbusimplementation execwheelonly systemdumask \
-    privatenetwork protecthostname protectkernelmodules protectsystem \
-    protecthome protectkerneltunables protectcontrolgroups protectclock \
-    protectproc procsubset privatetmp memorydenywriteexecute nownewprivileges \
-    lockpersonality restrictrealtime systemcallarchitectures ipaddressdeny \
-    grubextraconfig journaldextraconfig journaldupload; do
+    allowusers permitrootlogin; do
+#    x11forwarding maxauthtries maxsessions clientaliveinterval allowusers \
+#    clientalivecountmax allowtcpforwarding allowagentforwarding loglevel \
+#    permitrootlogin hostkeyspath hostkeystype kexalgorithms ciphers macs \
+#    fail2ban maxretry bantime ignoreip bantimeincrement multipliers maxtime \
+#    overalljails protectkernelimage allowsimultaneousmultithreading fwupd\
+#    lockkernelmodules forcepagetableisolation allowusernamespaces processgrub \
+#    unprivilegedusernsclone dbusimplementation execwheelonly systemdumask \
+#    privatenetwork protecthostname protectkernelmodules protectsystem \
+#    protecthome protectkerneltunables protectcontrolgroups protectclock \
+#    protectproc procsubset privatetmp memorydenywriteexecute nownewprivileges \
+#    lockpersonality restrictrealtime systemcallarchitectures ipaddressden \
     item=""
     value="${options[${param}]}"
     if ! [ "${value}" = ""  ]; then
@@ -1266,7 +1280,7 @@ NIXISOCONFIG
 NIXISOCONFIG
   if ! [ "${options['kernel']}" = "" ]; then
     tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
-  boot.kernelPackages = pkgs.linuxPackages${options['kernel']};
+  boot.kernelPackages = lib.mkDefault pkgs.linuxPackages${options['kernel']};
 NIXISOCONFIG
   fi
   tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
@@ -1670,7 +1684,6 @@ ai['fwupd']="${options['fwupd']}"
 ai['logrotate']="${options['logrotate']}"
 ai['processgrub']="${options['processgrub']}"
 
-
 spacer=\$'\n'
 
 # Parse parameters
@@ -1922,7 +1935,7 @@ tee \${ai['nixcfg']} << NIX_CFG
 NIX_CFG
 if ! [ "\${ai['kernel']}" = "" ]; then
   tee -a \${ai['nixcfg']} << NIX_CFG
-  boot.kernelPackages = pkgs.linuxPackages\${ai['kernel']};
+  boot.kernelPackages = lib.mkDefault pkgs.linuxPackages\${ai['kernel']};
 NIX_CFG
 fi
 tee -a \${ai['nixcfg']} << NIX_CFG
@@ -2235,7 +2248,14 @@ tee -a \${ai['hwcfg']} << HW_CFG
   boot.loader.grub.extraConfig = "
     \${ai['grubextraconfig']//  /\${spacer}     }
   ";
-  boot.kernelParams = [ \${ai['isokernelparams']// \"/\${spacer}    \"}
+  boot.kernelParams = [
+HW_CFG
+  for item in \${ai['kernelparams']}; do
+    tee -a \${ai['hwcfg']} << HW_CFG
+    "\${item}"
+HW_CFG
+  done
+  tee -a \${ai['hwcfg']} << HW_CFG
   ];
   boot.extraModulePackages = [ ];
 HW_CFG
@@ -2358,7 +2378,7 @@ get_output_file_suffix () {
       suffix="${suffix}-${value}"
     fi
   done
-  for param in bridge unattended attended poweroff nopoweroff reboot noreboot standalone lvm; do
+  for param in bridge unattended attended poweroff nopoweroff reboot noreboot standalone lvm unstable; do
     value="${options[${param}]}"
     if [ "${value}" = "true" ]; then
       suffix="${suffix}-${param}"
@@ -3659,6 +3679,11 @@ while test $# -gt 0; do
       options['serialstop']="$2"
       shift 2
       ;;
+    --serialtty)                        # switch : Serial tty
+      check_value "$1" "$2"
+      options['serialtty']="$2"
+      shift 2
+      ;;
     --serialunit)                       # switch : Serial unit
       check_value "$1" "$2"
       options['serialunit']="$2"
@@ -3788,6 +3813,14 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       options['unprivilegedusernsclone']="$2"
       shift 2
+      ;;
+    --unstable)                         # switch : Enable unstable features
+      options['unstable']="true"
+      shift
+      ;;
+    --stable)                           # switch : Disable unstable features
+      options['unstable']="false"
+      shift
       ;;
     --usage)                            # switch : Action to perform
       check_value "$1" "$2"
