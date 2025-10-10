@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.6.1
+# Version:      1.6.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -448,6 +448,7 @@ set_defaults () {
   options['processgrub']="true"                                                     # option : Process grub command line
   options['logrotate']="true"                                                       # option : Log rotate
   options['unstable']="false"                                                       # option : Enable unstable features/packages
+  options['interactive']="false"                                                    # option : Interactive mode
 
   # VM defaults
   vm['name']="${script['name']}"                                                    # vm : VM name
@@ -2804,6 +2805,34 @@ CREATE_DOCKER_ISO
   fi
 }
 
+# Function: interactive_questions
+#
+# Interactive Questions
+
+interactive_questions () {
+  if [ "${options['interactive']}" = "true" ]; then
+    for key in ${!options[@]}; do
+      if ! [[ "${key}" =~ interactive ]]; then
+        value="${options[${key}]}"
+        line=$( grep '# option :' "${script['file']}" | grep "\'${key}\'" )
+        if ! [ "${line}" = "" ]; then
+          IFS=":" read -r header question <<< "${line}"
+          question=$( echo "${question}" | sed "s/^ //g" )
+          if [ "${options['verbose']}" = "true" ]; then 
+            prompt="${question}? [${key}] [${value}]: "
+          else
+            prompt="${question}? [${value}]: "
+          fi
+          read -r -p "${prompt}" answer
+          if ! [ "${answer}" = "" ]; then
+            options[${key}]="${answer}"
+          fi
+        fi
+      fi
+    done
+  fi
+}
+
 # Function: process_actions
 #
 # Handle actions
@@ -2824,6 +2853,7 @@ process_actions () {
       exit
       ;;
     createinstall*)         # action : Create install script
+      interactive_questions
       create_install_script
       exit
       ;;
@@ -2832,14 +2862,17 @@ process_actions () {
       exit
       ;;
     createdockeriso)        # action : Create docker ISO
+      interactive_questions
       create_docker_iso
       exit
       ;;
     createiso)              # action : Create ISO
+      interactive_questions
       create_iso
       exit
       ;;
     createnix*)             # action : Create NixOS ISO config
+      interactive_questions
       create_nix_iso_config
       exit
       ;;
@@ -3254,6 +3287,14 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       options['installuser']="$2"
       shift 2
+      ;;
+    --interactive)                      # switch : Enable Interactive mode
+      options['interactive']="true"
+      shift
+      ;;
+    --nointeractive)                    # switch : Disable Interactive mode
+      options['interactive']="false"
+      shift
       ;;
     --ip)                               # switch : IP address
       check_value "$1" "$2"

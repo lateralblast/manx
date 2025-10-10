@@ -7,13 +7,13 @@ declare -A ai
 ai['swap']="true"
 ai['lvm']="false"
 ai['zsh']="true"
-ai['dhcp']="false"
-ai['bridge']="true"
+ai['dhcp']="true"
+ai['bridge']="false"
 ai['sshserver']="true"
 ai['bridgenic']="br0"
-ai['reboot']="false"
+ai['reboot']="true"
 ai['poweroff']="false"
-ai['attended']="true"
+ai['attended']="false"
 ai['nixinstall']="true"
 ai['rootfs']="zfs"
 ai['bootfs']="vfat"
@@ -24,7 +24,7 @@ ai['efipart']="3"
 ai['bootpart']="3"
 ai['swappart']="4"
 ai['swapsize']="2G"
-ai['rootsize']="100%"
+ai['rootsize']="100%FREE"
 ai['bootsize']="512M"
 ai['rootpool']="rpool"
 ai['swapvolname']="swap"
@@ -38,7 +38,7 @@ ai['logdir']="/var/log"
 ai['logfile']="/var/log/install.log"
 ai['timezone']="Australia/Melbourne"
 ai['usershell']="zsh"
-ai['username']="sysadmin"
+ai['username']="nixos"
 ai['extragroups']="wheel"
 ai['usergecos']="Admin"
 ai['normaluser']="true"
@@ -46,7 +46,7 @@ ai['sudocommand']="ALL"
 ai['sudooptions']="NOPASSWD"
 ai['rootpassword']="nixos"
 ai['rootcrypt']=$( mkpasswd --method=sha-512 "${ai['rootpassword']}" )
-ai['userpassword']="m00fm00f"
+ai['userpassword']="nixos"
 ai['usercrypt']=$( mkpasswd --method=sha-512 "${ai['userpassword']}" )
 ai['stateversion']="25.05"
 ai['hostname']="nixos"
@@ -54,8 +54,8 @@ ai['hostid']=$( head -c 8 /etc/machine-id )
 ai['nixdir']="${ai['installdir']}/etc/nixos"
 ai['nixcfg']="${ai['nixdir']}/configuration.nix"
 ai['hwcfg']="${ai['nixdir']}/hardware-configuration.nix"
-ai['zfsoptions']=" -O mountpoint=none  -O atime=off  -O compression=lz4  -O xattr=sa  -O acltype=posixacl  -o ashift=12 "
-ai['availmods']=" \"xhci_pci\"  \"ahci\"  \"usbhid\"  \"usb_storage\"  \"sd_mod\"  \"sr_mod\"  \"sdhci_pci\"  \"virtio_pci\"  \"virtio_blk\" "
+ai['zfsoptions']="-O mountpoint=none -O atime=off -O compression=lz4 -O xattr=sa -O acltype=posixacl -o ashift=12"
+ai['availmods']="ahci ehci_pci megaraid_sas sdhci_pci sd_mod sr_mod usbhid usb_storage virtio_blk virtio_pci xhci_pci"
 ai['initmods']=""
 ai['bootmods']=""
 ai['experimental-features']="nix-command flakes"
@@ -64,16 +64,17 @@ ai['gfxmode']="auto"
 ai['gfxpayload']="text"
 ai['nic']="first"
 ai['dns']="8.8.8.8"
-ai['ip']="192.168.11.75"
-ai['gateway']="192.168.11.254"
-ai['cidr']="22"
-ai['sshkey']="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICl7w06accD5PJuQYiqpGiZBAsK82W4CVibaQ0kJsYq2 spindler@nixos"
+ai['ip']=""
+ai['gateway']=""
+ai['cidr']="24"
+ai['sshkey']="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJvM+S0BZ+l3rJVvwMFNQGD/e1MJwB5LAwhsfMXhE/iR spindler@Richards-MacBook-Pro.local"
 ai['oneshot']="true"
-ai['kernelparams']=" \"audit=1\"  \"slab_nomerge\"  \"init_on_alloc=1\"  \"init_on_free=1\"  \"page_alloc.shuffel=1\"  \"pti=on\"  \"randomize_kstack_offset=on\"  \"vsyscall=none\"  \"debugfs=off\"  \"oops=panic\"  \"module.sig_enforce=1\"  \"lockdown=confidentiality\"  \"rd.udev.log_level=3\"  \"udev.log_priority=3\"   \"console=tty1\"  \"console=ttyS0,115200n8\"  \"console=ttyS1,115200n8\" "
-ai['extraargs']="serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1
-    terminal_input serial
-    terminal_output serial"
-ai['imports']=" <nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>  <nixpkgs/nixos/modules/system/boot/kernel.nix> "
+ai['kernelparams']="audit=1 slab_nomerge init_on_alloc=1 init_on_free=1 page_alloc.shuffel=1 pti=on randomize_kstack_offset=on vsyscall=none debugfs=off oops=panic module.sig_enforce=1 lockdown=confidentiality rd.udev.log_level=3 udev.log_priority=3  console=tty1  console=ttyS0,115200no8 "
+ai['grubextraconfig']=" serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1 --port=0x02f8  terminal_input serial  terminal_output serial "
+ai['journaldextraconfig']="SystemMaxUse=500M SystemMaxFileSize=50M"
+ai['journaldupload']="false"
+ai['imports']="<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix> <nixpkgs/nixos/modules/system/boot/kernel.nix>"
+ai['hwimports']=""
 ai['kernel']=""
 ai['passwordauthentication']="false"
 ai['permitemptypasswords']="false"
@@ -83,7 +84,7 @@ ai['x11forwarding']="false"
 ai['maxauthtries']="3"
 ai['maxsessions']="2"
 ai['permittunnel']="false"
-ai['allowusers']="sysadmin"
+ai['allowusers']="nixos"
 ai['loglevel']="VERBOSE"
 ai['clientaliveinterval']="300"
 ai['clientalivecountmax']="0"
@@ -94,69 +95,14 @@ ai['allowedudpports']=""
 ai['permitrootlogin']="no"
 ai['hostkeyspath']="/etc/ssh/ssh_host_ed25519_key"
 ai['hostkeystype']="ed25519"
-ai['kexalgorithms']="    \"curve25519-sha256@libssh.org\"
-    \"ecdh-sha2-nistp521\"
-    \"ecdh-sha2-nistp384\"
-    \"ecdh-sha2-nistp256\"
-    \"diffie-hellman-group-exchange-sha256\"
-"
-ai['ciphers']="    \"chacha20-poly1305@openssh.com\"
-    \"aes256-gcm@openssh.com\"
-    \"aes128-gcm@openssh.com\"
-    \"aes256-ctr\"
-    \"aes192-ctr\"
-    \"aes128-ctr\"
-"
-ai['macs']="    \"hmac-sha2-512-etm@openssh.com\"
-    \"hmac-sha2-256-etm@openssh.com\"
-    \"umac-128-etm@openssh.com\"
-    \"hmac-sha2-512\"
-    \"hmac-sha2-256\"
-    \"umac-128@openssh.com\"
-"
+ai['kexalgorithms']="curve25519-sha256@libssh.org ecdh-sha2-nistp521 ecdh-sha2-nistp384 ecdh-sha2-nistp256 diffie-hellman-group-exchange-sha256"
+ai['ciphers']="chacha20-poly1305@openssh.com aes256-gcm@openssh.com aes128-gcm@openssh.com aes256-ctr aes192-ctr aes128-ctr"
+ai['macs']="hmac-sha2-512-etm@openssh.com hmac-sha2-256-etm@openssh.com umac-128-etm@openssh.com hmac-sha2-512 hmac-sha2-256 umac-128@openssh.com"
 ai['isomount']="/iso"
 ai['prefix']="ai"
-ai['targetarch']="x86_64"
-ai['systempackages']="aide
-      ansible
-      curl
-      dmidecode
-      efibootmgr
-      file
-      fwupd
-      kernel-hardening-checker
-      lsb-release
-      lshw
-      lynis
-      pciutils
-      vim
-      wget"
-ai['blacklist']="    \"dccp\"
-    \"sctp\"
-    \"rds\"
-    \"tipc\"
-    \"n-hdlc\"
-    \"ax25\"
-    \"netrom\"
-    \"x25\"
-    \"rose\"
-    \"decnet\"
-    \"econet\"
-    \"af_802154\"
-    \"ipx\"
-    \"appletalk\"
-    \"psnap\"
-    \"p8023\"
-    \"p8022\"
-    \"can\"
-    \"atm\"
-    \"cramfs\"
-    \"freevxfs\"
-    \"jffs2\"
-    \"hfs\"
-    \"hfsplus\"
-    \"udf\"
-"
+ai['targetarch']="arm64"
+ai['systempackages']="aide ansible btop curl dmidecode efibootmgr ethtool file fwupd git kernel-hardening-checker lsb-release lsof lshw lynis nmap pciutils ripgrep rclone tmux usbutils vim wget"
+ai['blacklist']="dccp sctp rds tipc n-hdlc ax25 netrom x25 rose decnet econet af_802154 ipx appletalk psnap p8023 p8022 can atm cramfs freevxfs jffs2 hfs hfsplus udf"
 ai['sysctl']="    \"kernel.exec-shield\" = 1;
     \"net.ipv4.tcp_rfc1337\" = 1;
     \"net.ipv6.conf.all.forwarding\" = 0;
@@ -258,9 +204,7 @@ ai['auditrules']="      \"-a exit,always -F arch=b64 -S execve\"
 ai['fail2ban']="true"
 ai['maxretry']="5"
 ai['bantime']="1h"
-ai['ignoreip']="      \"172.16.0.0/12\"
-      \"192.168.0.0/16\"
-"
+ai['ignoreip']="172.16.0.0/12 192.168.0.0/16"
 ai['bantimeincrement']="true"
 ai['multipliers']="1 2 4 8 16 32 64 128 256"
 ai['maxtime']="1h"
@@ -294,7 +238,10 @@ ai['systemcallarchitectures']="native"
 ai['ipaddressdeny']="any"
 ai['firewall']="true"
 ai['fwupd']="true"
+ai['logrotate']="true"
 ai['processgrub']="true"
+
+spacer=$'\n'
 
 # Parse parameters
 echo "Processing parameters"
@@ -372,7 +319,7 @@ if [[ ${ai['rootdisk']} =~ nvme ]]; then
   ai['rootpart']="3"
   ai['rootpart']="p${ai['rootpart']}"
   ai['efipart']="p${ai['efipart']}"
-  ai['bootpart']="p${ai['bootpart']}"
+  ai['bootpart']="p${ai['efipart']}"
   ai['swappart']="p${ai['swappart']}"
   ai['devnodes']="/dev/disk/by-id"
 fi
@@ -385,9 +332,9 @@ fi
 
 # Boot modules
 if [ "${ai['bootmods']}" = "" ]; then
-  ai['bootmods']="\"kvm-intel\""
+  ai['bootmods']="kvm-intel"
 else
-  ai['bootmods']="${ai['bootmods']} \"kvm-intel\""
+  ai['bootmods']="${ai['bootmods']} kvm-intel"
 fi
 echo "Setting bootmods to ${ai['bootmods']}"
 
@@ -450,17 +397,16 @@ if [ "${ai['biosflag']}" = "true" ]; then
 fi
 if [ "${ai['lvm']}" = "true" ]; then
   sgdisk -n ${ai['rootpart']}:0:0 -t ${ai['rootpart']}:${ai['partflag']} -c ${ai['rootpart']}:${ai['rootvolname']} ${ai['rootdisk']}
-  pvcreate -f ${ai['rootdisk']}${ai['rootpart']}
+  pvcreate -ff ${ai['rootdisk']}${ai['rootpart']}
   vgcreate -f ${ai['rootpool']} ${ai['rootdisk']}${ai['rootpart']}
   lvcreate -y --size ${ai['bootsize']} --name ${ai['bootvolname']} ${ai['rootpool']}
   if [ "${USE_SWAP}" = "true" ]; then
     lvcreate -y --size ${ai['swapsize']} --name ${ai['swapvolname']} ${ai['rootpool']}
   fi
-  lvcreate -y --size ${ai['rootsize']} --name ${ai['rootvolname']} ${ai['rootpool']}
+  lvcreate -y -l ${ai['rootsize']} --name ${ai['rootvolname']} ${ai['rootpool']}
   ai['swapvol']="/dev/${ai['rootpool']}/${ai['swapvolname']}"
   ai['bootvol']="/dev/${ai['rootpool']}/${ai['bootvolname']}"
   ai['rootvol']="/dev/${ai['rootpool']}/${ai['rootvolname']}"
-  lvextend -l +100%FREE ${ai['rootvol']}
   if [ "${ai[initmods]}" = "" ]; then
     ai['initmods']="\"dm-snapshot\" \"dm-raid\" \"dm-cache-default\""
   else
@@ -528,7 +474,10 @@ echo "Creating ${ai['nixcfg']}"
 tee ${ai['nixcfg']} << NIX_CFG
 { config, lib, pkgs, ... }:
 {
-  imports = [ ${ai['imports']} ./hardware-configuration.nix ];
+  imports = [
+    ${ai['imports']// /${spacer}    }
+    ./hardware-configuration.nix
+  ];
   boot.loader.systemd-boot.enable = ${ai['uefiflag']};
   boot.loader.efi.canTouchEfiVariables = ${ai['uefiflag']};
   boot.loader.grub.devices = [ "${ai['grubdev']}" ];
@@ -540,9 +489,21 @@ tee ${ai['nixcfg']} << NIX_CFG
   boot.supportedFilesystems = [ "${ai['rootfs']}" ];
   boot.zfs.devNodes = "${ai['devnodes']}";
   services.lvm.boot.thin.enable = ${ai['lvm']};
-#  boot.kernelPackages = pkgs.linuxPackages${ai['kernel']};
+NIX_CFG
+if ! [ "${ai['kernel']}" = "" ]; then
+  tee -a ${ai['nixcfg']} << NIX_CFG
+  boot.kernelPackages = lib.mkDefault pkgs.linuxPackages${ai['kernel']};
+NIX_CFG
+fi
+tee -a ${ai['nixcfg']} << NIX_CFG
   boot.blacklistedKernelModules = [
-${ai['blacklist']}
+NIX_CFG
+for item in ${ai['blacklist']}; do
+  tee -a ${ai['nixcfg']} << NIX_CFG
+    "${item}"
+NIX_CFG
+done
+tee -a ${ai['nixcfg']} << NIX_CFG
   ];
 
   # Sysctl Parameters
@@ -567,8 +528,19 @@ ${ai['auditrules']}
   };
 
   # Services security
-  services.dbus.implementation = "${ai['dbusimplementation']}";
   security.sudo.execWheelOnly = ${ai['execwheelonly']};
+  services.dbus.implementation = "${ai['dbusimplementation']}";
+  services.logrotate.enable = ${ai['logrotate']};
+  services.journald.upload.enable = ${ai['journaldupload']};
+  services.journald.extraConfig = "
+NIX_CFG
+for item in  ${ai['journaldextraconfig']}; do
+  tee -a ${ai['nixcfg']} << NIX_CFG
+    ${item}
+NIX_CFG
+done
+tee -a ${ai['nixcfg']} << NIX_CFG
+  ";
 
   # Fwupd service
   services.fwupd.enable = ${ai['fwupd']};
@@ -613,7 +585,13 @@ ${ai['auditrules']}
     maxretry = ${ai['maxretry']};
     bantime = "${ai['bantime']}";
     ignoreIP = [
-${ai['ignoreip']}
+NIX_CFG
+for item in ${ai['ignoreip']}; do
+  tee -a ${ai['nixcfg']} << NIX_CFG
+    "${item}"
+NIX_CFG
+done
+tee -a ${ai['nixcfg']} << NIX_CFG
     ];
     bantime-increment = {
       enable = ${ai['bantimeincrement']};
@@ -640,13 +618,31 @@ ${ai['ignoreip']}
   services.openssh.settings.ClientAliveInterval = ${ai['clientaliveinterval']};
   services.openssh.settings.ClientAliveCountMax = ${ai['clientalivecountmax']};
   services.openssh.settings.KexAlgorithms = [
-${ai['kexalgorithms']}
+NIX_CFG
+for item in ${ai['kexalgorithms']}; do
+  tee -a ${ai['nixcfg']} << NIX_CFG
+    "${item}"
+NIX_CFG
+done
+tee -a ${ai['nixcfg']} << NIX_CFG
   ];
   services.openssh.settings.Ciphers = [
-${ai['ciphers']}
+NIX_CFG
+for item in ${ai['ciphers']}; do
+  tee -a ${ai['nixcfg']} << NIX_CFG
+    "${item}"
+NIX_CFG
+done
+tee -a ${ai['nixcfg']} << NIX_CFG
   ];
   services.openssh.settings.Macs = [
-${ai['macs']}
+NIX_CFG
+for item in ${ai['macs']}; do
+  tee -a ${ai['nixcfg']} << NIX_CFG
+    "${item}"
+NIX_CFG
+done
+tee -a ${ai['nixcfg']} << NIX_CFG
   ];
   services.openssh.hostKeys = [
     {
@@ -666,8 +662,9 @@ ${ai['macs']}
   nix.settings.experimental-features = "${ai['experimental-features']}";
 
   # System packages
-  environment.systemPackages = with pkgs; [ ${ai['systempackages']} ];
-
+  environment.systemPackages = with pkgs; [
+    ${ai['systempackages']// /${spacer}    }
+  ];
   # Allow unfree packages
   nixpkgs.config.allowUnfree = ${ai['unfree']};
 
@@ -717,6 +714,7 @@ NIX_CFG
 if [ "${ai['dhcp']}" = "false" ]; then
   if [ "${ai['bridge']}" = "false" ]; then
     tee -a ${ai['nixcfg']} << NIX_CFG
+
   networking = {
     interfaces."${ai['nic']}".useDHCP = ${ai['dhcp']};
     interfaces."${ai['nic']}".ipv4.addresses = [{
@@ -746,20 +744,21 @@ fi
 tee -a ${ai['nixcfg']} << NIX_CFG
   users.users.root.initialHashedPassword = "${ai['rootcrypt']}";
   nixpkgs.hostPlatform = lib.mkDefault "${ai['targetarch']}-linux";
+  hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
   system.stateVersion = "${ai['stateversion']}";
 }
 NIX_CFG
 
 # Get device UUIDs
 if [ "${ai['swap']}" = "true" ]; then
-  ai['swapuuid']=$(ls -l ${ai['devnodes']} | grep ${ai['swapsearch']} | awk '{print $9}' | head -1 )
+  ai['swapuuid']=$(ls -l ${ai['devnodes']} | grep ${ai['swapsearch']} | awk '{print $9}' )
   ai['swapdev']="${ai['devnodes']}/${ai['swapuuid']}"
 else
   ai['swapdev']=""
 fi
-ai['bootuuid']=$(ls -l ${ai['devnodes']} | grep ${ai['bootsearch']} | awk '{print $9}' | head -1 )
+ai['bootuuid']=$(ls -l ${ai['devnodes']} | grep ${ai['bootsearch']} | awk '{print $9}' )
 ai['bootdev']="${ai['devnodes']}/${ai['bootuuid']}"
-ai['rootuuid']=$(ls -l ${ai['devnodes']} | grep ${ai['rootsearch']} | awk '{print $9}' | head -1 )
+ai['rootuuid']=$(ls -l ${ai['devnodes']} | grep ${ai['rootsearch']} | awk '{print $9}' )
 ai['rootdev']="${ai['devnodes']}/${ai['rootuuid']}"
 echo "Setting rootuuid to ${ai['rootuuid']}"
 echo "Setting rootdev to ${ai['rootdev']}"
@@ -769,18 +768,52 @@ echo "Setting swapuuid to ${ai['swapuuid']}"
 echo "Setting swapdev to ${ai['swapdev']}"
 
 # Create hardware-configuration.nix
-echo "Creating ${ai['nixcfg']}"
+echo "Creating ${ai['hwcfg']}"
 tee ${ai['hwcfg']} << HW_CFG
 { config, lib, pkgs, modulesPath, ... }:
 {
-  imports = [ ${ai['hwimports']} ];
-  boot.initrd.availableKernelModules = [ ${ai['availmods']} ];
-  boot.initrd.kernelModules = [ ${ai['initmods']} ];
-  boot.kernelModules = [ ${ai['bootmods']} ];
-  boot.kernelParams = [ ${ai['kernelparams']} ];
+  imports = [
+    ${ai['hwimports']}
+  ];
+  boot.initrd.availableKernelModules = [
+HW_CFG
+for item in ${ai['availmods']}; do
+  tee -a ${ai['hwcfg']} << HW_CFG
+    "${item}"
+HW_CFG
+done
+tee -a ${ai['hwcfg']} << HW_CFG
+  ];
+  boot.initrd.kernelModules = [
+HW_CFG
+for item in ${ai['initmods']}; do
+  tee -a ${ai['hwcfg']} << HW_CFG
+    "${item}""
+HW_CFG
+done
+tee -a ${ai['hwcfg']} << HW_CFG
+  ];
+  boot.kernelModules = [
+HW_CFG
+for item in ${ai['bootmods']}; do
+  tee -a ${ai['hwcfg']} << HW_CFG
+    "${item}"
+HW_CFG
+done
+tee -a ${ai['hwcfg']} << HW_CFG
+  ];
   boot.loader.grub.extraConfig = "
-    ${ai['extraargs']}
+    ${ai['grubextraconfig']//  /${spacer}     }
   ";
+  boot.kernelParams = [
+HW_CFG
+  for item in ${ai['kernelparams']}; do
+    tee -a ${ai['hwcfg']} << HW_CFG
+    "${item}"
+HW_CFG
+  done
+  tee -a ${ai['hwcfg']} << HW_CFG
+  ];
   boot.extraModulePackages = [ ];
 HW_CFG
 if [ "${ai['rootfs']}" = "zfs" ]; then
