@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.6.3
+# Version:      1.6.4
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -953,26 +953,28 @@ print_info () {
   fi
   while read -r line; do
     if [[ "${line}" =~ .*"# ${info}".* ]]; then
-      if [[ "${info}" =~ option ]]; then
-        IFS=':' read -r param desc <<< "${line}"
-        IFS=']' read -r param default <<< "${param}"
-        IFS='[' read -r _ param <<< "${param}"
-        param="${param//\'/}"
-        default="${options[${param}]}"
-        if [ "${param}" = "mask" ]; then
-          default="false"
-        else
-          if [ "${options['mask']}" = "true" ]; then
-            default="${default/${script['user']}/user}"
+      if ! [[ "${line}" =~ grep ]]; then
+        if [[ "${info}" =~ option ]]; then
+          IFS=':' read -r param desc <<< "${line}"
+          IFS=']' read -r param default <<< "${param}"
+          IFS='[' read -r _ param <<< "${param}"
+          param="${param//\'/}"
+          default="${options[${param}]}"
+          if [ "${param}" = "mask" ]; then
+            default="false"
+          else
+            if [ "${options['mask']}" = "true" ]; then
+              default="${default/${script['user']}/user}"
+            fi
           fi
+          param="${param} (default = ${default})"
+        else
+          IFS='#' read -r param desc <<< "${line}"
+          desc="${desc/${info} :/}"
         fi
-        param="${param} (default = ${default})"
-      else
-        IFS='#' read -r param desc <<< "${line}"
-        desc="${desc/${info} :/}"
+        echo "${param}"
+        echo "  ${desc}"
       fi
-      echo "${param}"
-      echo "  ${desc}"
     fi
   done < "${script['file']}"
   echo ""
