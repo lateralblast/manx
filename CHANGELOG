@@ -328,3 +328,5 @@
 # Updated install script
 # 1.6.4: Sat 11 Oct 2025 17:32:14 AEDT
 # Improved usage function
+# 1.6.5: Sun 12 Oct 2025 13:36:12 AEDT
+# Split install script into functions
