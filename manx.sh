@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.6.5
+# Version:      1.6.6
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -387,7 +387,7 @@ set_defaults () {
   options['permitemptypasswords']="false"                                           # option : SSH permit empty passwords
   options['permittunnel']="false"                                                   # option : SSH permit tunnel
   options['usedns']="false"                                                         # option : SSH use DNS
-  options['kbdinteractiveauthentication']="false"                                   # option : SSH allow interactive kerboard authentication
+  options['kbdinteractive']="false"                                                 # option : SSH allow interactive kerboard authentication
   options['x11forwarding']="false"                                                  # option : SSH allow X11 forwarding
   options['maxauthtries']="3"                                                       # option : SSH max auth tries
   options['maxsessions']="2"                                                        # option : SSH max sessions
@@ -423,7 +423,7 @@ set_defaults () {
   options['allowusernamespaces']="true"                                             # option : Allow user name spaces
   options['forcepagetableisolation']="true"                                         # option : Force page table isolation
   options['unprivilegedusernsclone']="config.virtualisation.containers.enable"      # option : Disable unprivileged user namespaces
-  options['allowsimultaneousmultithreading']="true"                                 # option : Allow SMT
+  options['allowsmt']="true"                                                        # option : Allow SMT
   options['dbusimplementation']="broker"                                            # option : Dbus implementation
   options['execwheelonly']="true"                                                   # option : Sudo exec wheel only
   options['systemdumask']="0077"                                                    # option : systemd umask
@@ -449,6 +449,7 @@ set_defaults () {
   options['logrotate']="true"                                                       # option : Log rotate
   options['unstable']="false"                                                       # option : Enable unstable features/packages
   options['interactive']="false"                                                    # option : Interactive mode
+  options['interactiveinstall']="false"                                             # option : Interactive install mode
 
   # VM defaults
   vm['name']="${script['name']}"                                                    # vm : VM name
@@ -1189,20 +1190,20 @@ populate_iso_kernel_params () {
     usershell username extragroups usergecos normaluser sudocommand sudooptions \
     rootpassword userpassword stateversion hostname unfree gfxmode gfxpayload \
     passwordauthentication allowedtcpports allowedudpports targetarch sshkey \
-    permitemptypasswords permittunnel usedns kbdinteractiveauthentication nic \
+    permitemptypasswords permittunnel usedns kbdinteractive nic \
     dns ip gateway cidr zfsoptions systempackages firewall imports hwimports\
-    allowusers permitrootlogin; do
+    allowusers permitrootlogin interactiveinstall; do
 #    x11forwarding maxauthtries maxsessions clientaliveinterval allowusers \
 #    clientalivecountmax allowtcpforwarding allowagentforwarding loglevel \
 #    permitrootlogin hostkeyspath hostkeystype kexalgorithms ciphers macs \
 #    fail2ban maxretry bantime ignoreip bantimeincrement multipliers maxtime \
-#    overalljails protectkernelimage allowsimultaneousmultithreading fwupd\
 #    lockkernelmodules forcepagetableisolation allowusernamespaces processgrub \
 #    unprivilegedusernsclone dbusimplementation execwheelonly systemdumask \
 #    privatenetwork protecthostname protectkernelmodules protectsystem \
 #    protecthome protectkerneltunables protectcontrolgroups protectclock \
 #    protectproc procsubset privatetmp memorydenywriteexecute nownewprivileges \
 #    lockpersonality restrictrealtime systemcallarchitectures ipaddressden \
+#    overalljails protectkernelimage allowsmt fwupd\
     item=""
     value="${options[${param}]}"
     if ! [ "${value}" = ""  ]; then
@@ -1319,7 +1320,7 @@ NIXISOCONFIG
   services.openssh.enable = ${options['sshserver']};
   services.openssh.settings.PasswordAuthentication = ${options['passwordauthentication']};
   services.openssh.settings.PermitEmptyPasswords = ${options['permitemptypasswords']};
-  services.openssh.settings.KbdInteractiveAuthentication = ${options['kbdinteractiveauthentication']};
+  services.openssh.settings.KbdInteractiveAuthentication = ${options['kbdinteractive']};
   services.openssh.settings.PermitTunnel = ${options['permittunnel']};
   services.openssh.settings.UseDns = ${options['usedns']};
   services.openssh.settings.X11Forwarding = ${options['x11forwarding']};
@@ -1545,147 +1546,149 @@ export PATH="/run/wrappers/bin:/root/.nix-profile/bin:/nix/profile/bin:/root/.lo
 # Set general environment
 declare -A ai
 
-ai['swap']="${options['swap']}"
-ai['lvm']="${options['lvm']}"
-ai['zsh']="${options['zsh']}"
-ai['dhcp']="${options['dhcp']}"
-ai['bridge']="${options['bridge']}"
-ai['sshserver']="${options['sshserver']}"
-ai['bridgenic']="${options['bridgenic']}"
-ai['reboot']="${options['reboot']}"
-ai['poweroff']="${options['poweroff']}"
-ai['attended']="${options['attended']}"
-ai['nixinstall']="${options['nixinstall']}"
-ai['rootfs']="${options['rootfs']}"
-ai['bootfs']="${options['bootfs']}"
-ai['rootdisk']="${options['rootdisk']}"
-ai['mbrpart']="${options['mbrpart']}"
-ai['rootpart']="${options['rootpart']}"
-ai['efipart']="${options['efipart']}"
-ai['bootpart']="${options['efipart']}"
-ai['swappart']="${options['swappart']}"
-ai['swapsize']="${options['swapsize']}"
-ai['rootsize']="${options['rootsize']}"
-ai['bootsize']="${options['bootsize']}"
-ai['rootpool']="${options['rootpool']}"
-ai['swapvolname']="${options['swapvolname']}"
-ai['bootvolname']="${options['bootvolname']}"
-ai['rootvolname']="${options['rootvolname']}"
-ai['installdir']="${options['installdir']}"
-ai['mbrpartname']="${options['mbrpartname']}"
-ai['locale']="${options['locale']}"
-ai['devnodes']="${options['devnodes']}"
-ai['logdir']="${options['logdir']}"
-ai['logfile']="${options['logfile']}"
-ai['timezone']="${options['timezone']}"
-ai['usershell']="${options['usershell']}"
-ai['username']="${options['username']}"
-ai['extragroups']="${options['extragroups']}"
-ai['usergecos']="${options['usergecos']}"
-ai['normaluser']="${options['normaluser']}"
-ai['sudocommand']="${options['sudocommand']}"
-ai['sudooptions']="${options['sudooptions']}"
-ai['rootpassword']="${options['rootpassword']}"
-ai['rootcrypt']=\$( mkpasswd --method=sha-512 "\${ai['rootpassword']}" )
-ai['userpassword']="${options['userpassword']}"
-ai['usercrypt']=\$( mkpasswd --method=sha-512 "\${ai['userpassword']}" )
-ai['stateversion']="${options['stateversion']}"
-ai['hostname']="${options['hostname']}"
-ai['hostid']=\$( head -c 8 /etc/machine-id )
-ai['nixdir']="\${ai['installdir']}/etc/nixos"
-ai['nixcfg']="\${ai['nixdir']}/configuration.nix"
-ai['hwcfg']="\${ai['nixdir']}/hardware-configuration.nix"
-ai['zfsoptions']="${options['zfsoptions']}"
-ai['availmods']="${options['availmods']}"
-ai['initmods']="${options['initmods']}"
-ai['bootmods']="${options['bootmods']}"
-ai['experimental-features']="${options['experimental-features']}"
-ai['unfree']="${options['unfree']}"
-ai['gfxmode']="${options['gfxmode']}"
-ai['gfxpayload']="${options['gfxpayload']}"
-ai['nic']="${options['nic']}"
-ai['dns']="${options['dns']}"
-ai['ip']="${options['ip']}"
-ai['gateway']="${options['gateway']}"
-ai['cidr']="${options['cidr']}"
-ai['sshkey']="${options['sshkey']}"
-ai['oneshot']="${options['oneshot']}"
-ai['kernelparams']="${options['kernelparams']}"
-ai['grubextraconfig']="${options['grubextraconfig']}"
-ai['journaldextraconfig']="${options['journaldextraconfig']}"
-ai['journaldupload']="${options['journaldupload']}"
-ai['imports']="${options['imports']}"
-ai['hwimports']="${options['hwimports']}"
-ai['kernel']="${options['kernel']}"
-ai['passwordauthentication']="${options['passwordauthentication']}"
-ai['permitemptypasswords']="${options['permitemptypasswords']}"
-ai['kbdinteractiveauthentication']="${options['kbdinteractiveauthentication']}"
-ai['usedns']="${options['usedns']}"
-ai['x11forwarding']="${options['x11forwarding']}"
-ai['maxauthtries']="${options['maxauthtries']}"
-ai['maxsessions']="${options['maxsessions']}"
-ai['permittunnel']="${options['permittunnel']}"
-ai['allowusers']="${options['allowusers']}"
-ai['loglevel']="${options['loglevel']}"
-ai['clientaliveinterval']="${options['clientaliveinterval']}"
-ai['clientalivecountmax']="${options['clientalivecountmax']}"
-ai['allowtcpforwarding']="${options['allowtcpforwarding']}"
-ai['allowagentforwarding']="${options['allowagentforwarding']}"
-ai['allowedtcpports']="${options['allowedtcpports']}"
-ai['allowedudpports']="${options['allowedudpports']}"
-ai['permitrootlogin']="${options['permitrootlogin']}"
-ai['hostkeyspath']="${options['hostkeyspath']}"
-ai['hostkeystype']="${options['hostkeystype']}"
-ai['kexalgorithms']="${options['kexalgorithms']}"
-ai['ciphers']="${options['ciphers']}"
-ai['macs']="${options['macs']}"
-ai['isomount']="${options['isomount']}"
-ai['prefix']="${options['prefix']}"
-ai['targetarch']="${options['targetarch']}"
-ai['systempackages']="${options['systempackages']}"
-ai['blacklist']="${options['blacklist']}"
-ai['sysctl']="${options['sysctl']}"
-ai['audit']="${options['audit']}"
-ai['auditrules']="${options['auditrules']}"
-ai['fail2ban']="${options['fail2ban']}"
-ai['maxretry']="${options['maxretry']}"
-ai['bantime']="${options['bantime']}"
-ai['ignoreip']="${options['ignoreip']}"
-ai['bantimeincrement']="${options['bantimeincrement']}"
-ai['multipliers']="${options['multipliers']}"
-ai['maxtime']="${options['maxtime']}"
-ai['overalljails']="${options['overalljails']}"
-ai['protectkernelimage']="${options['protectkernelimage']}"
-ai['lockkernelmodules']="${options['lockkernelmodules']}"
-ai['forcepagetableisolation']="${options['forcepagetableisolation']}"
-ai['unprivilegedusernsclone']="${options['unprivilegedusernsclone']}"
-ai['allowsimultaneousmultithreading']="${options['allowsimultaneousmultithreading']}"
-ai['execwheelonly']="${options['execwheelonly']}"
-ai['dbusimplementation']="${options['dbusimplementation']}"
-ai['allowusernamespaces']="${options['allowusernamespaces']}"
-ai['systemdumask']="${options['systemdumask']}"
-ai['privatenetwork']="${options['privatenetwork']}"
-ai['protecthostname']="${options['protecthostname']}"
-ai['protectkernelmodules']="${options['protectkernelmodules']}"
-ai['protectsystem']="${options['protectsystem']}"
-ai['protecthome']="${options['protecthome']}"
-ai['protectkerneltunables']="${options['protectkerneltunables']}"
-ai['protectkernelmodules']="${options['protectkernelmodules']}"
-ai['protectcontrolgroups']="${options['protectcontrolgroups']}"
-ai['protectclock']="${options['protectclock']}"
-ai['protectproc']="${options['protectproc']}"
-ai['procsubset']="${options['procsubset']}"
-ai['privatetmp']="${options['privatetmp']}"
-ai['memorydenywriteexecute']="${options['memorydenywriteexecute']}"
-ai['nownewprivileges']="${options['nownewprivileges']}"
-ai['lockpersonality']="${options['lockpersonality']}"
-ai['restrictrealtime']="${options['restrictrealtime']}"
-ai['systemcallarchitectures']="${options['systemcallarchitectures']}"
-ai['ipaddressdeny']="${options['ipaddressdeny']}"
-ai['firewall']="${options['firewall']}"
-ai['fwupd']="${options['fwupd']}"
-ai['logrotate']="${options['logrotate']}"
-ai['processgrub']="${options['processgrub']}"
+ai['swap']="${options['swap']}"                                           # ai : Use swap
+ai['lvm']="${options['lvm']}"                                             # ai : Use LVM
+ai['zsh']="${options['zsh']}"                                             # ai : Use zsh
+ai['dhcp']="${options['dhcp']}"                                           # ai : Use DHCP
+ai['bridge']="${options['bridge']}"                                       # ai : Use Bridge
+ai['sshserver']="${options['sshserver']}"                                 # ai : Enable SSH server
+ai['bridgenic']="${options['bridgenic']}"                                 # ai : Bridge Network Interface
+ai['reboot']="${options['reboot']}"                                       # ai : Reboot after install
+ai['poweroff']="${options['poweroff']}"                                   # ai : Power off after install
+ai['attended']="${options['attended']}"                                   # ai : Attended install
+ai['nixinstall']="${options['nixinstall']}"                               # ai : Run NixOS install
+ai['rootfs']="${options['rootfs']}"                                       # ai : Root filesystem
+ai['bootfs']="${options['bootfs']}"                                       # ai : Boot filesystem
+ai['rootdisk']="${options['rootdisk']}"                                   # ai : Root disk
+ai['mbrpart']="${options['mbrpart']}"                                     # ai : MBR partition
+ai['rootpart']="${options['rootpart']}"                                   # ai : Root partition
+ai['efipart']="${options['efipart']}"                                     # ai : UEFI partition
+ai['bootpart']="${options['efipart']}"                                    # ai : Boot partition
+ai['swappart']="${options['swappart']}"                                   # ai : Swap partition
+ai['swapsize']="${options['swapsize']}"                                   # ai : Swap size
+ai['rootsize']="${options['rootsize']}"                                   # ai : Root size
+ai['bootsize']="${options['bootsize']}"                                   # ai : Boot size
+ai['rootpool']="${options['rootpool']}"                                   # ai : Root pool
+ai['swapvolname']="${options['swapvolname']}"                             # ai : Swap volume name
+ai['bootvolname']="${options['bootvolname']}"                             # ai : Boot volume name
+ai['rootvolname']="${options['rootvolname']}"                             # ai : Root volume name
+ai['installdir']="${options['installdir']}"                               # ai : Install directory
+ai['mbrpartname']="${options['mbrpartname']}"                             # ai : MBR partition name
+ai['locale']="${options['locale']}"                                       # ai : Locale
+ai['devnodes']="${options['devnodes']}"                                   # ai : Device nodes
+ai['logdir']="${options['logdir']}"                                       # ai : Log directory
+ai['logfile']="${options['logfile']}"                                     # ai : Log file
+ai['timezone']="${options['timezone']}"                                   # ai : Timezone
+ai['usershell']="${options['usershell']}"                                 # ai : User shell
+ai['username']="${options['username']}"                                   # ai : Username
+ai['extragroups']="${options['extragroups']}"                             # ai : User extra groups
+ai['usergecos']="${options['usergecos']}"                                 # ai : User GECOS
+ai['normaluser']="${options['normaluser']}"                               # ai : Normal user
+ai['sudocommand']="${options['sudocommand']}"                             # ai : Sudo command
+ai['sudooptions']="${options['sudooptions']}"                             # ai : Sudo options
+ai['rootpassword']="${options['rootpassword']}"                           # ai : Root password
+ai['rootcrypt']=\$( mkpasswd --method=sha-512 "\${ai['rootpassword']}" )  # ai : Root crypt
+ai['userpassword']="${options['userpassword']}"                           # ai : User password
+ai['usercrypt']=\$( mkpasswd --method=sha-512 "\${ai['userpassword']}" )  # ai : User crypt
+ai['stateversion']="${options['stateversion']}"                           # ai : State version
+ai['hostname']="${options['hostname']}"                                   # ai : Hostname
+ai['hostid']=\$( head -c 8 /etc/machine-id )                              # ai : HostID
+ai['nixdir']="\${ai['installdir']}/etc/nixos"                             # ai : Nix directory
+ai['nixcfg']="\${ai['nixdir']}/configuration.nix"                         # ai : Nix configuration
+ai['hwcfg']="\${ai['nixdir']}/hardware-configuration.nix"                 # ai : Nix hardware configuration
+ai['zfsoptions']="${options['zfsoptions']}"                               # ai : ZFS filesystem options
+ai['availmods']="${options['availmods']}"                                 # ai : Available modules
+ai['initmods']="${options['initmods']}"                                   # ai : Initrd modules
+ai['bootmods']="${options['bootmods']}"                                   # ai : Boot modules
+ai['experimental-features']="${options['experimental-features']}"         # ai : Experimental Features
+ai['unfree']="${options['unfree']}"                                       # ai : Non free software
+ai['gfxmode']="${options['gfxmode']}"                                     # ai : Graphics Mode
+ai['gfxpayload']="${options['gfxpayload']}"                               # ai : Graphics Payload
+ai['nic']="${options['nic']}"                                             # ai : Network Interface
+ai['dns']="${options['dns']}"                                             # ai : DNS Server
+ai['ip']="${options['ip']}"                                               # ai : IP Address
+ai['gateway']="${options['gateway']}"                                     # ai : Gateway Address
+ai['cidr']="${options['cidr']}"                                           # ai : CIDR
+ai['sshkey']="${options['sshkey']}"                                       # ai : SSH key
+ai['oneshot']="${options['oneshot']}"                                     # ai : Oneshot
+ai['kernelparams']="${options['kernelparams']}"                           # ai : Kernel Parameters
+ai['grubextraconfig']="${options['grubextraconfig']}"                     # ai : Extra grub configuration
+ai['journaldextraconfig']="${options['journaldextraconfig']}"             # ai : Extra journald configuration
+ai['journaldupload']="${options['journaldupload']}"                       # ai : Journald upload
+ai['imports']="${options['imports']}"                                     # ai : Nix configuration imports
+ai['hwimports']="${options['hwimports']}"                                 # ai : Nix hardware configuration imports
+ai['kernel']="${options['kernel']}"                                       # ai : Kernel
+ai['passwordauthentication']="${options['passwordauthentication']}"       # ai : SSH Password Authentication
+ai['permitemptypasswords']="${options['permitemptypasswords']}"           # ai : SSH Permit Empty Password
+ai['kbdinteractive']="${options['kbdinteractive']}"                       # ai : SSH Keyboard Interactive Authentication
+ai['usedns']="${options['usedns']}"                                       # ai : SSH Use DNS
+ai['x11forwarding']="${options['x11forwarding']}"                         # ai : SSH X11 Forwarding
+ai['maxauthtries']="${options['maxauthtries']}"                           # ai : SSH Max Authentication Tries
+ai['maxsessions']="${options['maxsessions']}"                             # ai : SSH Max Sessions
+ai['permittunnel']="${options['permittunnel']}"                           # ai : SSH Permit Tunnel
+ai['allowusers']="${options['allowusers']}"                               # ai : SSH Allowed Users
+ai['loglevel']="${options['loglevel']}"                                   # ai : SSH Log Level
+ai['clientaliveinterval']="${options['clientaliveinterval']}"             # ai : SSH Client Alive Interval
+ai['clientalivecountmax']="${options['clientalivecountmax']}"             # ai : SSH Client Alive Max Count
+ai['allowtcpforwarding']="${options['allowtcpforwarding']}"               # ai : SSH Allow TCP Forwarding
+ai['allowagentforwarding']="${options['allowagentforwarding']}"           # ai : SSH Allow Agent Forwarding
+ai['permitrootlogin']="${options['permitrootlogin']}"                     # ai : SSH Permit Root Login
+ai['hostkeyspath']="${options['hostkeyspath']}"                           # ai : SSH Host Key Path
+ai['hostkeystype']="${options['hostkeystype']}"                           # ai : SSH Host Key Type
+ai['kexalgorithms']="${options['kexalgorithms']}"                         # ai : SSH Key Exchange Algorithms
+ai['ciphers']="${options['ciphers']}"                                     # ai : SSH Ciphers
+ai['macs']="${options['macs']}"                                           # ai : SSH MACs
+ai['isomount']="${options['isomount']}"                                   # ai : ISO mount
+ai['prefix']="${options['prefix']}"                                       # ai : Prefix
+ai['targetarch']="${options['targetarch']}"                               # ai : Target Architecture
+ai['systempackages']="${options['systempackages']}"                       # ai : System Packages
+ai['blacklist']="${options['blacklist']}"                                 # ai : Blacklist Modules
+ai['sysctl']="${options['sysctl']}"                                       # ai : Sysctl
+ai['audit']="${options['audit']}"                                         # ai : Audit
+ai['auditrules']="${options['auditrules']}"                               # ai : Audit Rules
+ai['fail2ban']="${options['fail2ban']}"                                   # ai : Fail2ban
+ai['maxretry']="${options['maxretry']}"                                   # ai : Fail2ban Max Retry
+ai['bantime']="${options['bantime']}"                                     # ai : Fail2ban Ban Time
+ai['ignoreip']="${options['ignoreip']}"                                   # ai : Fail2ban Ignore IP
+ai['bantimeincrement']="${options['bantimeincrement']}"                   # ai : Fail2ban Ban Time Increment
+ai['multipliers']="${options['multipliers']}"                             # ai : Fail2ban Multipliers
+ai['maxtime']="${options['maxtime']}"                                     # ai : Fail2ban Max Time
+ai['overalljails']="${options['overalljails']}"                           # ai : Overall Jails
+ai['protectkernelimage']="${options['protectkernelimage']}"               # ai : Protect Kernel Image
+ai['lockkernelmodules']="${options['lockkernelmodules']}"                 # ai : Lock Kernel Modules
+ai['forcepagetableisolation']="${options['forcepagetableisolation']}"     # ai : Force Page Table Isolation
+ai['unprivilegedusernsclone']="${options['unprivilegedusernsclone']}"     # ai : Unprivileged User NS Clone
+ai['allowsmt']="${options['allowsmt']}"                                   # ai : Allow SMT
+ai['execwheelonly']="${options['execwheelonly']}"                         # ai : Exec Wheel Only
+ai['dbusimplementation']="${options['dbusimplementation']}"               # ai : DBus Implementation
+ai['allowusernamespaces']="${options['allowusernamespaces']}"             # ai : Allow User Namespaces
+ai['systemdumask']="${options['systemdumask']}"                           # ai : Systemd umask
+ai['privatenetwork']="${options['privatenetwork']}"                       # ai : Protect Network
+ai['protecthostname']="${options['protecthostname']}"                     # ai : Protect Hostname
+ai['protectkernelmodules']="${options['protectkernelmodules']}"           # ai : Protect Kernel Modules
+ai['protectsystem']="${options['protectsystem']}"                         # ai : Protect System
+ai['protecthome']="${options['protecthome']}"                             # ai : Protect Home
+ai['protectkerneltunables']="${options['protectkerneltunables']}"         # ai : Protect Kernel Tunables
+ai['protectkernelmodules']="${options['protectkernelmodules']}"           # ai : Protect Kernel Modules
+ai['protectcontrolgroups']="${options['protectcontrolgroups']}"           # ai : Protect Control Groups
+ai['protectclock']="${options['protectclock']}"                           # ai : Protect Clock
+ai['protectproc']="${options['protectproc']}"                             # ai : Protect Proccesses
+ai['procsubset']="${options['procsubset']}"                               # ai : Process Subset
+ai['privatetmp']="${options['privatetmp']}"                               # ai : Private Temp
+ai['memorydenywriteexecute']="${options['memorydenywriteexecute']}"       # ai : Memory Deny Write Execute
+ai['nownewprivileges']="${options['nownewprivileges']}"                   # ai : Now New Privileges
+ai['lockpersonality']="${options['lockpersonality']}"                     # ai : Lock Personality
+ai['restrictrealtime']="${options['restrictrealtime']}"                   # ai : Restrict Real Time
+ai['systemcallarchitectures']="${options['systemcallarchitectures']}"     # ai : System Call Architectures
+ai['ipaddressdeny']="${options['ipaddressdeny']}"                         # ai : IP Address Deny
+ai['firewall']="${options['firewall']}"                                   # ai : Firewall
+ai['allowedtcpports']="${options['allowedtcpports']}"                     # ai : Allowed TCP Ports
+ai['allowedudpports']="${options['allowedudpports']}"                     # ai : Allowed UDP Ports
+ai['fwupd']="${options['fwupd']}"                                         # ai : Firmware Update Service
+ai['logrotate']="${options['logrotate']}"                                 # ai : Log rotate
+ai['processgrub']="${options['processgrub']}"                             # ai : Process grub
+ai['interactiveinstall']="${options['interactiveinstall']}"               # ai : Interactive Install
+ai['scriptfile']="\$0"
 
 spacer=\$'\n'
 
@@ -2020,7 +2023,7 @@ NIX_CFG
     forcePageTableIsolation = \${ai['forcepagetableisolation']};
     allowUserNamespaces = \${ai['allowusernamespaces']};
     unprivilegedUsernsClone = \${ai['unprivilegedusernsclone']};
-    allowSimultaneousMultithreading = \${ai['allowsimultaneousmultithreading']};
+    allowSimultaneousMultithreading = \${ai['allowsmt']};
   };
 
   # Services security
@@ -2101,7 +2104,7 @@ NIX_CFG
   services.openssh.enable = \${ai['sshserver']};
   services.openssh.settings.PasswordAuthentication = \${ai['passwordauthentication']};
   services.openssh.settings.PermitEmptyPasswords = \${ai['permitemptypasswords']};
-  services.openssh.settings.KbdInteractiveAuthentication = \${ai['kbdinteractiveauthentication']};
+  services.openssh.settings.KbdInteractiveAuthentication = \${ai['kbdinteractive']};
   services.openssh.settings.PermitTunnel = \${ai['permittunnel']};
   services.openssh.settings.UseDns = \${ai['usedns']};
   services.openssh.settings.X11Forwarding = \${ai['x11forwarding']};
@@ -2400,23 +2403,66 @@ handle_installer () {
   fi
 }
 
-parse_parameters
-parse_grub_parameters
-set_zfs_options
-setup_networking
-discover_first_disk
-setup_nvme_partitions
-setup_boot_modules
-setup_hwimports
-check_bios_or_uefi
-setup_root_partition_type
-wipe_root_disk
-partition_root_disk
-make_and_mount_filesystems
-create_nix_configuration
-get_device_uuids
-create_hardware_configuration
-handle_installer
+interactive_install () {
+  if [ "\${ai['interactiveinstall']}" = "true" ] || [ "\${ai['dointeractiveinstall']}" = "true" ]; then 
+    for key in \${!ai[@]}; do
+      if ! [[ "\${key}" =~ interactive ]]; then
+        value="\${ai[\${key}]}"
+        line=$( grep "# ai :" "\${ai['scriptfile']}" | grep "'\${key}'" | grep -v grep )
+        if ! [ "\${line}" = "" ]; then
+          IFS=":" read -r header question <<< "\${line}"
+          question=$( echo "\${question}" | sed "s/^ //g" )
+          prompt="\${question}? [\${value}]: "
+          read -r -p "\${prompt}" answer
+          if ! [ "\${answer}" = "" ]; then
+            options[\${key}]="\${answer}"
+          fi
+          if ! [ "\${answer}" = "none" ]; then
+            options[\${key}]=""
+          fi
+        fi
+      fi
+    done
+  fi
+}
+
+do_install () {
+  parse_parameters
+  parse_grub_parameters
+  interactive_install
+  set_zfs_options
+  setup_networking
+  discover_first_disk
+  setup_nvme_partitions
+  setup_boot_modules
+  setup_hwimports
+  check_bios_or_uefi
+  setup_root_partition_type
+  wipe_root_disk
+  partition_root_disk
+  make_and_mount_filesystems
+  create_nix_configuration
+  get_device_uuids
+  create_hardware_configuration
+  handle_installer
+}
+
+# Handle command line arguments
+
+while test \$# -gt 0; do
+  case \$1 in
+    --install)
+      do_install
+      ;;
+    --interactive)
+      ai['dointeractiveinstall']="true"
+      do_install
+      ;;
+    *)
+      do_install
+      ;;
+  esac
+done
 
 INSTALL
   chmod +x "${options['installscript']}"
@@ -2902,6 +2948,9 @@ interactive_questions () {
           if ! [ "${answer}" = "" ]; then
             options[${key}]="${answer}"
           fi
+          if [ "${answer}" = "none" ]; then
+            options[${key}]=""
+          fi
         fi
       fi
     done
@@ -3047,8 +3096,8 @@ while test $# -gt 0; do
       options['allowagentforwarding']="true"
       shift
       ;;
-    --allowsimultaneousmultithreading)  # switch : SSH allow TCP forwarding
-      options['allowsimultaneousmultithreading']="true"
+    --allows*)                          # switch : SSH allow TCP forwarding
+      options['allowsmt']="true"
       shift
       ;;
     --allowtcpforwarding)               # switch : SSH allow TCP forwarding
@@ -3363,12 +3412,20 @@ while test $# -gt 0; do
       options['installuser']="$2"
       shift 2
       ;;
-    --interactive)                      # switch : Enable Interactive mode
+    --interactive)                      # switch : Enable interactive mode
       options['interactive']="true"
       shift
       ;;
-    --nointeractive)                    # switch : Disable Interactive mode
+    --interactiveinstall)               # switch : Enable interactive install mode
+      options['interactiveinstall']="true"
+      shift
+      ;;
+    --nointeractive)                    # switch : Disable interactive mode
       options['interactive']="false"
+      shift
+      ;;
+    --nointeractiveinstall)             # switch : Disable interactive install mode
+      options['interactiveinstall']="false"
       shift
       ;;
     --ip)                               # switch : IP address
@@ -3424,12 +3481,12 @@ while test $# -gt 0; do
       options['journaldupload']="false"
       shift
       ;;
-    --kbdinteractiveauthentication)     # switch : Enable SSH allow interactive kerboard authentication
-      options['kbdinteractiveauthentication']="true"
+    --kbdinteractive*)                  # switch : Enable SSH allow interactive kerboard authentication
+      options['kbdinteractive']="true"
       shift
       ;;
-    --nokbdinteractiveauthentication)   # switch : Disable SSH allow interactive kerboard authentication
-      options['nokbdinteractiveauthentication']="true"
+    --nokbdinteractive*)                # switch : Disable SSH allow interactive kerboard authentication
+      options['nokbdinteractive']="true"
       shift
       ;;
     --keymap)                           # switch : Keymap

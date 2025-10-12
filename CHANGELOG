@@ -330,3 +330,5 @@
 # Improved usage function
 # 1.6.5: Sun 12 Oct 2025 13:36:12 AEDT
 # Split install script into functions
+# 1.6.6: Sun 12 Oct 2025 17:51:45 AEDT
+# Added interactive mode option to install script
