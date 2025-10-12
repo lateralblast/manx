@@ -4,105 +4,103 @@ export PATH="/run/wrappers/bin:/root/.nix-profile/bin:/nix/profile/bin:/root/.lo
 # Set general environment
 declare -A ai
 
-ai['swap']="true"
-ai['lvm']="false"
-ai['zsh']="true"
-ai['dhcp']="true"
-ai['bridge']="false"
-ai['sshserver']="true"
-ai['bridgenic']="br0"
-ai['reboot']="false"
-ai['poweroff']="true"
-ai['attended']="true"
-ai['nixinstall']="true"
-ai['rootfs']="zfs"
-ai['bootfs']="vfat"
-ai['rootdisk']="first"
-ai['mbrpart']="1"
-ai['rootpart']="2"
-ai['efipart']="3"
-ai['bootpart']="3"
-ai['swappart']="4"
-ai['swapsize']="2G"
-ai['rootsize']="100%FREE"
-ai['bootsize']="512M"
-ai['rootpool']="rpool"
-ai['swapvolname']="swap"
-ai['bootvolname']="boot"
-ai['rootvolname']="nixos"
-ai['installdir']="/mnt"
-ai['mbrpartname']=""
-ai['locale']="en_AU.UTF-8"
-ai['devnodes']="/dev/disk/by-uuid"
-ai['logdir']="/var/log"
-ai['logfile']="/var/log/install.log"
-ai['timezone']="Australia/Melbourne"
-ai['usershell']="zsh"
-ai['username']="nixos"
-ai['extragroups']="wheel"
-ai['usergecos']="Admin"
-ai['normaluser']="true"
-ai['sudocommand']="ALL"
-ai['sudooptions']="NOPASSWD"
-ai['rootpassword']="nixos"
-ai['rootcrypt']=$( mkpasswd --method=sha-512 "${ai['rootpassword']}" )
-ai['userpassword']="nixos"
-ai['usercrypt']=$( mkpasswd --method=sha-512 "${ai['userpassword']}" )
-ai['stateversion']="25.05"
-ai['hostname']="nixos"
-ai['hostid']=$( head -c 8 /etc/machine-id )
-ai['nixdir']="${ai['installdir']}/etc/nixos"
-ai['nixcfg']="${ai['nixdir']}/configuration.nix"
-ai['hwcfg']="${ai['nixdir']}/hardware-configuration.nix"
-ai['zfsoptions']="-O mountpoint=none -O atime=off -O compression=lz4 -O xattr=sa -O acltype=posixacl -o ashift=12"
-ai['availmods']="ahci ehci_pci megaraid_sas sdhci_pci sd_mod sr_mod usbhid usb_storage virtio_blk virtio_pci xhci_pci"
-ai['initmods']=""
-ai['bootmods']=""
-ai['experimental-features']="nix-command flakes"
-ai['unfree']="false"
-ai['gfxmode']="auto"
-ai['gfxpayload']="text"
-ai['nic']="first"
-ai['dns']="8.8.8.8"
-ai['ip']=""
-ai['gateway']=""
-ai['cidr']="24"
-ai['sshkey']="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCzOoZkeuV+Obv6kcZh/03YR15Z+Zu8Cw38Ou5LZQf12B/UcupL95SdG1cv3CX0itPM6+b6dAeOb1M07vYmm8DpuQf/LYhe86wtDpdK/DSsLxtQ+3fBwn+OiOr1c3bZq1x6LiKSpvSpC8cT0Kjq88jZopWI8VE90B68S8uP2Ed+vUotwVwE1EGAER/a78RG00WuworMXXOy6grOVW2ZiUgFUmLQIFJHJMBsWzj/XyD8/w0j49mobbzTe3ZsYGuwVF42cKm2OLpenXw3Sv0wAjvyPZqMiIsCfgX9+6zUUhcloKIL/lhyxzZB99eNsbDb2nhT3CQYFwl8mXRHwsEkFWJ7 spindler@keymaster"
-ai['oneshot']="true"
-ai['kernelparams']="audit=1 slab_nomerge init_on_alloc=1 init_on_free=1 page_alloc.shuffel=1 pti=on randomize_kstack_offset=on vsyscall=none debugfs=off oops=panic module.sig_enforce=1 lockdown=confidentiality rd.udev.log_level=3 udev.log_priority=3  console=tty1  console=ttyS0,115200no8 "
-ai['grubextraconfig']=" serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1 --port=0x02f8  terminal_input serial  terminal_output serial "
-ai['journaldextraconfig']="SystemMaxUse=500M SystemMaxFileSize=50M"
-ai['journaldupload']="false"
-ai['imports']="<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix> <nixpkgs/nixos/modules/system/boot/kernel.nix>"
-ai['hwimports']=""
-ai['kernel']=""
-ai['passwordauthentication']="false"
-ai['permitemptypasswords']="false"
-ai['kbdinteractiveauthentication']="false"
-ai['usedns']="false"
-ai['x11forwarding']="false"
-ai['maxauthtries']="3"
-ai['maxsessions']="2"
-ai['permittunnel']="false"
-ai['allowusers']="nixos"
-ai['loglevel']="VERBOSE"
-ai['clientaliveinterval']="300"
-ai['clientalivecountmax']="0"
-ai['allowtcpforwarding']="false"
-ai['allowagentforwarding']="false"
-ai['allowedtcpports']="22"
-ai['allowedudpports']=""
-ai['permitrootlogin']="no"
-ai['hostkeyspath']="/etc/ssh/ssh_host_ed25519_key"
-ai['hostkeystype']="ed25519"
-ai['kexalgorithms']="curve25519-sha256@libssh.org ecdh-sha2-nistp521 ecdh-sha2-nistp384 ecdh-sha2-nistp256 diffie-hellman-group-exchange-sha256"
-ai['ciphers']="chacha20-poly1305@openssh.com aes256-gcm@openssh.com aes128-gcm@openssh.com aes256-ctr aes192-ctr aes128-ctr"
-ai['macs']="hmac-sha2-512-etm@openssh.com hmac-sha2-256-etm@openssh.com umac-128-etm@openssh.com hmac-sha2-512 hmac-sha2-256 umac-128@openssh.com"
-ai['isomount']="/iso"
-ai['prefix']="ai"
-ai['targetarch']="x86_64"
-ai['systempackages']="aide ansible btop curl dmidecode efibootmgr ethtool file fwupd git kernel-hardening-checker lsb-release lsof lshw lynis nmap pciutils ripgrep rclone tmux usbutils vim wget"
-ai['blacklist']="dccp sctp rds tipc n-hdlc ax25 netrom x25 rose decnet econet af_802154 ipx appletalk psnap p8023 p8022 can atm cramfs freevxfs jffs2 hfs hfsplus udf"
+ai['swap']="true"                                           # ai : Use swap
+ai['lvm']="false"                                             # ai : Use LVM
+ai['zsh']="true"                                             # ai : Use zsh
+ai['dhcp']="true"                                           # ai : Use DHCP
+ai['bridge']="false"                                       # ai : Use Bridge
+ai['sshserver']="true"                                 # ai : Enable SSH server
+ai['bridgenic']="br0"                                 # ai : Bridge Network Interface
+ai['reboot']="true"                                       # ai : Reboot after install
+ai['poweroff']="false"                                   # ai : Power off after install
+ai['attended']="false"                                   # ai : Attended install
+ai['nixinstall']="true"                               # ai : Run NixOS install
+ai['rootfs']="zfs"                                       # ai : Root filesystem
+ai['bootfs']="vfat"                                       # ai : Boot filesystem
+ai['rootdisk']="first"                                   # ai : Root disk
+ai['mbrpart']="1"                                     # ai : MBR partition
+ai['rootpart']="2"                                   # ai : Root partition
+ai['efipart']="3"                                     # ai : UEFI partition
+ai['bootpart']="3"                                    # ai : Boot partition
+ai['swappart']="4"                                   # ai : Swap partition
+ai['swapsize']="2G"                                   # ai : Swap size
+ai['rootsize']="100%FREE"                                   # ai : Root size
+ai['bootsize']="512M"                                   # ai : Boot size
+ai['rootpool']="rpool"                                   # ai : Root pool
+ai['swapvolname']="swap"                             # ai : Swap volume name
+ai['bootvolname']="boot"                             # ai : Boot volume name
+ai['rootvolname']="nixos"                             # ai : Root volume name
+ai['installdir']="/mnt"                               # ai : Install directory
+ai['mbrpartname']=""                             # ai : MBR partition name
+ai['locale']="en_AU.UTF-8"                                       # ai : Locale
+ai['devnodes']="/dev/disk/by-uuid"                                   # ai : Device nodes
+ai['logdir']="/var/log"                                       # ai : Log directory
+ai['logfile']="/var/log/install.log"                                     # ai : Log file
+ai['timezone']="Australia/Melbourne"                                   # ai : Timezone
+ai['usershell']="zsh"                                 # ai : User shell
+ai['username']="nixos"                                   # ai : Username
+ai['extragroups']="wheel"                             # ai : User extra groups
+ai['usergecos']="Admin"                                 # ai : User GECOS
+ai['normaluser']="true"                               # ai : Normal user
+ai['sudocommand']="ALL"                             # ai : Sudo command
+ai['sudooptions']="NOPASSWD"                             # ai : Sudo options
+ai['rootpassword']="nixos"                           # ai : Root password
+ai['rootcrypt']=$( mkpasswd --method=sha-512 "${ai['rootpassword']}" )  # ai : Root crypt
+ai['userpassword']="nixos"                           # ai : User password
+ai['usercrypt']=$( mkpasswd --method=sha-512 "${ai['userpassword']}" )  # ai : User crypt
+ai['stateversion']="25.05"                           # ai : State version
+ai['hostname']="nixos"                                   # ai : Hostname
+ai['hostid']=$( head -c 8 /etc/machine-id )                              # ai : HostID
+ai['nixdir']="${ai['installdir']}/etc/nixos"                             # ai : Nix directory
+ai['nixcfg']="${ai['nixdir']}/configuration.nix"                         # ai : Nix configuration
+ai['hwcfg']="${ai['nixdir']}/hardware-configuration.nix"                 # ai : Nix hardware configuration
+ai['zfsoptions']="-O mountpoint=none -O atime=off -O compression=lz4 -O xattr=sa -O acltype=posixacl -o ashift=12"                               # ai : ZFS filesystem options
+ai['availmods']="ahci ehci_pci megaraid_sas sdhci_pci sd_mod sr_mod usbhid usb_storage virtio_blk virtio_pci xhci_pci"                                 # ai : Available modules
+ai['initmods']=""                                   # ai : Initrd modules
+ai['bootmods']=""                                   # ai : Boot modules
+ai['experimental-features']="nix-command flakes"         # ai : Experimental Features
+ai['unfree']="false"                                       # ai : Non free software
+ai['gfxmode']="auto"                                     # ai : Graphics Mode
+ai['gfxpayload']="text"                               # ai : Graphics Payload
+ai['nic']="first"                                             # ai : Network Interface
+ai['dns']="8.8.8.8"                                             # ai : DNS Server
+ai['ip']=""                                               # ai : IP Address
+ai['gateway']=""                                     # ai : Gateway Address
+ai['cidr']="24"                                           # ai : CIDR
+ai['sshkey']="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJvM+S0BZ+l3rJVvwMFNQGD/e1MJwB5LAwhsfMXhE/iR spindler@Richards-MacBook-Pro.local"                                       # ai : SSH key
+ai['oneshot']="true"                                     # ai : Oneshot
+ai['kernelparams']="audit=1 slab_nomerge init_on_alloc=1 init_on_free=1 page_alloc.shuffel=1 pti=on randomize_kstack_offset=on vsyscall=none debugfs=off oops=panic module.sig_enforce=1 lockdown=confidentiality rd.udev.log_level=3 udev.log_priority=3  console=tty1  console=ttyS0,115200no8 "                           # ai : Kernel Parameters
+ai['grubextraconfig']=" serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1 --port=0x02f8  terminal_input serial  terminal_output serial "                     # ai : Extra grub configuration
+ai['journaldextraconfig']="SystemMaxUse=500M SystemMaxFileSize=50M"             # ai : Extra journald configuration
+ai['journaldupload']="false"                       # ai : Journald upload
+ai['imports']="<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix> <nixpkgs/nixos/modules/system/boot/kernel.nix>"                                     # ai : Nix configuration imports
+ai['hwimports']=""                                 # ai : Nix hardware configuration imports
+ai['kernel']=""                                       # ai : Kernel
+ai['passwordauthentication']="false"       # ai : SSH Password Authentication
+ai['permitemptypasswords']="false"           # ai : SSH Permit Empty Password
+ai['kbdinteractive']="false"                       # ai : SSH Keyboard Interactive Authentication
+ai['usedns']="false"                                       # ai : SSH Use DNS
+ai['x11forwarding']="false"                         # ai : SSH X11 Forwarding
+ai['maxauthtries']="3"                           # ai : SSH Max Authentication Tries
+ai['maxsessions']="2"                             # ai : SSH Max Sessions
+ai['permittunnel']="false"                           # ai : SSH Permit Tunnel
+ai['allowusers']="nixos"                               # ai : SSH Allowed Users
+ai['loglevel']="VERBOSE"                                   # ai : SSH Log Level
+ai['clientaliveinterval']="300"             # ai : SSH Client Alive Interval
+ai['clientalivecountmax']="0"             # ai : SSH Client Alive Max Count
+ai['allowtcpforwarding']="false"               # ai : SSH Allow TCP Forwarding
+ai['allowagentforwarding']="false"           # ai : SSH Allow Agent Forwarding
+ai['permitrootlogin']="no"                     # ai : SSH Permit Root Login
+ai['hostkeyspath']="/etc/ssh/ssh_host_ed25519_key"                           # ai : SSH Host Key Path
+ai['hostkeystype']="ed25519"                           # ai : SSH Host Key Type
+ai['kexalgorithms']="curve25519-sha256@libssh.org ecdh-sha2-nistp521 ecdh-sha2-nistp384 ecdh-sha2-nistp256 diffie-hellman-group-exchange-sha256"                         # ai : SSH Key Exchange Algorithms
+ai['ciphers']="chacha20-poly1305@openssh.com aes256-gcm@openssh.com aes128-gcm@openssh.com aes256-ctr aes192-ctr aes128-ctr"                                     # ai : SSH Ciphers
+ai['macs']="hmac-sha2-512-etm@openssh.com hmac-sha2-256-etm@openssh.com umac-128-etm@openssh.com hmac-sha2-512 hmac-sha2-256 umac-128@openssh.com"                                           # ai : SSH MACs
+ai['isomount']="/iso"                                   # ai : ISO mount
+ai['prefix']="ai"                                       # ai : Prefix
+ai['targetarch']="arm64"                               # ai : Target Architecture
+ai['systempackages']="aide ansible btop curl dmidecode efibootmgr ethtool file fwupd git kernel-hardening-checker lsb-release lsof lshw lynis nmap pciutils ripgrep rclone tmux usbutils vim wget"                       # ai : System Packages
+ai['blacklist']="dccp sctp rds tipc n-hdlc ax25 netrom x25 rose decnet econet af_802154 ipx appletalk psnap p8023 p8022 can atm cramfs freevxfs jffs2 hfs hfsplus udf"                                 # ai : Blacklist Modules
 ai['sysctl']="    \"kernel.exec-shield\" = 1;
     \"net.ipv4.tcp_rfc1337\" = 1;
     \"net.ipv6.conf.all.forwarding\" = 0;
@@ -150,8 +148,8 @@ ai['sysctl']="    \"kernel.exec-shield\" = 1;
     \"vm.mmap_rnd_bits\" = 32;
     \"net.ipv4.tcp_fastopen\" = 3;
     \"net.ipv6.conf.all.accept_redirects\" = 0;
-"
-ai['audit']="true"
+"                                       # ai : Sysctl
+ai['audit']="true"                                         # ai : Audit
 ai['auditrules']="      \"-a exit,always -F arch=b64 -S execve\"
       \"-a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime,stime -k time-change\"
       \"-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time-change\"
@@ -200,46 +198,50 @@ ai['auditrules']="      \"-a exit,always -F arch=b64 -S execve\"
       \"-a always,exit -S init_module -S delete_module -k modules\"
       \"-a always,exit -F arch=b64 -S mount -F auid>=500 -F auid!=4294967295 -k mounts\"
       \"-a always,exit -F arch=b32 -S mount -F auid>=500 -F auid!=4294967295 -k mounts\"
-"
-ai['fail2ban']="true"
-ai['maxretry']="5"
-ai['bantime']="1h"
-ai['ignoreip']="172.16.0.0/12 192.168.0.0/16"
-ai['bantimeincrement']="true"
-ai['multipliers']="1 2 4 8 16 32 64 128 256"
-ai['maxtime']="1h"
-ai['overalljails']="true"
-ai['protectkernelimage']="true"
-ai['lockkernelmodules']="false"
-ai['forcepagetableisolation']="true"
-ai['unprivilegedusernsclone']="config.virtualisation.containers.enable"
-ai['allowsimultaneousmultithreading']="true"
-ai['execwheelonly']="true"
-ai['dbusimplementation']="broker"
-ai['allowusernamespaces']="true"
-ai['systemdumask']="0077"
-ai['privatenetwork']="true"
-ai['protecthostname']="true"
-ai['protectkernelmodules']="true"
-ai['protectsystem']="strict"
-ai['protecthome']="true"
-ai['protectkerneltunables']="true"
-ai['protectkernelmodules']="true"
-ai['protectcontrolgroups']="true"
-ai['protectclock']="true"
-ai['protectproc']="invisible"
-ai['procsubset']="pid"
-ai['privatetmp']="true"
-ai['memorydenywriteexecute']="true"
-ai['nownewprivileges']="true"
-ai['lockpersonality']="true"
-ai['restrictrealtime']="true"
-ai['systemcallarchitectures']="native"
-ai['ipaddressdeny']="any"
-ai['firewall']="true"
-ai['fwupd']="true"
-ai['logrotate']="true"
-ai['processgrub']="true"
+"                               # ai : Audit Rules
+ai['fail2ban']="true"                                   # ai : Fail2ban
+ai['maxretry']="5"                                   # ai : Fail2ban Max Retry
+ai['bantime']="1h"                                     # ai : Fail2ban Ban Time
+ai['ignoreip']="172.16.0.0/12 192.168.0.0/16"                                   # ai : Fail2ban Ignore IP
+ai['bantimeincrement']="true"                   # ai : Fail2ban Ban Time Increment
+ai['multipliers']="1 2 4 8 16 32 64 128 256"                             # ai : Fail2ban Multipliers
+ai['maxtime']="1h"                                     # ai : Fail2ban Max Time
+ai['overalljails']="true"                           # ai : Overall Jails
+ai['protectkernelimage']="true"               # ai : Protect Kernel Image
+ai['lockkernelmodules']="false"                 # ai : Lock Kernel Modules
+ai['forcepagetableisolation']="true"     # ai : Force Page Table Isolation
+ai['unprivilegedusernsclone']="config.virtualisation.containers.enable"     # ai : Unprivileged User NS Clone
+ai['allowsmt']="true"                                   # ai : Allow SMT
+ai['execwheelonly']="true"                         # ai : Exec Wheel Only
+ai['dbusimplementation']="broker"               # ai : DBus Implementation
+ai['allowusernamespaces']="true"             # ai : Allow User Namespaces
+ai['systemdumask']="0077"                           # ai : Systemd umask
+ai['privatenetwork']="true"                       # ai : Protect Network
+ai['protecthostname']="true"                     # ai : Protect Hostname
+ai['protectkernelmodules']="true"           # ai : Protect Kernel Modules
+ai['protectsystem']="strict"                         # ai : Protect System
+ai['protecthome']="true"                             # ai : Protect Home
+ai['protectkerneltunables']="true"         # ai : Protect Kernel Tunables
+ai['protectkernelmodules']="true"           # ai : Protect Kernel Modules
+ai['protectcontrolgroups']="true"           # ai : Protect Control Groups
+ai['protectclock']="true"                           # ai : Protect Clock
+ai['protectproc']="invisible"                             # ai : Protect Proccesses
+ai['procsubset']="pid"                               # ai : Process Subset
+ai['privatetmp']="true"                               # ai : Private Temp
+ai['memorydenywriteexecute']="true"       # ai : Memory Deny Write Execute
+ai['nownewprivileges']="true"                   # ai : Now New Privileges
+ai['lockpersonality']="true"                     # ai : Lock Personality
+ai['restrictrealtime']="true"                   # ai : Restrict Real Time
+ai['systemcallarchitectures']="native"     # ai : System Call Architectures
+ai['ipaddressdeny']="any"                         # ai : IP Address Deny
+ai['firewall']="true"                                   # ai : Firewall
+ai['allowedtcpports']="22"                     # ai : Allowed TCP Ports
+ai['allowedudpports']=""                     # ai : Allowed UDP Ports
+ai['fwupd']="true"                                         # ai : Firmware Update Service
+ai['logrotate']="true"                                 # ai : Log rotate
+ai['processgrub']="true"                             # ai : Process grub
+ai['interactiveinstall']="false"               # ai : Interactive Install
+ai['scriptfile']="$0"
 
 spacer=$'\n'
 
@@ -574,7 +576,7 @@ ${ai['auditrules']}
     forcePageTableIsolation = ${ai['forcepagetableisolation']};
     allowUserNamespaces = ${ai['allowusernamespaces']};
     unprivilegedUsernsClone = ${ai['unprivilegedusernsclone']};
-    allowSimultaneousMultithreading = ${ai['allowsimultaneousmultithreading']};
+    allowSimultaneousMultithreading = ${ai['allowsmt']};
   };
 
   # Services security
@@ -603,7 +605,7 @@ NIX_CFG
       ProtectHostname = ${ai['protecthostname']};
       ProtectKernelModules = ${ai['protectkernelmodules']};
     };
-  }; 
+  };
   systemd.services.systemd-rfkill = {
     serviceConfig = {
       ProtectSystem = "${ai['protectsystem']}";
@@ -655,7 +657,7 @@ NIX_CFG
   services.openssh.enable = ${ai['sshserver']};
   services.openssh.settings.PasswordAuthentication = ${ai['passwordauthentication']};
   services.openssh.settings.PermitEmptyPasswords = ${ai['permitemptypasswords']};
-  services.openssh.settings.KbdInteractiveAuthentication = ${ai['kbdinteractiveauthentication']};
+  services.openssh.settings.KbdInteractiveAuthentication = ${ai['kbdinteractive']};
   services.openssh.settings.PermitTunnel = ${ai['permittunnel']};
   services.openssh.settings.UseDns = ${ai['usedns']};
   services.openssh.settings.X11Forwarding = ${ai['x11forwarding']};
@@ -831,7 +833,7 @@ create_hardware_configuration () {
   imports = [
     ${ai['hwimports']}
   ];
-  boot.initrd.availableKernelModules = [ 
+  boot.initrd.availableKernelModules = [
 HW_CFG
   for item in ${ai['availmods']}; do
     tee -a ${ai['hwcfg']} << HW_CFG
@@ -954,20 +956,63 @@ handle_installer () {
   fi
 }
 
-parse_parameters
-parse_grub_parameters
-set_zfs_options
-setup_networking
-discover_first_disk
-setup_nvme_partitions
-setup_boot_modules
-setup_hwimports
-check_bios_or_uefi
-setup_root_partition_type
-wipe_root_disk
-partition_root_disk
-make_and_mount_filesystems
-create_nix_configuration
-get_device_uuids
-create_hardware_configuration
-handle_installer
+interactive_install () {
+  if [ "${ai['interactiveinstall']}" = "true" ] || [ "${ai['dointeractiveinstall']}" = "true" ]; then
+    for key in ${!ai[@]}; do
+      if ! [[ "${key}" =~ interactive ]]; then
+        value="${ai[${key}]}"
+        line=$( grep "# ai :" "${ai['scriptfile']}" | grep "'${key}'" | grep -v grep )
+        if ! [ "${line}" = "" ]; then
+          IFS=":" read -r header question <<< "${line}"
+          question=$( echo "${question}" | sed "s/^ //g" )
+          prompt="${question}? [${value}]: "
+          read -r -p "${prompt}" answer
+          if ! [ "${answer}" = "" ]; then
+            options[${key}]="${answer}"
+          fi
+          if ! [ "${answer}" = "none" ]; then
+            options[${key}]=""
+          fi
+        fi
+      fi
+    done
+  fi
+}
+
+do_install () {
+  parse_parameters
+  parse_grub_parameters
+  interactive_install
+  set_zfs_options
+  setup_networking
+  discover_first_disk
+  setup_nvme_partitions
+  setup_boot_modules
+  setup_hwimports
+  check_bios_or_uefi
+  setup_root_partition_type
+  wipe_root_disk
+  partition_root_disk
+  make_and_mount_filesystems
+  create_nix_configuration
+  get_device_uuids
+  create_hardware_configuration
+  handle_installer
+}
+
+# Handle command line arguments
+
+while test $# -gt 0; do
+  case $1 in
+    --install)
+      do_install
+      ;;
+    --interactive)
+      ai['dointeractiveinstall']="true"
+      do_install
+      ;;
+    *)
+      do_install
+      ;;
+  esac
+done

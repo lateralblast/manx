@@ -110,6 +110,10 @@ for console redirection over IME/AMT or IPMI, for example by default
 console redirection over IPMI on iDRAC etc goes via ttyS1, in which
 case you will need to specify --serialtty ttyS1 as an option.
 
+I have added an interactive mode (--interactive) to the ISO creation
+and the install script with allow the default options to be checked
+and changed rather than entering command line options.
+
 Status
 ------
 
@@ -294,7 +298,7 @@ switch(es):
     Allowed UDP ports
 --allowagentforwarding)
     SSH allow agent forwarding
---allowsimultaneousmultithreading)
+--allows*)
     SSH allow TCP forwarding
 --allowtcpforwarding)
     SSH allow TCP forwarding
@@ -431,9 +435,13 @@ switch(es):
 --installuser*)
     Install username
 --interactive)
-    Enable Interactive mode
+    Enable interactive mode
+--interactiveinstall)
+    Enable interactive install mode
 --nointeractive)
-    Disable Interactive mode
+    Disable interactive mode
+--nointeractiveinstall)
+    Disable interactive install mode
 --ip)
     IP address
 --ipaddressdeny)
@@ -456,478 +464,9 @@ switch(es):
     Enable remote log upload
 --nojournalupload)
     Disable remote log upload
---kbdinteractiveauthentication)
+--kbdinteractive*)
     Enable SSH allow interactive kerboard authentication
---nokbdinteractiveauthentication)
-    Disable SSH allow interactive kerboard authentication
---keymap)
-    Keymap
---kernelparam*)
-    Extra kernel parameters to add to systembuild
---kernel)
-    Kernel
---kexalgorithms)
-    SSH key exchange algorithms
---locale)
-    Locale
---logfile)
-    Locale
---loglevel)
-    SSH log level
---logrotate)
-    Enable logrotate
---nologrotate)
-    Enable logrotate
---lockkernelmodules)
-    Lock kernel modules
---nolockkernelmodules)
-    Don't lock kernel modules
---lockpersonality)
-    Enable systemd lock personality
---nolockpersonality)
-    Disable systemd lock personality
---lvm)
-    Enable LVM
---macs)
-    SSH macs
---mask*)
-    Enable LVM
---maxauthtries)
-    SSH max auth tries
---maxretry)
-    fail2ban max retry
---maxtime)
-    fail2ban bantime maximum
---memorydenywriteexecute)
-    Enable systemd memory deny write execute
---nomemorydenywriteexecute)
-    Disable systemd memory deny write execute
---mbrpartname)
-    MBR partition name
---multipliers)
-    fail2ban ban time multipliers
---nic)
-    NIC
---nixconfig)
-    NixOS configuration file
---nixdir)
-    Set NixOS directory
---nixhwconfig)
-    NixOS hardware configuration file
---nixinstall)
-    Run NixOS install script automatically on ISO
---nixisoconfig)
-    NixOS ISO configuration file
---nonewprivileges)
-    Enable systemd no new privileges
---newprivileges)
-    Disable systemd no new privileges
---oneshot)
-    Enable oneshot service
---nooneshot)
-    Disable oneshot service
---option*)
-    Option(s) to set
---output*|--iso)
-    Output file
---overalljails)
-    fail2ban bantime overalljails
---password|--userpassword)
-    User password
---passwordauthentication)
-    Enable SSH password authentication
---nopasswordauthentication)
-    Disable SSH password authentication
---permitemptypasswords)
-    Enable SSH empty passwords
---permitrootlogin)
-    Enable SSH root login
---poweroff)
-    Enable poweroff after install
---prefix)
-    Install prefix
---preserve)
-    Preserve output file
---privatetmp)
-    Enable systemd private tmp
---noprivatetmp)
-    Disable systemd private tmp
---privatenetwork)
-    Enable systemd private network
---noprivatenetwork)
-    Disable systemd private network
---processgrub*)
-    Enable processing grub command line
---noprocessgrub*)
-    Disable processing grub command line
---protectclock)
-    Enable systemd protect clock
---noprotectclock)
-    Disable systemd protect clock
---protectcontrolgroups)
-    Enable systemd protect control groups
---noprotectcontrolgroups)
-    Disable systemd protect control groups
---protecthome)
-    Enable systemd protect home
---noprotecthome)
-    Disable systemd protect home
---protecthostname)
-    Enable systemd protect hostname
---noprotecthostname)
-    Disable systemd protect hostname
---protectkernelimage)
-    Protect kernel image
---noprotectkernelimage)
-    Don't protect kernel image
---protectkernelmodules)
-    Enable systemd protect kernel modules
---noprotectkernelmodules)
-    Disable systemd protect kernel modules
---protectkerneltunables)
-    Enable systemd protect kernel tunables
---noprotectkerneltunables)
-    Disable systemd protect kernel tunables
---protectproc)
-    systemd protect proc
---protectsubset)
-    systemd protect subset
---protectsystem)
-    systemd protect system
---reboot)
-    Enable reboot after install
---restrictrealtime)
-    Enable systemd restrict realtime
---norestrictrealtime)
-    Disable systemd restrict realtime
---rootcrypt)
-    Root password crypt
---rootf*|--filesystem)
-    Root Filesystem
---rootpassword)
-    Root password
---rootpool)
-    Root pool name
---rootsize)
-    Root partition size
---rootvol*)
-    Root volume name
---runsize)
-    Run size
---secure)
-    Enable secure parameters
---serial)
-    Enable serial
---serialparity)
-    Serial parity
---serialport)
-    Serial port
---serialspeed)
-    Serial speed
---serialstop)
-    Serial stop
---serialtty)
-    Serial tty
---serialunit)
-    Serial unit
---serialword)
-    Serial stop
---setboot*)
-    Set boot device
---shell|usershell)
-    User Shell
---shellcheck)
-    Run shellcheck
---source)
-    Source directory for ISO additions
---sshkey)
-    SSH key
---sshkeyfile)
-    SSH key file
---sshserver)
-    Enable strict mode
---standalone)
-    Create a standalone ISO
---stateversion)
-    NixOS state version
---strict)
-    Enable strict mode
---sudocommand*)
-    Sudo commands
---sudooption*)
-    Sudo options
---sudouser*)
-    Sudo users
---suffix|--outputsuffix)
-    Sudo users
---systemdumask)
-    Systemd umask
---systempackages)
-    NixOS state version
---systemcallarchitectures)
-    Systemd call architectures
---swap)
-    Enable swap
---swapsize)
-    Swap partition size
---swapvol*)
-    Swap volume name
---target)
-    Target directory for ISO additions
---targetarch)
-    Target architecture
---temp*)
-    Target directory
---testmode)
-    Enable swap
---unprivilegedusernsclone)
-    Disable unprivileged user namespaces
---unstable)
-    Enable unstable features
---stable)
-    Disable unstable features
---usage)
-    Action to perform
---usedns)
-    SSH use DNS
---usepres*)
-    Use preserved ISO
---username)
-    User username
---verbose)
-    Enable verbose mode
---version|-V)
-    Print version information
---videodriver)
-    Video Driver
---vmautoconsole)
-    VM Autoconsole
---vmboot)
-    VM Boot type
---vmcpu)
-    VM CPU
---vmdir)
-    VM Directory
---vmfeatures)
-    VM Features
---vmhostdevice)
-    VM Host device
---vmgraphics)
-    VM Graphics
---vmiso|--vmcdrom)
-    VM ISO
---vmmachine)
-    VM Machine
---vmmemory)
-    VM Memory
---vmname)
-    VM Name
---vmnetwork)
-    VM Network
---vmnoautoconsole)
-    VM No autoconsole
---vmnoreboot)
-    VM Do not reboot VM after creation
---vmreboot)
-    VM Reboot VM after creation
---vmsize)
-    VM Size
---vmosvariant)
-    VM OS variant
---vmvirttype)
-    VM Virtualisation type
---vmvcpus)
-    VM vCPUs
---vmwait)
-    VM number of seconds to wait before starting
---workdir)
-    Set script work directory
---x11forwarding)
-    Enable SSH X11 forwarding
---nox11forwarding)
-    Disable SSH X11 forwarding
---zfsinstall)
-    ZFS install script
---zsh)
-    Enable zsh--action*)
-    Action(s) to perform
---addiso|--addcdrom)
-    Add cdrom to VM
---audit)
-    Enable auditing
---removeiso|--removecdrom)
-    Remove cdrom from VM
---allowedtcpports)
-    Allowed TCP ports
---allowedudpports)
-    Allowed UDP ports
---allowagentforwarding)
-    SSH allow agent forwarding
---allowsimultaneousmultithreading)
-    SSH allow TCP forwarding
---allowtcpforwarding)
-    SSH allow TCP forwarding
---allowusers)
-    SSH allow users
---availmod*)
-    Available system kernel modules
---bantime)
-    fail2ban ban time
---bantimeincrement)
-    Enable fail2ban ban time increment
---nobantimeincrement)
-    Enable fail2ban ban time increment
---blacklist)
-    Blacklist modules
---bootfromdisk)
-    Boot VM from disk
---bootfromiso|--bootfromcdrom)
-    Boot VM from CDROM
---bootmod*)
-    Available system boot modules
---bootsize)
-    Boot partition size
---bootvm|--startvm)
-    Boot VM
---stopvm)
-    Stop VM
---bridge)
-    Enable bridge
---bridgenic)
-    Bridge NIC
---bootf*)
-    Boot Filesystem
---bootvol*)
-    Boot volume name
---checkdocker*)
-    Check docker config
---cidr)
-    CIDR
---ciphers)
-    SSH ciphers
---clientaliveinterval)
-    SSH client alive interval
---clientalivecountmax)
-    SSH client alive count max
---createinstall*)
-    Create install script
---createiso)
-    Create ISO
---createdockeriso)
-    Create ISO
---createnix*)
-    Create NixOS ISO config
---createoneshot*)
-    Create oneshot script
---createvm)
-    Create oneshot script
---console*)
-    Create oneshot script
---crypt|--usercrypt)
-    User Password Crypt
---dbusimplementation)
-    Dbus implementation
---debug)
-    Enable debug mode
---deletevm)
-    Delete VM
---dhcp)
-    Enable DHCP
---disk|rootdisk)
-    Root disk
---dns|--nameserver)
-    DNS/Nameserver address
---dockerarch)
-    Docker architecture
---dryrun)
-    Enable debug mode
---execwheelonly)
-    Sudo exec wheel only
---experimental*)
-    SSH key
---extragroup*)
-    Extra groups
---fail2ban)
-    Enable fail2ban
---nofail2ban)
-    Disable fail2ban
---firewall)
-    Enable firewall
---nofirewall)
-    Disable firewall
---firmware)
-    Boot firmware type
---force)
-    Enable force mode
---forcepagetableisolation)
-    Force page table isolation
---noforcepagetableisolation)
-    Don't force page table isolation
---fwupd)
-    Enable fwupd
---nofwupd)
-    Disable fwupd
---gateway)
-    Gateway address
---gecos|--usergecos)
-    GECOS field
---gfxmode)
-    Bios text mode
---gfxpayload)
-    Bios text mode
---grubextra*)
-    ISO grub extra config
---help|-h)
-    Print help information
---hostkeyspath)
-    SSH host keys path
---hostkeystype)
-    SSH host keys type
---hostname)
-    Hostname
---hwimports)
-    Imports for system hardware configuration
---import)
-    Import a Nix configuration
---imports)
-    Imports for system configuration
---initmod*)
-    Available system init modules
---installscript)
-    Install script
---installdir)
-    Install directory where destination disk is mounted
---installuser*)
-    Install username
---interactive)
-    Enable Interactive mode
---nointeractive)
-    Disable Interactive mode
---ip)
-    IP address
---ipaddressdeny)
-    systemd IP address deny
---isogrubextra*)
-    ISO grub extra config
---isoimport)
-    Import additional Nix configuration file into ISO configuration
---isoimports)
-    NixOS imports for ISO build
---isokernelparam*)
-    Extra kernel parameters to add to ISO grub commands
---isomount)
-    Install ISO mount directory
---isopermitrootlogin)
-    Enable SSH root login for ISO
---journaldextra*)
-    System journald extra config
---journalupload)
-    Enable remote log upload
---nojournalupload)
-    Disable remote log upload
---kbdinteractiveauthentication)
-    Enable SSH allow interactive kerboard authentication
---nokbdinteractiveauthentication)
+--nokbdinteractive*)
     Disable SSH allow interactive kerboard authentication
 --keymap)
     Keymap
@@ -1528,7 +1067,7 @@ permittunnel (default = false)
    SSH permit tunnel
 usedns (default = false)
    SSH use DNS
-kbdinteractiveauthentication (default = false)
+kbdinteractive (default = false)
    SSH allow interactive kerboard authentication
 x11forwarding (default = false)
    SSH allow X11 forwarding
@@ -1600,7 +1139,7 @@ forcepagetableisolation (default = true)
    Force page table isolation
 unprivilegedusernsclone (default = config.virtualisation.containers.enable)
    Disable unprivileged user namespaces
-allowsimultaneousmultithreading (default = true)
+allowsmt (default = true)
    Allow SMT
 dbusimplementation (default = broker)
    Dbus implementation
@@ -1652,4 +1191,6 @@ unstable (default = false)
    Enable unstable features/packages
 interactive (default = false)
    Interactive mode
+interactiveinstall (default = false)
+   Interactive install mode
 ```
