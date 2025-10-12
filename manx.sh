@@ -2411,7 +2411,7 @@ interactive_install () {
         line=\$( grep "# ai :" "\${ai['scriptfile']}" | grep "'\${key}'" | grep -v grep )
         if ! [ "\${line}" = "" ]; then
           IFS=":" read -r header question <<< "\${line}"
-          question=$( echo "\${question}" | sed "s/^ //g" )
+          question=\$( echo "\${question}" | sed "s/^ //g" )
           prompt="\${question}? [\${value}]: "
           read -r -p "\${prompt}" answer
           if ! [ "\${answer}" = "" ]; then
