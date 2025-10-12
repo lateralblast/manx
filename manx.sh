@@ -2408,7 +2408,7 @@ interactive_install () {
     for key in \${!ai[@]}; do
       if ! [[ "\${key}" =~ interactive ]]; then
         value="\${ai[\${key}]}"
-        line=$( grep "# ai :" "\${ai['scriptfile']}" | grep "'\${key}'" | grep -v grep )
+        line=\$( grep "# ai :" "\${ai['scriptfile']}" | grep "'\${key}'" | grep -v grep )
         if ! [ "\${line}" = "" ]; then
           IFS=":" read -r header question <<< "\${line}"
           question=$( echo "\${question}" | sed "s/^ //g" )
