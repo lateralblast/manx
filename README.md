@@ -9,7 +9,7 @@ Make Automated NixOS (ISO)
 Version
 -------
 
-Current version: 1.6.6
+Current version: 1.6.7
 
 License
 -------
@@ -134,14 +134,14 @@ The script follows this process:
     - Directory that contains script
     - Includes additional packages for troubleshooting/automation:
       - ansible
-      - curl 
-      - dmidecode 
-      - efibootmgr 
-      - file 
-      - lsb-release 
-      - lshw 
-      - pciutils 
-      - vim 
+      - curl
+      - dmidecode
+      - efibootmgr
+      - file
+      - lsb-release
+      - lshw
+      - pciutils
+      - vim
       - wget
   - A directory containing:
     - Oneshot install script
@@ -177,7 +177,7 @@ and then folded back into the script is located here:
 By setting the options in the script it can be used to install one of:
 
 - ZFS root with or without swap
-- EXT4/XFS/BTRFS root with or without swap on raw or LVM partitions 
+- EXT4/XFS/BTRFS root with or without swap on raw or LVM partitions
 
 By default nix-build will create a symlink to created ISO in the work directory.
 
@@ -215,7 +215,7 @@ An example of the entry in the Nix ISO config file:
     restartIfChanged = false;
     script = ''
       export PATH="/run/wrappers/bin:/root/.nix-profile/bin:/nix/profile/bin:/root/.local/state/nix/profile/bin:/etc/profiles/per-user/root/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin"
-      sudo /iso/ai/oneshot.sh 
+      sudo /iso/ai/oneshot.sh
     '';
   };
 ```
@@ -241,7 +241,7 @@ Create a standalone unattended install with defaults (ZFS root, DHCP):
 ./manx.sh --createiso --options standalone
 ```
 
-After creating an ISO, you can test it by creating a VM: 
+After creating an ISO, you can test it by creating a VM:
 (this will create a VM with the default name and the ISO generated above)
 
 ```

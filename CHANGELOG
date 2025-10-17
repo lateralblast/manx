@@ -13,7 +13,7 @@
 # 0.0.7: Tue 09 Sep 2025 23:14:33 AEST
 # Added shellcheck switch
 # 0.0.8: Wed 10 Sep 2025 00:01:04 AEST
-# Improved usage output 
+# Improved usage output
 # 0.0.9: Wed 10 Sep 2025 00:40:22 AEST
 # Added mask switch
 # 0.1.0: Wed 10 Sep 2025 12:10:13 AEST
@@ -197,7 +197,7 @@
 # 0.9.8: Thu 25 Sep 2025 15:02:25 AEST
 # Fixed ISO config file creation for docker
 # 0.9.9: Thu 25 Sep 2025 15:11:59 AEST
-# Added code to create ISO using docker 
+# Added code to create ISO using docker
 # 1.0.0: Thu 25 Sep 2025 16:28:43 AEST
 # Fixes based on shellcheck
 # 1.0.1: Thu 25 Sep 2025 16:32:12 AEST
@@ -332,3 +332,5 @@
 # Split install script into functions
 # 1.6.6: Sun 12 Oct 2025 17:51:45 AEDT
 # Added interactive mode option to install script
+# 1.6.7: Fri 17 Oct 2025 14:33:13 AEDT
+# Improved docker ISO creation

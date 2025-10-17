@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.6.6
+# Version:      1.6.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -1214,7 +1214,7 @@ populate_iso_kernel_params () {
       fi
     else
       item="\"ai.${param}=\""
-    fi 
+    fi
     options['isokernelparams']+=" ${item} "
   done
 }
@@ -1438,7 +1438,7 @@ NIXISOCONFIG
       ProtectHostname = ${options['protecthostname']};
       ProtectKernelModules = ${options['protectkernelmodules']};
     };
-  }; 
+  };
   systemd.services.systemd-rfkill = {
     serviceConfig = {
       ProtectSystem = "${options['protectsystem']}";
@@ -2052,7 +2052,7 @@ NIX_CFG
       ProtectHostname = \${ai['protecthostname']};
       ProtectKernelModules = \${ai['protectkernelmodules']};
     };
-  }; 
+  };
   systemd.services.systemd-rfkill = {
     serviceConfig = {
       ProtectSystem = "\${ai['protectsystem']}";
@@ -2280,7 +2280,7 @@ create_hardware_configuration () {
   imports = [
     \${ai['hwimports']}
   ];
-  boot.initrd.availableKernelModules = [ 
+  boot.initrd.availableKernelModules = [
 HW_CFG
   for item in \${ai['availmods']}; do
     tee -a \${ai['hwcfg']} << HW_CFG
@@ -2404,7 +2404,7 @@ handle_installer () {
 }
 
 interactive_install () {
-  if [ "\${ai['interactiveinstall']}" = "true" ] || [ "\${ai['dointeractiveinstall']}" = "true" ]; then 
+  if [ "\${ai['interactiveinstall']}" = "true" ] || [ "\${ai['dointeractiveinstall']}" = "true" ]; then
     for key in \${!ai[@]}; do
       if ! [[ "\${key}" =~ interactive ]]; then
         value="\${ai[\${key}]}"
@@ -2526,7 +2526,7 @@ update_output_file_name () {
     temp_name=$( basename -s ".iso" "${iso_file}" )
     get_output_file_suffix
     options['output']="${output_dir}/${options['suffix']}"
-  fi 
+  fi
 }
 
 # Function: preserve_iso
@@ -2852,6 +2852,7 @@ check_docker () {
       execute_command "mkdir -p ${arch_dir}"
     fi
     docker_image="${script['name']}-latest-${options['dockerarch']}"
+    docker_volume="${docker_image}-nixstore"
     image_check=$( docker images | grep "^${docker_image}" | awk '{ print $1 }' )
     if ! [ "${image_check}" = "${docker_image}" ]; then
       compose_file="${arch_dir}/docker-compose.yml"
@@ -2864,6 +2865,8 @@ services:
       contect: .
       dockerfile: Dockerfile
     image: ${docker_image}
+    volumes:
+      - ${docker_volume}:/nix/store
     container_name: ${docker_image}
     entrypoint: /run/current-system/sw/bin/bash
     working_dir: /root
@@ -2902,6 +2905,7 @@ create_docker_iso () {
     execute_command "mkdir ${options['workdir']}/isos"
   fi
   tee "${docker_script}" << CREATE_DOCKER_ISO
+nix-channel --update
 cd ${target_dir} ; nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=${config_file} --builders ''
 if [ -d "${iso_dir}" ]; then
   iso_file=\$( find ${iso_dir} -name "*.iso" )
@@ -2939,7 +2943,7 @@ interactive_questions () {
         if ! [ "${line}" = "" ]; then
           IFS=":" read -r header question <<< "${line}"
           question=$( echo "${question}" | sed "s/^ //g" )
-          if [ "${options['verbose']}" = "true" ]; then 
+          if [ "${options['verbose']}" = "true" ]; then
             prompt="${question}? [${key}] [${value}]: "
           else
             prompt="${question}? [${value}]: "
@@ -2986,6 +2990,7 @@ process_actions () {
       exit
       ;;
     createdockeriso)        # action : Create docker ISO
+      options['createdockeriso']="true"
       interactive_questions
       create_docker_iso
       exit
@@ -3571,7 +3576,7 @@ while test $# -gt 0; do
       options['maxretry']="$2"
       shift 2
       ;;
-    --maxtime)                          # switch : fail2ban bantime maximum 
+    --maxtime)                          # switch : fail2ban bantime maximum
       check_value "$1" "$2"
       options['maxtime']="$2"
       shift 2
