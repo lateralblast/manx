@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.6.7
+# Version:      1.6.8
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -296,6 +296,7 @@ set_defaults () {
   options['userpassword']="nixos"                                                   # option : User Password
   options['usercrypt']=""                                                           # option : User Password Crypt
   options['hostname']="nixos"                                                       # option : Hostname
+  options['domainname']=""                                                          # option : Domainname
   options['sshkeyfile']=""                                                          # option : SSH key file
   options['bootfs']="vfat"                                                          # option : Boot filesystem
   options['rootfs']="zfs"                                                           # option : Root filesystem
@@ -335,6 +336,7 @@ set_defaults () {
   options['experimental-features']="nix-command flakes"                             # option : Experimental Features
   options['unfree']="false"                                                         # option : Allow Non Free Packages
   options['stateversion']="25.05"                                                   # option : State version
+  options['latestversion']="25.11"                                                  # option : State version (latest)
   options['unattended']="true"                                                      # option : Execute install script
   options['attended']="false"                                                       # option : Don't execute install script
   options['reboot']="true"                                                          # option : Reboot after install
@@ -596,6 +598,12 @@ fi
 # Reset defaults based on command line options
 
 reset_defaults () {
+  if [[ "${options['hostname']}" =~ . ]]; then
+    if [ "${options['domainname']}" = "" ]; then
+      options['domainname']=$( echo "${options['hostname']}" | cut -f2- -d. )
+    fi
+    options['hostname']=$( echo "${options['hostname']}" | cut -f1 -d. )
+  fi
   if [ "${options['unstable']}" = "true" ]; then
     options['isostorepackages']="${options['isostorepackages']} zfs_unstable"
     options['isossystempackages']="${options['isosystempackages']} zfs_unstable"
@@ -1190,7 +1198,7 @@ populate_iso_kernel_params () {
     usershell username extragroups usergecos normaluser sudocommand sudooptions \
     rootpassword userpassword stateversion hostname unfree gfxmode gfxpayload \
     passwordauthentication allowedtcpports allowedudpports targetarch sshkey \
-    permitemptypasswords permittunnel usedns kbdinteractive nic \
+    permitemptypasswords permittunnel usedns kbdinteractive nic domainname\
     dns ip gateway cidr zfsoptions systempackages firewall imports hwimports\
     allowusers permitrootlogin interactiveinstall; do
 #    x11forwarding maxauthtries maxsessions clientaliveinterval allowusers \
@@ -1592,6 +1600,7 @@ ai['userpassword']="${options['userpassword']}"                           # ai :
 ai['usercrypt']=\$( mkpasswd --method=sha-512 "\${ai['userpassword']}" )  # ai : User crypt
 ai['stateversion']="${options['stateversion']}"                           # ai : State version
 ai['hostname']="${options['hostname']}"                                   # ai : Hostname
+ai['domainname']="${options['domainname']}"                               # ai : Domainname
 ai['hostid']=\$( head -c 8 /etc/machine-id )                              # ai : HostID
 ai['nixdir']="\${ai['installdir']}/etc/nixos"                             # ai : Nix directory
 ai['nixcfg']="\${ai['nixdir']}/configuration.nix"                         # ai : Nix configuration
@@ -2077,6 +2086,7 @@ NIX_CFG
   # HostID and Hostname
   networking.hostId = "\${ai['hostid']}";
   networking.hostName = "\${ai['hostname']}";
+  networking.domain = "\${ai['domainname']}";
 
   # fail2ban
   services.fail2ban = {
@@ -3274,6 +3284,11 @@ while test $# -gt 0; do
     --dockerarch)                       # switch : Docker architecture
       check_value "$1" "$2"
       options['dockerarch']="$2"
+      shift 2
+      ;;
+    --domainname)                       # switch : Domainname
+      check_value "$1" "$2"
+      options['domainname']="$2"
       shift 2
       ;;
     --dryrun)                           # switch : Enable debug mode

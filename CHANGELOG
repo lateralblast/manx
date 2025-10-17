@@ -334,3 +334,5 @@
 # Added interactive mode option to install script
 # 1.6.7: Fri 17 Oct 2025 14:33:13 AEDT
 # Improved docker ISO creation
+# 1.6.8: Fri 17 Oct 2025 19:52:16 AEDT
+# Improved hostname/domainname handling
