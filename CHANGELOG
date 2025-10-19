@@ -336,3 +336,5 @@
 # Improved docker ISO creation
 # 1.6.8: Fri 17 Oct 2025 19:52:16 AEDT
 # Improved hostname/domainname handling
+# 1.6.9: Sun 19 Oct 2025 13:00:09 AEDT
+# Added unfree and broken switches

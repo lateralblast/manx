@@ -9,7 +9,7 @@ Make Automated NixOS (ISO)
 Version
 -------
 
-Current version: 1.6.8
+Current version: 1.6.9
 
 License
 -------
@@ -298,6 +298,10 @@ switch(es):
     Allowed UDP ports
 --allowagentforwarding)
     SSH allow agent forwarding
+--allowbroken)
+    Enable broken packages
+--noallowbroken)
+    Disable broken packages
 --allows*)
     SSH allow TCP forwarding
 --allowtcpforwarding)
@@ -374,6 +378,8 @@ switch(es):
     DNS/Nameserver address
 --dockerarch)
     Docker architecture
+--domainname)
+    Domainname
 --dryrun)
     Enable debug mode
 --execwheelonly)
@@ -686,6 +692,10 @@ switch(es):
     Target architecture
 --temp*)
     Target directory
+--unfree)
+    Enable non free packages
+--nounfree)
+    Disable non free packages
 --testmode)
     Enable swap
 --unprivilegedusernsclone)
@@ -859,7 +869,7 @@ zsh (default = true)
    Enable zsh
 preserve (default = false)
    Preserve ISO
-workdir (default = /Users/user/manx)
+workdir (default = /home/spindler/manx)
    Script work directory
 sshkey (default = )
    SSH key
@@ -885,6 +895,8 @@ usercrypt (default = )
    User Password Crypt
 hostname (default = nixos)
    Hostname
+domainname (default = )
+   Domainname
 sshkeyfile (default = )
    SSH key file
 bootfs (default = vfat)
@@ -899,19 +911,19 @@ uefi (default = false)
    UEFI Boot firmware
 isomount (default = /iso)
    ISO mount directory
-oneshotscript (default = /Users/user/manx/ai/oneshot.sh)
+oneshotscript (default = /home/spindler/manx/ai/oneshot.sh)
    Oneshot script
-installscript (default = /Users/user/manx/ai/install.sh)
+installscript (default = /home/spindler/manx/ai/install.sh)
    Install script
-nixisoconfig (default = /Users/user/manx/iso.nix)
+nixisoconfig (default = /home/spindler/manx/iso.nix)
    NixOS ISO config
-zfsinstall (default = /Users/user/manx//zfs.sh)
+zfsinstall (default = /home/spindler/manx//zfs.sh)
    ZFS install script
-extinstall (default = /Users/user/manx//ext4.sh)
+extinstall (default = /home/spindler/manx//ext4.sh)
    EXT4 install script
 runsize (default = 50%)
    Run size
-source (default = /Users/user/manx/ai)
+source (default = /home/spindler/manx/ai)
    Source directory for ISO additions
 target (default = /ai)
    Target directory for ISO additions
@@ -963,6 +975,8 @@ unfree (default = false)
    Allow Non Free Packages
 stateversion (default = 25.05)
    State version
+latestversion (default = 25.11)
+   State version (latest)
 unattended (default = true)
    Execute install script
 attended (default = false)
@@ -1105,9 +1119,9 @@ import (default = )
    Import Nix config to add to system build
 isoimport (default = )
    Import Nix config to add to ISO build
-dockerarch (default = arm64)
+dockerarch (default = amd64)
    Docker architecture
-targetarch (default = arm64)
+targetarch (default = x86_64)
    Target architecture
 createdockeriso (default = false)
    Create ISO using docker
@@ -1193,4 +1207,6 @@ interactive (default = false)
    Interactive mode
 interactiveinstall (default = false)
    Interactive install mode
+allowbroken (default = false)
+   Allow broken packages
 ```

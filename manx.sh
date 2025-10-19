@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.6.8
+# Version:      1.6.9
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -452,6 +452,7 @@ set_defaults () {
   options['unstable']="false"                                                       # option : Enable unstable features/packages
   options['interactive']="false"                                                    # option : Interactive mode
   options['interactiveinstall']="false"                                             # option : Interactive install mode
+  options['allowbroken']="false"                                                    # option : Allow broken packages
 
   # VM defaults
   vm['name']="${script['name']}"                                                    # vm : VM name
@@ -1200,7 +1201,7 @@ populate_iso_kernel_params () {
     passwordauthentication allowedtcpports allowedudpports targetarch sshkey \
     permitemptypasswords permittunnel usedns kbdinteractive nic domainname\
     dns ip gateway cidr zfsoptions systempackages firewall imports hwimports\
-    allowusers permitrootlogin interactiveinstall; do
+    allowusers permitrootlogin interactiveinstall allowbroken; do
 #    x11forwarding maxauthtries maxsessions clientaliveinterval allowusers \
 #    clientalivecountmax allowtcpforwarding allowagentforwarding loglevel \
 #    permitrootlogin hostkeyspath hostkeystype kexalgorithms ciphers macs \
@@ -1481,8 +1482,9 @@ NIXISOCONFIG
   # Additional Nix options
   nix.settings.experimental-features = "${options['experimental-features']}";
 
-  # Allow unfree packages
+  # Allow unfree / broken packages
   nixpkgs.config.allowUnfree = ${options['unfree']};
+  nixpkgs.config.allowBroken = ${options['allowbroken']};
 NIXISOCONFIG
 
   if [ "${options['attended']}" = "false" ]; then
@@ -1611,6 +1613,7 @@ ai['initmods']="${options['initmods']}"                                   # ai :
 ai['bootmods']="${options['bootmods']}"                                   # ai : Boot modules
 ai['experimental-features']="${options['experimental-features']}"         # ai : Experimental Features
 ai['unfree']="${options['unfree']}"                                       # ai : Non free software
+ai['allowbroken']="${options['allowbroken']}"                             # ai : Allow broken software
 ai['gfxmode']="${options['gfxmode']}"                                     # ai : Graphics Mode
 ai['gfxpayload']="${options['gfxpayload']}"                               # ai : Graphics Payload
 ai['nic']="${options['nic']}"                                             # ai : Network Interface
@@ -2176,6 +2179,7 @@ NIX_CFG
   ];
   # Allow unfree packages
   nixpkgs.config.allowUnfree = \${ai['unfree']};
+  nixpkgs.config.allowBroken = \${ai['allowbroken']};
 
   # Set your time zone.
   time.timeZone = "\${ai['timezone']}";
@@ -3111,6 +3115,14 @@ while test $# -gt 0; do
       options['allowagentforwarding']="true"
       shift
       ;;
+    --allowbroken)                      # switch : Enable broken packages
+      options['allowbroken']="true"
+      shift
+      ;;
+    --noallowbroken)                    # switch : Disable broken packages
+      options['allowbroken']="false"
+      shift
+      ;;
     --allows*)                          # switch : SSH allow TCP forwarding
       options['allowsmt']="true"
       shift
@@ -4003,6 +4015,14 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       options['tempdir']="$2"
       shift 2
+      ;;
+    --unfree)                           # switch : Enable non free packages
+      options['unfree']="true"
+      shift
+      ;;
+    --nounfree)                         # switch : Disable non free packages
+      options['unfree']="false"
+      shift
       ;;
     --testmode)                         # switch : Enable swap
       options['testmode']="true"
