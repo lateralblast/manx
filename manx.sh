@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.6.9
+# Version:      1.7.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -453,6 +453,8 @@ set_defaults () {
   options['interactive']="false"                                                    # option : Interactive mode
   options['interactiveinstall']="false"                                             # option : Interactive install mode
   options['allowbroken']="false"                                                    # option : Allow broken packages
+  options['usbstick']=""                                                            # option : USB stick to write ISO to
+  options['cdrom']=""                                                               # option : ISO to use (e.g. for writing to usb stick)
 
   # VM defaults
   vm['name']="${script['name']}"                                                    # vm : VM name
@@ -2944,6 +2946,50 @@ CREATE_DOCKER_ISO
   fi
 }
 
+# Function: create_usb_boot
+#
+# Create USB boot disk
+
+create_usb_boot () {
+  if [ "${options['cdrom']}" = "" ]; then
+    iso_dir="${options['workdir']}/isos"
+    options['cdrom']=$( ls -rt "${iso_dir}/${script['name']}"*.iso | tail -1 )
+    if [ "${options['cdrom']}" = "" ]; then
+      warning_message "No ISO file specified"
+      do_exit
+    fi
+  fi
+  if ! [ -f "${options['cdrom']}" ]; then
+    warning_message "ISO file \"${options['cdrom']}\" does not exist"
+    do_exit
+  fi
+  if [ "${options['usbstick']}" = "" ]; then
+    options['usbstick']=$( sudo lsblk -l -o TYPE,NAME,TRAN |grep usb |awk '{ print $2 }' )
+    if [ "${options['usbstick']}" = "" ]; then
+      warning_message "No USB device specified"
+      do_exit
+    fi
+  fi
+  if ! [[ "${options['usbstick']}" =~ dev ]]; then
+    options['usbstick']="/dev/${options['usbstick']}"
+  fi
+  if [ "${options['force']}" = "true" ]; then
+    answer="yes"
+  else
+    prompt="Are you sure you want to write the ISO ${options['cdrom']} to ${options['usbstick']}? This will erase all data on the device! (yes/no): "
+    read -r -p "${prompt}" answer
+  fi
+  if [ "${answer}" = "yes" ]; then
+    information_message "Writing ISO to ${options['usbstick']}"
+    sudo dd if=${options['cdrom']} of=${options['usbstick']} bs=4M status=progress
+    sync
+    do_exit
+  else
+    information_message "Aborted writing ISO to ${options['usbstick']}"
+    do_exit
+  fi
+}
+
 # Function: interactive_questions
 #
 # Interactive Questions
@@ -2977,7 +3023,7 @@ interactive_questions () {
 
 # Function: process_actions
 #
-# Handle actions
+# Process actions
 
 process_actions () {
   actions="$1"
@@ -3023,15 +3069,19 @@ process_actions () {
       create_oneshot_script
       exit
       ;;
-    createvm)               # action : Create install script
+    createusb*)               # action : Create KVM VM
+      create_usb_boot
+      exit
+      ;;
+    createvm)               # action : Create KVM VM
       create_kvm_vm
       exit
       ;;
-    consolevm)              # action : Create install script
+    consolevm)              # action : Connect to KVM VM via console
       console_to_kvm_vm
       exit
       ;;
-    deletevm)               # action : Create install script
+    deletevm)               # action : Delete VM
       delete_kvm_vm
       exit
       ;;
@@ -3047,7 +3097,7 @@ process_actions () {
       print_defaults
       exit
       ;;
-    setboot*)               # action : Print defaults
+    setboot*)               # action : Set boot device
       set_boot_device
       exit
       ;;
@@ -3055,7 +3105,7 @@ process_actions () {
       start_kvm_vm
       exit
       ;;
-    stop*)                  # action : Start KVM VM
+    stop*)                  # action : Stop KVM VM
       stop_kvm_vm
       exit
       ;;
@@ -3252,6 +3302,10 @@ while test $# -gt 0; do
       actions_list+=("createoneshot")
       shift
       ;;
+    --createusb)                        # switch : Create oneshot script
+      actions_list+=("createusb")
+      shift
+      ;;
     --createvm)                         # switch : Create oneshot script
       actions_list+=("createvm")
       shift
@@ -3343,7 +3397,7 @@ while test $# -gt 0; do
       options['firmware']="$2"
       shift 2
       ;;
-    --force)                            # switch : Enable force mode
+    --force|--yes)                      # switch : Enable force mode
       options['force']="true"
       shift
       ;;
@@ -4048,6 +4102,11 @@ while test $# -gt 0; do
       shift 2
       exit
       ;;
+    --usbs*)                            # switch : USB stick to write to
+      check_value "$1" "$2"
+      options['usbstick']="$2"
+      shift 2
+      ;;
     --usedns)                           # switch : SSH use DNS
       options['use']="true"
       shift
@@ -4108,9 +4167,10 @@ while test $# -gt 0; do
       vm['graphics']="$2"
       shift 2
       ;;
-    --vmiso|--vmcdrom)                  # switch : VM ISO
+    --vmiso|--vmcdrom|--iso|--cdrom)    # switch : VM ISO
       check_value "$1" "$2"
       vm['cdrom']="$2"
+      options['cdrom']="$2"
       shift 2
       ;;
     --vmmachine)                        # switch : VM Machine

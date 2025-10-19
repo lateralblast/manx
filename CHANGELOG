@@ -338,3 +338,5 @@
 # Improved hostname/domainname handling
 # 1.6.9: Sun 19 Oct 2025 13:00:09 AEDT
 # Added unfree and broken switches
+# 1.7.0: Sun 19 Oct 2025 15:10:05 AEDT
+# Added function to dd image to a usb sick
