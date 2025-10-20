@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.7.3
+# Version:      1.7.6
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -53,7 +53,18 @@ set_defaults () {
   options['audit']="true"                                                           # option : Auditd parameters
   options['auditrules']=""                                                          # option : Auditd parameters
   options['kernelparams']=""                                                        # option : Additional kernel parameters to add to system grub commands
+  # Root filesystem subvolumes
+  options['subvolumes']=""                                                          # option : Root filesystem subvolumes
+  subvolumes=(
+    "root"
+    "var"
+    "home"
+    "nix"
+    "usr"
+  )
+  options['subvolumes']="${subvolumes[*]}"
   # ZFS options
+  options['compression']=""                                                         # option : Root FS Compression type
   options['zfsoptions']=""                                                          # option : ZFS options
   zfsoptions=(
     "-O mountpoint=none"
@@ -64,6 +75,15 @@ set_defaults () {
     "-o ashift=12"
   )
   options['zfsoptions']="${zfsoptions[*]}"
+  options['btrfsoptions']=""                                                        # option : BTRFS options
+  btrfsoptions=(
+    "rw"
+    "relatime"
+    "compress=zstd:3"
+    "discard=async"
+    "space_cache=v2"
+  )
+  options['btrfsoptions']="${btrfsoptions[*]}"
   options['isosystempackages']=""                                                   # option : ISO system packages
   isosystempackages=(
     "aide"
@@ -308,8 +328,6 @@ set_defaults () {
   options['oneshotscript']="${options['workdir']}/${options['prefix']}/oneshot.sh"  # option : Oneshot script
   options['installscript']="${options['workdir']}/${options['prefix']}/install.sh"  # option : Install script
   options['nixisoconfig']="${options['workdir']}/iso.nix"                           # option : NixOS ISO config
-  options['zfsinstall']="${options['workdir']}/${options['prefis']}/zfs.sh"         # option : ZFS install script
-  options['extinstall']="${options['workdir']}/${options['prefis']}/ext4.sh"        # option : EXT4 install script
   options['runsize']="50%"                                                          # option : Run size
   options['source']="${options['workdir']}/${options['prefix']}"                    # option : Source directory for ISO additions
   options['target']="/${options['prefix']}"                                         # option : Target directory for ISO additions
@@ -448,7 +466,6 @@ set_defaults () {
   options['systemcallarchitectures']="native"                                       # option : systemd system call architectures
   options['ipaddressdeny']="any"                                                    # option : systemd IP address deny
   options['usepreservediso']="false"                                                # option : Use preserved ISO
-  options['processgrub']="true"                                                     # option : Process grub command line
   options['logrotate']="true"                                                       # option : Log rotate
   options['unstable']="false"                                                       # option : Enable unstable features/packages
   options['interactive']="false"                                                    # option : Interactive mode
@@ -456,6 +473,10 @@ set_defaults () {
   options['allowbroken']="false"                                                    # option : Allow broken packages
   options['usbstick']=""                                                            # option : USB stick to write ISO to
   options['cdrom']=""                                                               # option : ISO to use (e.g. for writing to usb stick)
+
+  # Process GRUB options - Set this to false if you have changed parameters above
+
+  options['processgrub']="true"                                                     # option : Process grub command line
 
   # VM defaults
   vm['name']="${script['name']}"                                                    # vm : VM name
@@ -602,6 +623,32 @@ fi
 # Reset defaults based on command line options
 
 reset_defaults () {
+  # Process compession options
+  if [ "${options['compression']}" = "" ]; then
+    if [ "${options['rootfs']}" = "btrfs" ]; then
+      options['compression']="zstd:3"
+    else
+      options['compression']="lz4"
+    fi
+  fi  
+  zfsoptions=(
+    "-O mountpoint=none"
+    "-O atime=off"
+    "-O compression=${options['compression']}"
+    "-O xattr=sa"
+    "-O acltype=posixacl"
+    "-o ashift=12"
+  )
+  options['zfsoptions']="${zfsoptions[*]}"
+  btrfsoptions=(
+    "rw"
+    "relatime"
+    "compress=${options['compression']}"
+    "discard=async"
+    "space_cache=v2"
+  )
+  options['btrfsoptions']="${btrfsoptions[*]}"
+  # Process hostname and domainname
   if [[ "${options['hostname']}" =~ . ]]; then
     if [ "${options['domainname']}" = "" ]; then
       options['domainname']=$( echo "${options['hostname']}" | cut -f2- -d. )
@@ -613,6 +660,7 @@ reset_defaults () {
     options['isossystempackages']="${options['isosystempackages']} zfs_unstable"
     options['systempackages']="${options['systempackages']} zfs_unstable"
   fi
+  # Process serial options
   serial_console="console=${options['serialtty']},${options['serialspeed']}${options['serialparity']}${options['serialword']}"
   serialkernelparams=(
     "console=tty1"
@@ -644,6 +692,7 @@ reset_defaults () {
       options['serialextraconfig']+=" ${item} "
     fi
   done
+  # Process install options
   if [ "${options['attended']}" = "true" ]; then
     options['unattended']="false"
   fi
@@ -1203,8 +1252,8 @@ populate_iso_kernel_params () {
     rootpassword userpassword stateversion hostname unfree gfxmode gfxpayload \
     passwordauthentication allowedtcpports allowedudpports targetarch sshkey \
     permitemptypasswords permittunnel usedns kbdinteractive nic domainname\
-    dns ip gateway cidr zfsoptions systempackages firewall imports hwimports\
-    allowusers permitrootlogin interactiveinstall allowbroken; do
+    dns ip gateway cidr zfsoptions btrfsoptions systempackages firewall imports \
+    hwimports allowusers permitrootlogin interactiveinstall allowbroken; do
 #    x11forwarding maxauthtries maxsessions clientaliveinterval allowusers \
 #    clientalivecountmax allowtcpforwarding allowagentforwarding loglevel \
 #    permitrootlogin hostkeyspath hostkeystype kexalgorithms ciphers macs \
@@ -3283,6 +3332,11 @@ while test $# -gt 0; do
       options['clientalivecountmax']="$2"
       shift 2
       ;;
+    --compression)                      # switch : Filesystem compression algorithm
+      check_value "$1" "$2"
+      options['clientalivecountmax']="$2"
+      shift 2
+      ;;
     --createinstall*)                   # switch : Create install script
       actions_list+=("createinstall")
       shift
@@ -3888,9 +3942,14 @@ while test $# -gt 0; do
       options['rootcrypt']="$2"
       shift 2
       ;;
-    --rootf*|--filesystem)              # switch : Root Filesystem
+    --rootfs|--fs|--filesystem)         # switch : Root Filesystem
       check_value "$1" "$2"
       options['rootfs']="$2"
+      shift 2
+      ;;
+    --rootfsopt*|--fsopt*)              # switch : Root Filesystem options
+      check_value "$1" "$2"
+      options['rootfsoptions']="$2"
       shift 2
       ;;
     --rootpassword)                     # switch : Root password
@@ -4005,6 +4064,11 @@ while test $# -gt 0; do
     --strict)                           # switch : Enable strict mode
       options['strict']="true"
       shift
+      ;;
+    --subvol*)                          # switch : Root filesystem subvolumes
+      check_value "$1" "$2"
+      options['subvolumes']="$2"
+      shift 2
       ;;
     --sudocommand*)                     # switch : Sudo commands
       check_value "$1" "$2"
@@ -4244,11 +4308,6 @@ while test $# -gt 0; do
     --nox11forwarding)                  # switch : Disable SSH X11 forwarding
       options['x11forwarding']="false"
       shift
-      ;;
-    --zfsinstall)                       # switch : ZFS install script
-      check_value "$1" "$2"
-      options['zfsinstall']="$2"
-      shift 2
       ;;
     --zsh)                              # switch : Enable zsh
       options['zsh']="true"

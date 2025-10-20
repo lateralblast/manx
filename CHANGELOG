@@ -346,3 +346,9 @@
 # Fixes based on shellcheck
 # 1.7.3: Mon 20 Oct 2025 14:15:27 AEDT
 # Updated dd command with oflag=sync
+# 1.7.4: Mon 20 Oct 2025 16:21:39 AEDT
+# Moved grub processing to after option declaration in install script
+# 1.7.5: Mon 20 Oct 2025 18:24:02 AEDT
+# Added compression switch
+# 1.7.6: Mon 20 Oct 2025 19:14:55 AEDT
+# Cleaned up rootfs options handling
