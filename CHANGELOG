@@ -340,3 +340,9 @@
 # Added unfree and broken switches
 # 1.7.0: Sun 19 Oct 2025 15:10:05 AEDT
 # Added function to dd image to a usb sick
+# 1.7.1: Mon 20 Oct 2025 13:50:15 AEDT
+# Fixed interactive question parsing
+# 1.7.2: Mon 20 Oct 2025 14:05:42 AEDT
+# Fixes based on shellcheck
+# 1.7.3: Mon 20 Oct 2025 14:15:27 AEDT
+# Updated dd command with oflag=sync

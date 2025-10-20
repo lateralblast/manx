@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.7.0
+# Version:      1.7.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -16,6 +16,7 @@
 # Insert some shellcheck disables
 # Depending on your requirements, you may want to add/remove disables
 # shellcheck disable=SC2004
+# shellcheck disable=SC2012
 # shellcheck disable=SC2089
 # shellcheck disable=SC2034
 # shellcheck disable=SC1090
@@ -62,7 +63,7 @@ set_defaults () {
     "-O acltype=posixacl"
     "-o ashift=12"
   )
-  options['zfsoptions']="${zfsoptions[@]}"
+  options['zfsoptions']="${zfsoptions[*]}"
   options['isosystempackages']=""                                                   # option : ISO system packages
   isosystempackages=(
     "aide"
@@ -89,7 +90,7 @@ set_defaults () {
     "vim"
     "wget"
   )
-  options['isosystempackages']="${isosystempackages[@]}"
+  options['isosystempackages']="${isosystempackages[*]}"
   options['isostorepackages']=""                                                    # option : ISO store packages
   isostorepackages=(
     "aide"
@@ -116,7 +117,7 @@ set_defaults () {
     "vim"
     "wget"
   )
-  options['isostorepackages']="${isostorepackages[@]}"
+  options['isostorepackages']="${isostorepackages[*]}"
   options['systempackages']=""                                                      # option : System packages
   systempackages=(
     "aide"
@@ -143,7 +144,7 @@ set_defaults () {
     "vim"
     "wget"
   )
-  options['systempackages']="${systempackages[@]}"
+  options['systempackages']="${systempackages[*]}"
   # Blacklist
   options['blacklist']=""                                                           # option : Blacklisted kernel modules
   blacklist=(
@@ -173,7 +174,7 @@ set_defaults () {
     "hfsplus"
     "udf"
   )
-  options['blacklist']="${blacklist[@]}"
+  options['blacklist']="${blacklist[*]}"
   # Available kernel modules
   options['availmods']=""                                                           # option : Available kernel modules
   availmods=(
@@ -189,7 +190,7 @@ set_defaults () {
     "virtio_pci"
     "xhci_pci"
   )
-  options['availmods']="${availmods[@]}"
+  options['availmods']="${availmods[*]}"
   # Serial parameters
   options['serialspeed']="115200"                                                   # option : Serial speed
   options['serialunit']="0"                                                         # option : Serial unit
@@ -211,13 +212,13 @@ set_defaults () {
     "<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>"
     "<nixpkgs/nixos/modules/system/boot/kernel.nix>"
   )
-  options['isoimports']="${isoimports[@]}"
+  options['isoimports']="${isoimports[*]}"
   options['imports']=""                                                             # option : System imports
   imports=(
     "<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>"
     "<nixpkgs/nixos/modules/system/boot/kernel.nix>"
   )
-  options['imports']="${imports[@]}"
+  options['imports']="${imports[*]}"
   # SSH Kex Algorithms
   options['kexalgorithms']=""                                                       # option : SSH Key Exchange Algorithms
   kexalgorithms=(
@@ -227,7 +228,7 @@ set_defaults () {
     "ecdh-sha2-nistp256"
     "diffie-hellman-group-exchange-sha256"
   )
-  options['kexalgorithms']="${kexalgorithms[@]}"
+  options['kexalgorithms']="${kexalgorithms[*]}"
   # SSH ciphers
   options['ciphers']=""                                                             # option : SSH Ciphers
   ciphers=(
@@ -238,7 +239,7 @@ set_defaults () {
     "aes192-ctr"
     "aes128-ctr"
   )
-  options['ciphers']="${ciphers[@]}"
+  options['ciphers']="${ciphers[*]}"
   # SSH Macs
   options['macs']=""                                                                # option : SSH Macs
   macs=(
@@ -249,21 +250,21 @@ set_defaults () {
     "hmac-sha2-256"
     "umac-128@openssh.com"
   )
-  options['macs']="${macs[@]}"
+  options['macs']="${macs[*]}"
   # fail2pan ignore IPs
   options['ignoreip']=""                                                            # option : fail2ban ignore ip
   ignoreip=(
     "172.16.0.0/12"
     "192.168.0.0/16"
   )
-  options['ignoreip']="${ignoreip[@]}"
+  options['ignoreip']="${ignoreip[*]}"
   # Journald extra config
   options['journaldextraconfig']=""                                                 # option : Journald extra config
   journaldextraconfig=(
     "SystemMaxUse=500M"
     "SystemMaxFileSize=50M"
   )
-  options['journaldextraconfig']="${journaldextraconfig[@]}"
+  options['journaldextraconfig']="${journaldextraconfig[*]}"
   options['journaldupload']="false"                                                 # option : Journald remote log upload
   # Options
   options['fwupd']="true"                                                           # option : Enable fwupd
@@ -729,7 +730,7 @@ SYSCTL
       "rd.udev.log_level=3"
       "udev.log_priority=3"
     )
-    options['kernelparams']="${kernelparams[@]}"
+    options['kernelparams']="${kernelparams[*]}"
     IFS='' read -r -d '' options['sysctl'] << SYSCTL
     "kernel.exec-shield" = 1;
     "net.ipv4.tcp_rfc1337" = 1;
@@ -2510,7 +2511,7 @@ get_output_file_suffix () {
       fi
     fi
   done
-  for param in ip; do
+  for param in ip cidr; do
     value="${options[${param}]}"
     if ! [ "${value}" = "" ]; then
       suffix="${suffix}-${value}"
@@ -2610,26 +2611,26 @@ control_kvm_vm () {
   check_kvm_vm_exists
   case ${vm['action']} in
     start)
-      action_test="Starting"
+      action_text="Starting"
       ;;
     stop)
-      action_test="Stopping"
+      action_text="Stopping"
       ;;
     console)
-      action_test="Consoling to"
+      action_text="Consoling to"
       ;;
   esac
   if [ "${vm['exists']}" = "true" ]; then
     if [ "${os['name']}" = "Darwin" ]; then
       vm_check=$( virsh list --all | grep "${vm['name']} " | grep -c "${vm['status']}" )
       if [ "${vm_check}" = "0" ]; then
-        information_message "${actions_text} KVM VM ${vm['name']}"
+        information_message "${action_text} KVM VM ${vm['name']}"
         execute_command "virsh -c \"qemu:///session\" ${vm['action']} ${vm['name']} 2> /dev/null"
       fi
     else
       vm_check=$( sudo virsh list --all | grep "${vm['name']}" | grep -c "${vm['status']}" )
       if [ "${vm_check}" = "0" ]; then
-        information_message "${actions_text} KVM VM ${vm['name']}"
+        information_message "${action_text} KVM VM ${vm['name']}"
         execute_command "sudo virsh ${vm['action']} ${vm['name']} 2> /dev/null"
       fi
     fi
@@ -2964,7 +2965,7 @@ create_usb_boot () {
     do_exit
   fi
   if [ "${options['usbstick']}" = "" ]; then
-    options['usbstick']=$( sudo lsblk -l -o TYPE,NAME,TRAN |grep usb |awk '{ print $2 }' )
+    options['usbstick']=$( sudo lsblk -l -o TYPE,NAME,TRAN | grep usb | grep ^disk | awk '{ print $2 }' )
     if [ "${options['usbstick']}" = "" ]; then
       warning_message "No USB device specified"
       do_exit
@@ -2981,7 +2982,8 @@ create_usb_boot () {
   fi
   if [ "${answer}" = "yes" ]; then
     information_message "Writing ISO to ${options['usbstick']}"
-    sudo dd if=${options['cdrom']} of=${options['usbstick']} bs=4M status=progress
+    sync
+    sudo dd if="${options['cdrom']}" of="${options['usbstick']}" bs=4M status=progress oflag=sync
     sync
     do_exit
   else
@@ -2996,13 +2998,13 @@ create_usb_boot () {
 
 interactive_questions () {
   if [ "${options['interactive']}" = "true" ]; then
-    for key in ${!options[@]}; do
+    for key in "${!options[@]}"; do
       if ! [[ "${key}" =~ interactive ]]; then
         value="${options[${key}]}"
-        line=$( grep '# option :' "${script['file']}" | grep "\'${key}\'" )
+        line=$( grep '# option :' "${script['file']}" | grep "'${key}'" )
         if ! [ "${line}" = "" ]; then
           IFS=":" read -r header question <<< "${line}"
-          question=$( echo "${question}" | sed "s/^ //g" )
+          question="${question/# /}"
           if [ "${options['verbose']}" = "true" ]; then
             prompt="${question}? [${key}] [${value}]: "
           else
@@ -3730,7 +3732,7 @@ while test $# -gt 0; do
       options_list+=("$2")
       shift 2
       ;;
-    --output*|--iso)                    # switch : Output file
+    --outputfile|--outputiso)                    # switch : Output file
       check_value "$1" "$2"
       options['output']="$2"
       options['preserve']="true"
