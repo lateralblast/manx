@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.7.6
+# Version:      1.7.8
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -408,6 +408,7 @@ set_defaults () {
   options['permitemptypasswords']="false"                                           # option : SSH permit empty passwords
   options['permittunnel']="false"                                                   # option : SSH permit tunnel
   options['usedns']="false"                                                         # option : SSH use DNS
+  options['usenixosgenerate']="false"                                               # option : Use NixOS generate
   options['kbdinteractive']="false"                                                 # option : SSH allow interactive kerboard authentication
   options['x11forwarding']="false"                                                  # option : SSH allow X11 forwarding
   options['maxauthtries']="3"                                                       # option : SSH max auth tries
@@ -2525,7 +2526,9 @@ while test \$# -gt 0; do
       do_install
       ;;
     *)
-      do_install
+      echo "Unknown argument: \$1"
+      echo "Usage: install.sh --install [--interactive]"
+      exit
       ;;
   esac
 done
@@ -4174,7 +4177,11 @@ while test $# -gt 0; do
       shift 2
       ;;
     --usedns)                           # switch : SSH use DNS
-      options['use']="true"
+      options['usedns']="true"
+      shift
+      ;;
+    --usenixosgen*)                     # switch : SSH use DNS
+      options['usenixosgenerate']="true"
       shift
       ;;
     --usepres*)                         # switch : Use preserved ISO

@@ -352,3 +352,7 @@
 # Added compression switch
 # 1.7.6: Mon 20 Oct 2025 19:14:55 AEDT
 # Cleaned up rootfs options handling
+# 1.7.7: Thu  6 Nov 2025 14:02:17 AEDT
+# Updated install script
+# 1.7.8: Thu  6 Nov 2025 14:20:11 AEDT
+# Added nixos-generate switch
