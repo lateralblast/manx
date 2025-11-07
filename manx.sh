@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.7.8
+# Version:      1.7.9
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -408,7 +408,7 @@ set_defaults () {
   options['permitemptypasswords']="false"                                           # option : SSH permit empty passwords
   options['permittunnel']="false"                                                   # option : SSH permit tunnel
   options['usedns']="false"                                                         # option : SSH use DNS
-  options['usenixosgenerate']="false"                                               # option : Use NixOS generate
+  options['nixosgenerate']="false"                                                  # option : Use NixOS generate
   options['kbdinteractive']="false"                                                 # option : SSH allow interactive kerboard authentication
   options['x11forwarding']="false"                                                  # option : SSH allow X11 forwarding
   options['maxauthtries']="3"                                                       # option : SSH max auth tries
@@ -474,6 +474,7 @@ set_defaults () {
   options['allowbroken']="false"                                                    # option : Allow broken packages
   options['usbstick']=""                                                            # option : USB stick to write ISO to
   options['cdrom']=""                                                               # option : ISO to use (e.g. for writing to usb stick)
+  options['format']="install-iso"                                                   # option : Output format
 
   # Process GRUB options - Set this to false if you have changed parameters above
 
@@ -936,6 +937,9 @@ SYSCTL
     else
       options['isoimports']="${options['isoimport']} ${import}"
     fi
+  fi
+  if [ "${options['latest']}" = "true" ]; then
+    options['stateversion']="${options['latestversion']}"
   fi
 }
 
@@ -2624,7 +2628,12 @@ create_iso () {
   create_nix_iso_config
   create_oneshot_script
   create_install_script
-  execute_command "cd ${options['workdir']} ; nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=${options['nixisoconfig']} --builders ''"
+  if [ "${options['nixosgenerate']}" = "true" ]; then
+    update_output_file_name
+    execute_command "cd ${options['workdir']} ; nixos-generate -c ${options['nixisoconfig']} -f ${options['format']} -o ${options['output']}"
+  else
+    execute_command "cd ${options['workdir']} ; nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=${options['nixisoconfig']} --builders ''"
+  fi
   iso_dir="${options['workdir']}/result/iso"
   if [ -d "${iso_dir}" ]; then
     iso_file=$( find "${iso_dir}" -name "*.iso" )
@@ -2973,9 +2982,14 @@ create_docker_iso () {
   if ! [ -d "${options['workdir']}/isos" ]; then
     execute_command "mkdir ${options['workdir']}/isos"
   fi
+  if [ "${options['nixosgenerate']}" = "true" ]; then
+    build_command="cd ${target_dir} ; nixos-generate -c ${config_file} -f ${options['format']}"
+  else
+    build_command="cd ${target_dir} ; nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=${config_file} --builders ''"
+  fi
   tee "${docker_script}" << CREATE_DOCKER_ISO
 nix-channel --update
-cd ${target_dir} ; nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=${config_file} --builders ''
+${build_command}
 if [ -d "${iso_dir}" ]; then
   iso_file=\$( find ${iso_dir} -name "*.iso" )
   temp_name=\$( basename -s ".iso" "\${iso_file}" )
@@ -3468,6 +3482,11 @@ while test $# -gt 0; do
       options['forcepagetableisolation']="false"
       shift
       ;;
+    --format)                           # switch : Output format
+      check_value "$1" "$2"
+      options['format']="$2"
+      shift 2
+      ;;
     --fwupd)                            # switch : Enable fwupd
       options['fwupd']="true"
       shift
@@ -3789,7 +3808,7 @@ while test $# -gt 0; do
       options_list+=("$2")
       shift 2
       ;;
-    --outputfile|--outputiso)                    # switch : Output file
+    --outputfile|--outputiso)           # switch : Output file
       check_value "$1" "$2"
       options['output']="$2"
       options['preserve']="true"
@@ -4180,8 +4199,8 @@ while test $# -gt 0; do
       options['usedns']="true"
       shift
       ;;
-    --usenixosgen*)                     # switch : SSH use DNS
-      options['usenixosgenerate']="true"
+    --nixosgen*)                        # switch : Use NixOS generate
+      options['nixosgenerate']="true"
       shift
       ;;
     --usepres*)                         # switch : Use preserved ISO

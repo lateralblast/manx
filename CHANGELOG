@@ -356,3 +356,5 @@
 # Updated install script
 # 1.7.8: Thu  6 Nov 2025 14:20:11 AEDT
 # Added nixos-generate switch
+# 1.7.9: Fri 07 Nov 2025 12:28:52 AEDT
+# Added format switch
