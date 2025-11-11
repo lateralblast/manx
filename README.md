@@ -284,490 +284,616 @@ Usage: manx.sh --action(s) [action(,action)] --option(s) [option(,option)]
 
 switch(es):
 -----------
---action*)
-    Action(s) to perform
---addiso|--addcdrom)
-    Add cdrom to VM
---audit)
-    Enable auditing
---removeiso|--removecdrom)
-    Remove cdrom from VM
---allowedtcpports)
-    Allowed TCP ports
---allowedudpports)
-    Allowed UDP ports
---allowagentforwarding)
-    SSH allow agent forwarding
---allowbroken)
-    Enable broken packages
---noallowbroken)
-    Disable broken packages
---allows*)
-    SSH allow TCP forwarding
---allowtcpforwarding)
-    SSH allow TCP forwarding
---allowusers)
-    SSH allow users
---availmod*)
-    Available system kernel modules
---bantime)
-    fail2ban ban time
---bantimeincrement)
-    Enable fail2ban ban time increment
---nobantimeincrement)
-    Enable fail2ban ban time increment
---blacklist)
-    Blacklist modules
---bootfromdisk)
-    Boot VM from disk
---bootfromiso|--bootfromcdrom)
-    Boot VM from CDROM
---bootmod*)
-    Available system boot modules
---bootsize)
-    Boot partition size
---bootvm|--startvm)
-    Boot VM
---stopvm)
-    Stop VM
---bridge)
-    Enable bridge
---bridgenic)
-    Bridge NIC
---bootf*)
-    Boot Filesystem
---bootvol*)
-    Boot volume name
---checkdocker*)
-    Check docker config
---cidr)
-    CIDR
---ciphers)
-    SSH ciphers
---clientaliveinterval)
-    SSH client alive interval
---clientalivecountmax)
-    SSH client alive count max
---createinstall*)
+addiso)                 
+    Add ISO to VM
+bootfromcdrom)          
+    Set boot device to CDROM and boot VM
+bootfromdisk)           
+    Set boot device to disk and boot VM
+createinstall*)         
     Create install script
---createiso)
+checkdocker*)           
+    Check docker config
+createdockeriso)        
+    Create docker ISO
+createiso)              
     Create ISO
---createdockeriso)
-    Create ISO
---createnix*)
+createnix*)             
     Create NixOS ISO config
---createoneshot*)
-    Create oneshot script
---createvm)
-    Create oneshot script
---console*)
-    Create oneshot script
---crypt|--usercrypt)
-    User Password Crypt
---dbusimplementation)
-    Dbus implementation
---debug)
-    Enable debug mode
---deletevm)
+createoneshot*)         
+    Create install script
+createusb*)               
+    Create KVM VM
+createvm)               
+    Create KVM VM
+consolevm)              
+    Connect to KVM VM via console
+deletevm)               
     Delete VM
---dhcp)
-    Enable DHCP
---disk|rootdisk)
-    Root disk
---dns|--nameserver)
-    DNS/Nameserver address
---dockerarch)
-    Docker architecture
---domainname)
-    Domainname
---dryrun)
-    Enable debug mode
---execwheelonly)
-    Sudo exec wheel only
---experimental*)
-    SSH key
---extragroup*)
-    Extra groups
---fail2ban)
-    Enable fail2ban
---nofail2ban)
-    Disable fail2ban
---firewall)
-    Enable firewall
---nofirewall)
-    Disable firewall
---firmware)
-    Boot firmware type
---force)
-    Enable force mode
---forcepagetableisolation)
-    Force page table isolation
---noforcepagetableisolation)
-    Don't force page table isolation
---fwupd)
-    Enable fwupd
---nofwupd)
-    Disable fwupd
---gateway)
-    Gateway address
---gecos|--usergecos)
-    GECOS field
---gfxmode)
-    Bios text mode
---gfxpayload)
-    Bios text mode
---grubextra*)
-    ISO grub extra config
---help|-h)
-    Print help information
---hostkeyspath)
-    SSH host keys path
---hostkeystype)
-    SSH host keys type
---hostname)
-    Hostname
---hwimports)
-    Imports for system hardware configuration
---import)
-    Import a Nix configuration
---imports)
-    Imports for system configuration
---initmod*)
-    Available system init modules
---installscript)
-    Install script
---installdir)
-    Install directory where destination disk is mounted
---installuser*)
-    Install username
---interactive)
-    Enable interactive mode
---interactiveinstall)
-    Enable interactive install mode
---nointeractive)
-    Disable interactive mode
---nointeractiveinstall)
-    Disable interactive install mode
---ip)
-    IP address
---ipaddressdeny)
-    systemd IP address deny
---isogrubextra*)
-    ISO grub extra config
---isoimport)
-    Import additional Nix configuration file into ISO configuration
---isoimports)
-    NixOS imports for ISO build
---isokernelparam*)
-    Extra kernel parameters to add to ISO grub commands
---isomount)
-    Install ISO mount directory
---isopermitrootlogin)
-    Enable SSH root login for ISO
---journaldextra*)
-    System journald extra config
---journalupload)
-    Enable remote log upload
---nojournalupload)
-    Disable remote log upload
---kbdinteractive*)
-    Enable SSH allow interactive kerboard authentication
---nokbdinteractive*)
-    Disable SSH allow interactive kerboard authentication
---keymap)
-    Keymap
---kernelparam*)
-    Extra kernel parameters to add to systembuild
---kernel)
-    Kernel
---kexalgorithms)
-    SSH key exchange algorithms
---locale)
-    Locale
---logfile)
-    Locale
---loglevel)
-    SSH log level
---logrotate)
-    Enable logrotate
---nologrotate)
-    Enable logrotate
---lockkernelmodules)
-    Lock kernel modules
---nolockkernelmodules)
-    Don't lock kernel modules
---lockpersonality)
-    Enable systemd lock personality
---nolockpersonality)
-    Disable systemd lock personality
---lvm)
-    Enable LVM
---macs)
-    SSH macs
---mask*)
-    Enable LVM
---maxauthtries)
-    SSH max auth tries
---maxretry)
-    fail2ban max retry
---maxtime)
-    fail2ban bantime maximum
---memorydenywriteexecute)
-    Enable systemd memory deny write execute
---nomemorydenywriteexecute)
-    Disable systemd memory deny write execute
---mbrpartname)
-    MBR partition name
---multipliers)
-    fail2ban ban time multipliers
---nic)
-    NIC
---nixconfig)
-    NixOS configuration file
---nixdir)
-    Set NixOS directory
---nixhwconfig)
-    NixOS hardware configuration file
---nixinstall)
-    Run NixOS install script automatically on ISO
---nixisoconfig)
-    NixOS ISO configuration file
---nonewprivileges)
-    Enable systemd no new privileges
---newprivileges)
-    Disable systemd no new privileges
---oneshot)
-    Enable oneshot service
---nooneshot)
-    Disable oneshot service
---option*)
-    Option(s) to set
---output*|--iso)
-    Output file
---overalljails)
-    fail2ban bantime overalljails
---password|--userpassword)
-    User password
---passwordauthentication)
-    Enable SSH password authentication
---nopasswordauthentication)
-    Disable SSH password authentication
---permitemptypasswords)
-    Enable SSH empty passwords
---permitrootlogin)
-    Enable SSH root login
---poweroff)
-    Enable poweroff after install
---prefix)
-    Install prefix
---preserve)
-    Preserve output file
---privatetmp)
-    Enable systemd private tmp
---noprivatetmp)
-    Disable systemd private tmp
---privatenetwork)
-    Enable systemd private network
---noprivatenetwork)
-    Disable systemd private network
---processgrub*)
-    Enable processing grub command line
---noprocessgrub*)
-    Disable processing grub command line
---protectclock)
-    Enable systemd protect clock
---noprotectclock)
-    Disable systemd protect clock
---protectcontrolgroups)
-    Enable systemd protect control groups
---noprotectcontrolgroups)
-    Disable systemd protect control groups
---protecthome)
-    Enable systemd protect home
---noprotecthome)
-    Disable systemd protect home
---protecthostname)
-    Enable systemd protect hostname
---noprotecthostname)
-    Disable systemd protect hostname
---protectkernelimage)
-    Protect kernel image
---noprotectkernelimage)
-    Don't protect kernel image
---protectkernelmodules)
-    Enable systemd protect kernel modules
---noprotectkernelmodules)
-    Disable systemd protect kernel modules
---protectkerneltunables)
-    Enable systemd protect kernel tunables
---noprotectkerneltunables)
-    Disable systemd protect kernel tunables
---protectproc)
-    systemd protect proc
---protectsubset)
-    systemd protect subset
---protectsystem)
-    systemd protect system
---reboot)
-    Enable reboot after install
---restrictrealtime)
-    Enable systemd restrict realtime
---norestrictrealtime)
-    Disable systemd restrict realtime
---rootcrypt)
-    Root password crypt
---rootf*|--filesystem)
-    Root Filesystem
---rootpassword)
-    Root password
---rootpool)
-    Root pool name
---rootsize)
-    Root partition size
---rootvol*)
-    Root volume name
---runsize)
-    Run size
---secure)
-    Enable secure parameters
---serial)
-    Enable serial
---serialparity)
-    Serial parity
---serialport)
-    Serial port
---serialspeed)
-    Serial speed
---serialstop)
-    Serial stop
---serialtty)
-    Serial tty
---serialunit)
-    Serial unit
---serialword)
-    Serial stop
---setboot*)
+help)                   
+    Print actions help
+printenv*)              
+    Print environment
+printdefaults)          
+    Print defaults
+setboot*)               
     Set boot device
---shell|usershell)
-    User Shell
---shellcheck)
-    Run shellcheck
---source)
-    Source directory for ISO additions
---sshkey)
+start*)                 
+    Start KVM VM
+stop*)                  
+    Stop KVM VM
+shellcheck)             
+    Shellcheck script
+version)                
+    Print version
+
+❯ ./manx.sh --help
+
+Usage: manx.sh --action(s) [action(,action)] --option(s) [option(,option)]
+
+switch(es):
+-----------
+--action*)                          
+    Action(s) to perform
+--addiso|--addcdrom)                
+    Add cdrom to VM
+--removeiso|--removecdrom)          
+    Remove cdrom from VM
+--audit)                            
+    Enable auditing
+--allowedtcpports)                  
+    Allowed TCP ports
+--allowedudpports)                  
+    Allowed UDP ports
+--allowagentforwarding)             
+    SSH allow agent forwarding
+--allowbroken)                      
+    Enable broken packages
+--noallowbroken)                    
+    Disable broken packages
+--allows*)                          
+    SSH allow TCP forwarding
+--allowtcpforwarding)               
+    SSH allow TCP forwarding
+--allowusers)                       
+    SSH allow users
+--availmod*)                        
+    Available system kernel modules
+--bantime)                          
+    fail2ban ban time
+--bantimeincrement)                 
+    Enable fail2ban ban time increment
+--nobantimeincrement)               
+    Enable fail2ban ban time increment
+--blacklist)                        
+    Blacklist modules
+--bootfromdisk)                     
+    Boot VM from disk
+--bootfromiso|--bootfromcdrom)      
+    Boot VM from CDROM
+--bootmod*)                         
+    Available system boot modules
+--bootsize)                         
+    Boot partition size
+--bootvm|--startvm)                 
+    Boot VM
+--stopvm)                           
+    Stop VM
+--bridge)                           
+    Enable bridge
+--bridgenic)                        
+    Bridge NIC
+--bootf*)                           
+    Boot Filesystem
+--bootvol*)                         
+    Boot volume name
+--checkdocker*)                     
+    Check docker config
+--cidr)                             
+    CIDR
+--ciphers)                          
+    SSH ciphers
+--clientaliveinterval)              
+    SSH client alive interval
+--clientalivecountmax)              
+    SSH client alive count max
+--compression)                      
+    Filesystem compression algorithm
+--compressimage)                    
+    Compress image
+--nocompressimage)                    
+    Don't compress image
+--createinstall*)                   
+    Create install script
+--createiso)                        
+    Create ISO
+--createdockeriso)                  
+    Create ISO
+--createnix*)                       
+    Create NixOS ISO config
+--createoneshot*)                   
+    Create oneshot script
+--createusb)                        
+    Create oneshot script
+--createvm)                         
+    Create oneshot script
+--console*)                         
+    Create oneshot script
+--crypt|--usercrypt)                
+    User Password Crypt
+--dbusimplementation)               
+    Dbus implementation
+--debug)                            
+    Enable debug mode
+--deletevm)                         
+    Delete VM
+--dhcp)                             
+    Enable DHCP
+--disk|rootdisk)                    
+    Root disk
+--dns|--nameserver)                 
+    DNS/Nameserver address
+--dockerarch)                       
+    Docker architecture
+--domainname)                       
+    Domainname
+--dryrun)                           
+    Enable debug mode
+--execwheelonly)                    
+    Sudo exec wheel only
+--experimental*)                    
     SSH key
---sshkeyfile)
+--extragroup*)                      
+    Extra groups
+--fail2ban)                         
+    Enable fail2ban
+--nofail2ban)                       
+    Disable fail2ban
+--firewall)                         
+    Enable firewall
+--nofirewall)                       
+    Disable firewall
+--firmware)                         
+    Boot firmware type
+--force|--yes)                      
+    Enable force mode
+--forcepagetableisolation)          
+    Force page table isolation
+--noforcepagetableisolation)        
+    Don't force page table isolation
+--format)                           
+    Output format
+--fwupd)                            
+    Enable fwupd
+--nofwupd)                          
+    Disable fwupd
+--gateway)                          
+    Gateway address
+--gc|--garbagecollection)           
+    Garbage collection
+--nogc|--nogarbagecollection)       
+    No garbage collection
+--gecos|--usergecos)                
+    GECOS field
+--gfxmode)                          
+    Bios text mode
+--gfxpayload)                       
+    Bios text mode
+--grubextra*)                       
+    ISO grub extra config
+--help|-h)                          
+    Print help information
+--hostkeyspath)                     
+    SSH host keys path
+--hostkeystype)                     
+    SSH host keys type
+--hostname)                         
+    Hostname
+--hwimports)                        
+    Imports for system hardware configuration
+--import)                           
+    Import a Nix configuration
+--imports)                          
+    Imports for system configuration
+--initmod*)                         
+    Available system init modules
+--installscript)                    
+    Install script
+--installdir)                       
+    Install directory where destination disk is mounted
+--installuser*)                     
+    Install username
+--interactive)                      
+    Enable interactive mode
+--interactiveinstall)               
+    Enable interactive install mode
+--nointeractive)                    
+    Disable interactive mode
+--nointeractiveinstall)             
+    Disable interactive install mode
+--ip)                               
+    IP address
+--ipaddressdeny)                    
+    systemd IP address deny
+--isogrubextra*)                    
+    ISO grub extra config
+--isoimport)                        
+    Import additional Nix configuration file into ISO configuration
+--isoimports)                       
+    NixOS imports for ISO build
+--isokernelparam*)                  
+    Extra kernel parameters to add to ISO grub commands
+--isomount)                         
+    Install ISO mount directory
+--isopermitrootlogin)               
+    Enable SSH root login for ISO
+--journaldextra*)                   
+    System journald extra config
+--journalupload)                    
+    Enable remote log upload
+--nojournalupload)                  
+    Disable remote log upload
+--kbdinteractive*)                  
+    Enable SSH allow interactive kerboard authentication
+--nokbdinteractive*)                
+    Disable SSH allow interactive kerboard authentication
+--keymap)                           
+    Keymap
+--kernelparam*)                     
+    Extra kernel parameters to add to systembuild
+--kernel)                           
+    Kernel
+--kexalgorithms)                    
+    SSH key exchange algorithms
+--locale)                           
+    Locale
+--logfile)                          
+    Locale
+--loglevel)                         
+    SSH log level
+--logrotate)                        
+    Enable logrotate
+--nologrotate)                      
+    Enable logrotate
+--lockkernelmodules)                
+    Lock kernel modules
+--nolockkernelmodules)              
+    Don't lock kernel modules
+--lockpersonality)                  
+    Enable systemd lock personality
+--nolockpersonality)                
+    Disable systemd lock personality
+--lvm)                              
+    Enable LVM
+--macs)                             
+    SSH macs
+--mask*)                            
+    Enable LVM
+--maxauthtries)                     
+    SSH max auth tries
+--maxretry)                         
+    fail2ban max retry
+--maxtime)                          
+    fail2ban bantime maximum
+--memorydenywriteexecute)           
+    Enable systemd memory deny write execute
+--nomemorydenywriteexecute)         
+    Disable systemd memory deny write execute
+--mbrpartname)                      
+    MBR partition name
+--multipliers)                      
+    fail2ban ban time multipliers
+--nic)                              
+    NIC
+--nixconfig)                        
+    NixOS configuration file
+--nixdir)                           
+    Set NixOS directory
+--nixhwconfig)                      
+    NixOS hardware configuration file
+--nixinstall)                       
+    Run NixOS install script automatically on ISO
+--nixisoconfig)                     
+    NixOS ISO configuration file
+--nonewprivileges)                  
+    Enable systemd no new privileges
+--newprivileges)                    
+    Disable systemd no new privileges
+--oneshot)                          
+    Enable oneshot service
+--nooneshot)                        
+    Disable oneshot service
+--option*)                          
+    Option(s) to set
+--outputfile|--outputiso)           
+    Output file
+--overalljails)                     
+    fail2ban bantime overalljails
+--password|--userpassword)          
+    User password
+--passwordauthentication)           
+    Enable SSH password authentication
+--nopasswordauthentication)         
+    Disable SSH password authentication
+--permitemptypasswords)             
+    Enable SSH empty passwords
+--permitrootlogin)                  
+    Enable SSH root login
+--poweroff)                         
+    Enable poweroff after install
+--prefix)                           
+    Install prefix
+--preserve)                         
+    Preserve output file
+--privatetmp)                       
+    Enable systemd private tmp
+--noprivatetmp)                     
+    Disable systemd private tmp
+--privatenetwork)                   
+    Enable systemd private network
+--noprivatenetwork)                 
+    Disable systemd private network
+--processgrub*)                     
+    Enable processing grub command line
+--noprocessgrub*)                   
+    Disable processing grub command line
+--protectclock)                     
+    Enable systemd protect clock
+--noprotectclock)                   
+    Disable systemd protect clock
+--protectcontrolgroups)             
+    Enable systemd protect control groups
+--noprotectcontrolgroups)           
+    Disable systemd protect control groups
+--protecthome)                      
+    Enable systemd protect home
+--noprotecthome)                    
+    Disable systemd protect home
+--protecthostname)                  
+    Enable systemd protect hostname
+--noprotecthostname)                
+    Disable systemd protect hostname
+--protectkernelimage)               
+    Protect kernel image
+--noprotectkernelimage)             
+    Don't protect kernel image
+--protectkernelmodules)             
+    Enable systemd protect kernel modules
+--noprotectkernelmodules)           
+    Disable systemd protect kernel modules
+--protectkerneltunables)            
+    Enable systemd protect kernel tunables
+--noprotectkerneltunables)          
+    Disable systemd protect kernel tunables
+--protectproc)                      
+    systemd protect proc
+--protectsubset)                    
+    systemd protect subset
+--protectsystem)                    
+    systemd protect system
+--reboot)                           
+    Enable reboot after install
+--restrictrealtime)                 
+    Enable systemd restrict realtime
+--norestrictrealtime)               
+    Disable systemd restrict realtime
+--rootcrypt)                        
+    Root password crypt
+--rootfs|--fs|--filesystem)         
+    Root Filesystem
+--rootfsopt*|--fsopt*)              
+    Root Filesystem options
+--rootpassword)                     
+    Root password
+--rootpool)                         
+    Root pool name
+--rootsize)                         
+    Root partition size
+--rootvol*)                         
+    Root volume name
+--runsize)                          
+    Run size
+--sdimage)                          
+    Build SD image
+--secure)                           
+    Enable secure parameters
+--serial)                           
+    Enable serial
+--serialparity)                     
+    Serial parity
+--serialport)                       
+    Serial port
+--serialspeed)                      
+    Serial speed
+--serialstop)                       
+    Serial stop
+--serialtty)                        
+    Serial tty
+--serialunit)                       
+    Serial unit
+--serialword)                       
+    Serial stop
+--setboot*)                         
+    Set boot device
+--shell|usershell)                  
+    User Shell
+--shellcheck)                       
+    Run shellcheck
+--source)                           
+    Source directory for ISO additions
+--sshkey)                           
+    SSH key
+--sshkeyfile)                       
     SSH key file
---sshserver)
+--sshserver)                        
     Enable strict mode
---standalone)
+--standalone)                       
     Create a standalone ISO
---stateversion)
+--stateversion)                     
     NixOS state version
---strict)
+--strict)                           
     Enable strict mode
---sudocommand*)
+--subvol*)                          
+    Root filesystem subvolumes
+--sudocommand*)                     
     Sudo commands
---sudooption*)
+--sudooption*)                      
     Sudo options
---sudouser*)
+--sudouser*)                        
     Sudo users
---suffix|--outputsuffix)
+--suffix|--outputsuffix)            
     Sudo users
---systemdumask)
+--systemdumask)                     
     Systemd umask
---systempackages)
+--systempackages)                   
     NixOS state version
---systemcallarchitectures)
+--systemcallarchitectures)          
     Systemd call architectures
---swap)
+--swap)                             
     Enable swap
---swapsize)
+--swapsize)                         
     Swap partition size
---swapvol*)
+--swapvol*)                         
     Swap volume name
---target)
+--target)                           
     Target directory for ISO additions
---targetarch)
+--targetarch)                       
     Target architecture
---temp*)
+--temp*)                            
     Target directory
---unfree)
+--unfree)                           
     Enable non free packages
---nounfree)
+--nounfree)                         
     Disable non free packages
---testmode)
+--testmode)                         
     Enable swap
---unprivilegedusernsclone)
+--unprivilegedusernsclone)          
     Disable unprivileged user namespaces
---unstable)
+--unstable)                         
     Enable unstable features
---stable)
+--stable)                           
     Disable unstable features
---usage)
+--usage)                            
     Action to perform
---usedns)
+--usbs*)                            
+    USB stick to write to
+--usedns)                           
     SSH use DNS
---usepres*)
+--nixosgen*)                        
+    Use NixOS generate
+--usepres*)                         
     Use preserved ISO
---username)
+--username)                         
     User username
---verbose)
+--verbose)                          
     Enable verbose mode
---version|-V)
+--version|-V)                       
     Print version information
---videodriver)
+--videodriver)                      
     Video Driver
---vmautoconsole)
+--vmautoconsole)                    
     VM Autoconsole
---vmboot)
+--vmboot)                           
     VM Boot type
---vmcpu)
+--vmcpu)                            
     VM CPU
---vmdir)
+--vmdir)                            
     VM Directory
---vmfeatures)
+--vmfeatures)                       
     VM Features
---vmhostdevice)
+--vmhostdevice)                     
     VM Host device
---vmgraphics)
+--vmgraphics)                       
     VM Graphics
---vmiso|--vmcdrom)
+--vmiso|--vmcdrom|--iso|--cdrom)    
     VM ISO
---vmmachine)
+--vmmachine)                        
     VM Machine
---vmmemory)
+--vmmemory)                         
     VM Memory
---vmname)
+--vmname)                           
     VM Name
---vmnetwork)
+--vmnetwork)                        
     VM Network
---vmnoautoconsole)
+--vmnoautoconsole)                  
     VM No autoconsole
---vmnoreboot)
+--vmnoreboot)                       
     VM Do not reboot VM after creation
---vmreboot)
+--vmreboot)                         
     VM Reboot VM after creation
---vmsize)
+--vmsize)                           
     VM Size
---vmosvariant)
+--vmosvariant)                      
     VM OS variant
---vmvirttype)
+--vmvirttype)                       
     VM Virtualisation type
---vmvcpus)
+--vmvcpus)                          
     VM vCPUs
---vmwait)
+--vmwait)                           
     VM number of seconds to wait before starting
---workdir)
+--workdir)                          
     Set script work directory
---x11forwarding)
+--x11forwarding)                    
     Enable SSH X11 forwarding
---nox11forwarding)
+--nox11forwarding)                  
     Disable SSH X11 forwarding
---zfsinstall)
-    ZFS install script
---zsh)
+--zfs)                              
+    Enable zfs
+--zsh)                              
     Enable zsh
+```
+
+Actions:
+
+```
+./manx.sh --usage options
+
+Usage: manx.sh --action(s) [action(,action)] --option(s) [option(,option)]
+
+action(s):
+----------
+addiso)                 
+    Add ISO to VM
+bootfromcdrom)          
+    Set boot device to CDROM and boot VM
+bootfromdisk)           
+    Set boot device to disk and boot VM
+createinstall*)         
+    Create install script
+checkdocker*)           
+    Check docker config
+createdockeriso)        
+    Create docker ISO
+createiso)              
+    Create ISO
+createnix*)             
+    Create NixOS ISO config
+createoneshot*)         
+    Create install script
+createusb*)               
+    Create KVM VM
+createvm)               
+    Create KVM VM
+consolevm)              
+    Connect to KVM VM via console
+deletevm)               
+    Delete VM
+help)                   
+    Print actions help
+printenv*)              
+    Print environment
+printdefaults)          
+    Print defaults
+setboot*)               
+    Set boot device
+start*)                 
+    Start KVM VM
+stop*)                  
+    Stop KVM VM
+shellcheck)             
+    Shellcheck script
+version)                
+    Print version
 ```
 
 Options:
@@ -785,13 +911,19 @@ auditrules (default = )
    Auditd parameters
 kernelparams (default = )
    Additional kernel parameters to add to system grub commands
+subvolumes (default = root var home nix usr)
+   Root filesystem subvolumes
+compression (default = )
+   Root FS Compression type
 zfsoptions (default = -O mountpoint=none -O atime=off -O compression=lz4 -O xattr=sa -O acltype=posixacl -o ashift=12)
    ZFS options
-isosystempackages (default = aide ansible btop curl dmidecode efibootmgr ethtool file fwupd git kernel-hardening-checker lsb-release lsof lshw lynis nmap pciutils ripgrep rclone tmux usbutils vim wget)
+btrfsoptions (default = rw relatime compress=zstd:3 discard=async space_cache=v2)
+   BTRFS options
+isosystempackages (default = aide ansible btop curl dmidecode efibootmgr ethtool file fwupd git kernel-hardening-checker lsb-release lsof lshw lynis nixos-generators nmap pciutils ripgrep rclone tmux usbutils vim wget)
    ISO system packages
-isostorepackages (default = aide ansible btop curl dmidecode efibootmgr ethtool file fwupd git kernel-hardening-checker lsb-release lsof lshw lynis nmap pciutils ripgrep rclone tmux usbutils vim wget)
+isostorepackages (default = aide ansible btop curl dmidecode efibootmgr ethtool file fwupd git kernel-hardening-checker lsb-release lsof lshw lynis nixos-generators nmap pciutils ripgrep rclone tmux usbutils vim wget)
    ISO store packages
-systempackages (default = aide ansible btop curl dmidecode efibootmgr ethtool file fwupd git kernel-hardening-checker lsb-release lsof lshw lynis nmap pciutils ripgrep rclone tmux usbutils vim wget)
+systempackages (default = aide ansible btop curl dmidecode efibootmgr ethtool file fwupd git kernel-hardening-checker lsb-release lsof lshw lynis nixos-generators nmap pciutils ripgrep rclone tmux usbutils vim wget)
    System packages
 blacklist (default = dccp sctp rds tipc n-hdlc ax25 netrom x25 rose decnet econet af_802154 ipx appletalk psnap p8023 p8022 can atm cramfs freevxfs jffs2 hfs hfsplus udf)
    Blacklisted kernel modules
@@ -869,7 +1001,7 @@ zsh (default = true)
    Enable zsh
 preserve (default = false)
    Preserve ISO
-workdir (default = /home/spindler/manx)
+workdir (default = /home/user/manx)
    Script work directory
 sshkey (default = )
    SSH key
@@ -911,19 +1043,15 @@ uefi (default = false)
    UEFI Boot firmware
 isomount (default = /iso)
    ISO mount directory
-oneshotscript (default = /home/spindler/manx/ai/oneshot.sh)
+oneshotscript (default = /home/user/manx/ai/oneshot.sh)
    Oneshot script
-installscript (default = /home/spindler/manx/ai/install.sh)
+installscript (default = /home/user/manx/ai/install.sh)
    Install script
-nixisoconfig (default = /home/spindler/manx/iso.nix)
+nixisoconfig (default = /home/user/manx/iso.nix)
    NixOS ISO config
-zfsinstall (default = /home/spindler/manx//zfs.sh)
-   ZFS install script
-extinstall (default = /home/spindler/manx//ext4.sh)
-   EXT4 install script
 runsize (default = 50%)
    Run size
-source (default = /home/spindler/manx/ai)
+source (default = /home/user/manx/ai)
    Source directory for ISO additions
 target (default = /ai)
    Target directory for ISO additions
@@ -1081,6 +1209,8 @@ permittunnel (default = false)
    SSH permit tunnel
 usedns (default = false)
    SSH use DNS
+nixosgenerate (default = false)
+   Use NixOS generate
 kbdinteractive (default = false)
    SSH allow interactive kerboard authentication
 x11forwarding (default = false)
@@ -1197,8 +1327,6 @@ ipaddressdeny (default = any)
    systemd IP address deny
 usepreservediso (default = false)
    Use preserved ISO
-processgrub (default = true)
-   Process grub command line
 logrotate (default = true)
    Log rotate
 unstable (default = false)
@@ -1209,4 +1337,22 @@ interactiveinstall (default = false)
    Interactive install mode
 allowbroken (default = false)
    Allow broken packages
+usbstick (default = )
+   USB stick to write ISO to
+cdrom (default = )
+   ISO to use (e.g. for writing to usb stick)
+format (default = install-iso)
+   Output format
+imageformat (default = iso)
+   Image format
+imagesuffix (default = iso)
+   Image suffix
+compressimage (default = true)
+   Compress image
+gc (default = true)
+   Garbage collection
+processgrub (default = true)
+   Process grub command line
+isoimports (default = <nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal-combined.nix> <nixpkgs/nixos/modules/installer/cd-dvd/channel.nix> <nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix> <nixpkgs/nixos/modules/system/boot/kernel.nix>)
+   ISO imports
 ```

@@ -4403,6 +4403,10 @@ while test $# -gt 0; do
       options['x11forwarding']="false"
       shift
       ;;
+    --zfs)                              # switch : Enable zfs
+      options['zfs']="true"
+      shift
+      ;;
     --zsh)                              # switch : Enable zsh
       options['zsh']="true"
       shift
