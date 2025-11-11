@@ -358,3 +358,7 @@
 # Added nixos-generate switch
 # 1.7.9: Fri 07 Nov 2025 12:28:52 AEDT
 # Added format switch
+# 1.8.0: Sun  9 Nov 2025 10:10:12 AEDT
+# Added initial support for SD image creation
+# 1.8.1: Sun  9 Nov 2025 13:22:20 AEDT
+# Added support for docker SD image creation

@@ -1,7 +1,7 @@
 #!env bash
 
 # Name:         manx (Make Automated NixOS)
-# Version:      1.7.9
+# Version:      1.8.1
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -101,6 +101,7 @@ set_defaults () {
     "lsof"
     "lshw"
     "lynis"
+    "nixos-generators"
     "nmap"
     "pciutils"
     "ripgrep"
@@ -128,6 +129,7 @@ set_defaults () {
     "lsof"
     "lshw"
     "lynis"
+    "nixos-generators"
     "nmap"
     "pciutils"
     "ripgrep"
@@ -155,6 +157,7 @@ set_defaults () {
     "lsof"
     "lshw"
     "lynis"
+    "nixos-generators"
     "nmap"
     "pciutils"
     "ripgrep"
@@ -475,6 +478,10 @@ set_defaults () {
   options['usbstick']=""                                                            # option : USB stick to write ISO to
   options['cdrom']=""                                                               # option : ISO to use (e.g. for writing to usb stick)
   options['format']="install-iso"                                                   # option : Output format
+  options['imageformat']="iso"                                                      # option : Image format
+  options['imagesuffix']="iso"                                                      # option : Image suffix
+  options['compressimage']="true"                                                   # option : Compress image
+  options['gc']="true"                                                              # option : Garbage collection
 
   # Process GRUB options - Set this to false if you have changed parameters above
 
@@ -625,6 +632,24 @@ fi
 # Reset defaults based on command line options
 
 reset_defaults () {
+  # Imports
+  if [ "${options['format']}" = "sd" ]; then
+    options['isoimports']=""                                                          # option : ISO imports
+    isoimports=(
+      "<nixpkgs/nixos/modules/installer/sd-card/sd-image-aarch64-installer.nix>"
+      "<nixpkgs/nixos/modules/installer/cd-dvd/channel.nix>"
+      "<nixpkgs/nixos/modules/system/boot/loader/grub/grub.nix>"
+      "<nixpkgs/nixos/modules/system/boot/kernel.nix>"
+    )
+    options['isoimports']="${isoimports[*]}"
+    options['isoimports']="${options['isoimports']} <nixpkgs/nixos/modules/installer/sd-card/sd-image-aarch64-installer.nix>"
+    options['imageformat']="img"
+    if [ "${options['compressimage']}" = "true" ]; then
+      options['imagesuffix']="img.dst"
+    else
+      options['imagesuffix']="img"
+    fi
+  fi
   # Process compession options
   if [ "${options['compression']}" = "" ]; then
     if [ "${options['rootfs']}" = "btrfs" ]; then
@@ -1308,6 +1333,19 @@ create_nix_iso_config () {
     ${options['isoimports']// /${spacer}    }
   ];
 
+NIXISOCONFIG
+  if [ "${options['imageformat']}" = "img" ]; then
+    tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
+  sdImage.compressImage = ${options['compressimage']};
+  # Add contents to ISO
+  sdImage = {
+    populateRootCommands = ''
+      mkdir -p .${options['target']}
+      cp -r ${source_dir} .${options['target']}
+    '';
+NIXISOCONFIG
+  else
+    tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
   # Add contents to ISO
   isoImage = {
     contents = [
@@ -1316,19 +1354,20 @@ create_nix_iso_config () {
       }
     ];
 NIXISOCONFIG
-  if [ "${options['standalone']}" = "true" ]; then
-    tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
+    if [ "${options['standalone']}" = "true" ]; then
+      tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
     storeContents = [
       config.system.build.toplevel
     ];
     includeSystemBuildDependencies = true;
 NIXISOCONFIG
-  else
-    tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
+    else
+     tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
     storeContents = with pkgs; [
       ${options['isostorepackages']// /${spacer}      }
     ];
 NIXISOCONFIG
+    fi
   fi
   tee -a "${options['nixisoconfig']}" << NIXISOCONFIG
   };
@@ -2585,7 +2624,7 @@ get_output_file_suffix () {
       suffix="${suffix}-${param}"
     fi
   done
-  suffix="${suffix}-${options['rootfs']}.iso"
+  suffix="${suffix}-${options['rootfs']}.${options['imagesuffix']}"
   options['suffix']="${suffix}"
 }
 
@@ -2630,7 +2669,7 @@ create_iso () {
   create_install_script
   if [ "${options['nixosgenerate']}" = "true" ]; then
     update_output_file_name
-    execute_command "cd ${options['workdir']} ; nixos-generate -c ${options['nixisoconfig']} -f ${options['format']} -o ${options['output']}"
+    execute_command "cd ${options['workdir']} ; nixos-generators -c ${options['nixisoconfig']} -f ${options['format']} -o ${options['output']}"
   else
     execute_command "cd ${options['workdir']} ; nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=${options['nixisoconfig']} --builders ''"
   fi
@@ -2970,36 +3009,45 @@ create_docker_iso () {
   create_install_script
   check_docker
   get_output_file_suffix
+  temp_filw=$( basename "${options['output']}" )
   platform="linux/${options['dockerarch']}"
   docker_image="${script['name']}-latest-${options['dockerarch']}"
   target_dir="/root/${script['name']}"
-  target_script="${target_dir}/create_docker_iso.sh"
-  output_dir="${options['workdir']}/isos"
-  iso_dir="${target_dir}/result/iso"
-  save_dir="${target_dir}/isos"
+  output_iso="${target_dir}/${temp_filw}"
+  target_script="${target_dir}/create_docker_${options['imageformat']}.sh"
+  output_dir="${options['workdir']}/${options['imageformat']}s"
+  iso_dir="${target_dir}/result/${options['imageformat']}"
+  save_dir="${target_dir}/${options['imageformat']}s"
   config_file="${target_dir}/iso.nix"
-  docker_script="${options['workdir']}/create_docker_iso.sh"
+  docker_script="${options['workdir']}/create_docker_${options['imageformat']}.sh"
+  if [ "${options['gc']}" = "true" ]; then
+    gc_command="nix-collect-garbage -d"
+  else
+    gc_command=""
+  fi
   if ! [ -d "${options['workdir']}/isos" ]; then
     execute_command "mkdir ${options['workdir']}/isos"
   fi
-  if [ "${options['nixosgenerate']}" = "true" ]; then
-    build_command="cd ${target_dir} ; nixos-generate -c ${config_file} -f ${options['format']}"
+  if [[ "${options['format']}" =~ sd ]]; then
+    image_format="sd"
   else
-    build_command="cd ${target_dir} ; nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=${config_file} --builders ''"
+    image_format="iso"
   fi
+  build_command="cd ${target_dir} ; nix-build '<nixpkgs/nixos>' -A config.system.build.${image_format}Image -I nixos-config=${config_file} --builders ''"
   tee "${docker_script}" << CREATE_DOCKER_ISO
+set -x
 nix-channel --update
 ${build_command}
 if [ -d "${iso_dir}" ]; then
-  iso_file=\$( find ${iso_dir} -name "*.iso" )
-  temp_name=\$( basename -s ".iso" "\${iso_file}" )
+  image_file=\$( find ${iso_dir} -name "*.${options['imagesuffix']}" )
+  temp_name=\$( basename -s ".${options['imagesuffix']}" "\${image_file}" )
   save_file="\${temp_name}-${options['suffix']}"
   if [ -f "${save_dir}/\${save_file}" ]; then
     rm -f ${save_dir}/\${save_file}
   fi
-  cp \${iso_file} ${save_dir}/\${save_file}
+  cp \${image_file} ${save_dir}/\${save_file}
   output_file="${output_dir}/\${save_file}"
-  echo "Source: \${iso_file}"
+  echo "Source: \${image_file}"
   echo "Output: ${save_dir}/\${save_file}"
   echo "Output: \${output_file}"
 fi
@@ -3211,12 +3259,12 @@ while test $# -gt 0; do
       actions_list+=("addiso")
       shift
       ;;
-    --audit)                            # switch : Enable auditing
-      options['audit']="true"
-      shift
-      ;;
     --removeiso|--removecdrom)          # switch : Remove cdrom from VM
       actions_list+=("removeiso")
+      shift
+      ;;
+    --audit)                            # switch : Enable auditing
+      options['audit']="true"
       shift
       ;;
     --allowedtcpports)                  # switch : Allowed TCP ports
@@ -3351,8 +3399,16 @@ while test $# -gt 0; do
       ;;
     --compression)                      # switch : Filesystem compression algorithm
       check_value "$1" "$2"
-      options['clientalivecountmax']="$2"
+      options['compression']="$2"
       shift 2
+      ;;
+    --compressimage)                    # switch : Compress image 
+      options['compressimage']="true"
+      shift
+      ;;
+    --nocompressimage)                    # switch : Don't compress image 
+      options['compressimage']="false"
+      shift
       ;;
     --createinstall*)                   # switch : Create install script
       actions_list+=("createinstall")
@@ -3500,6 +3556,14 @@ while test $# -gt 0; do
       options['gateway']="$2"
       options['dhcp']="false"
       shift 2
+      ;;
+    --gc|--garbagecollection)           # switch : Garbage collection
+      options['gc']="true"
+      shift
+      ;;
+    --nogc|--nogarbagecollection)       # switch : No garbage collection
+      options['gc']="false"
+      shift
       ;;
     --gecos|--usergecos)                # switch : GECOS field
       check_value "$1" "$2"
@@ -3998,6 +4062,10 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       options['runsize']="$2"
       shift 2
+      ;;
+    --sdimage)                          # switch : Build SD image
+      options['format']="sd"
+      shift
       ;;
     --secure)                           # switch : Enable secure parameters
       options['secure']="true"
